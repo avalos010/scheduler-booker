@@ -120,10 +120,10 @@ export default function OnboardingForm() {
               <button
                 type="button"
                 onClick={() => userTypeForm.setValue("userType", "business")}
-                className={`p-6 border-2 rounded-lg text-left transition-colors ${
+                className={`p-6 border-2 rounded-lg text-left transition-colors duration-200 ease-out cursor-pointer ${
                   userTypeForm.watch("userType") === "business"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-300 hover:border-gray-400"
+                    ? "border-emerald-500 bg-emerald-50"
+                    : "border-neutral-300 hover:border-neutral-400"
                 }`}
               >
                 <div className="font-semibold text-lg text-gray-900 mb-2">
@@ -137,10 +137,10 @@ export default function OnboardingForm() {
               <button
                 type="button"
                 onClick={() => userTypeForm.setValue("userType", "individual")}
-                className={`p-6 border-2 rounded-lg text-left transition-colors ${
+                className={`p-6 border-2 rounded-lg text-left transition-colors duration-200 ease-out cursor-pointer ${
                   userTypeForm.watch("userType") === "individual"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-300 hover:border-gray-400"
+                    ? "border-emerald-500 bg-emerald-50"
+                    : "border-neutral-300 hover:border-neutral-400"
                 }`}
               >
                 <div className="font-semibold text-lg text-gray-900 mb-2">
@@ -252,7 +252,7 @@ export default function OnboardingForm() {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium"
+            className="w-full bg-emerald-600 text-white py-3 px-4 rounded-md hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 font-medium transition-colors duration-200 ease-out cursor-pointer active:scale-[0.98]"
           >
             Continue to Availability Setup
           </button>
@@ -286,10 +286,10 @@ export default function OnboardingForm() {
                 key={day.value}
                 type="button"
                 onClick={() => handleWorkDayToggle(day.value)}
-                className={`p-3 border-2 rounded-lg transition-colors ${
+                className={`p-3 border-2 rounded-lg transition-colors duration-200 ease-out cursor-pointer ${
                   availabilityForm.watch("workDays").includes(day.value)
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
-                    : "border-gray-300 hover:border-gray-400"
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                    : "border-neutral-300 hover:border-neutral-400"
                 }`}
               >
                 {day.label}
@@ -372,7 +372,7 @@ export default function OnboardingForm() {
           <button
             type="button"
             onClick={() => setStep(1)}
-            className="flex-1 bg-gray-300 text-gray-700 py-3 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium"
+            className="flex-1 border border-neutral-300 text-neutral-700 py-3 px-4 rounded-md hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 font-medium transition-[colors,transform] duration-200 ease-out cursor-pointer active:scale-[0.98]"
           >
             Back
           </button>
@@ -380,7 +380,7 @@ export default function OnboardingForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="flex-1 bg-emerald-600 text-white py-3 px-4 rounded-md hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors duration-200 ease-out cursor-pointer active:scale-[0.98]"
           >
             {isLoading ? "Setting up..." : "Complete Setup"}
           </button>

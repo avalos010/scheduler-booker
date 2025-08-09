@@ -54,7 +54,7 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-8 bg-white/90 backdrop-blur rounded-xl shadow-lg border border-gray-200">
+    <div className="max-w-md mx-auto p-8 bg-white rounded-2xl shadow-md border border-neutral-200">
       <h2 className="text-2xl font-bold mb-6 text-center text-gray-900">
         Login
       </h2>
@@ -75,7 +75,7 @@ export default function LoginForm() {
         <div>
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-gray-800 mb-1"
+            className="block text-sm font-medium text-neutral-800 mb-1"
           >
             Email
           </label>
@@ -83,7 +83,7 @@ export default function LoginForm() {
             {...register("email")}
             type="email"
             id="email"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-neutral-900"
             placeholder="Enter your email"
           />
           {errors.email && (
@@ -94,7 +94,7 @@ export default function LoginForm() {
         <div>
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-gray-800 mb-1"
+            className="block text-sm font-medium text-neutral-800 mb-1"
           >
             Password
           </label>
@@ -102,7 +102,7 @@ export default function LoginForm() {
             {...register("password")}
             type="password"
             id="password"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-neutral-900"
             placeholder="Enter your password"
           />
           {errors.password && (
@@ -115,7 +115,7 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-blue-700 text-white py-2.5 px-4 rounded-md hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          className="w-full bg-emerald-600 text-white py-2.5 px-4 rounded-md hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ease-out cursor-pointer active:scale-[0.98]"
         >
           {isLoading ? "Logging in..." : "Login"}
         </button>

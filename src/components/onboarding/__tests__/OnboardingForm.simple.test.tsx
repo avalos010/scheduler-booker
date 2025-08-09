@@ -33,7 +33,7 @@ describe("OnboardingForm", () => {
 
     await user.click(businessButton!);
 
-    expect(businessButton).toHaveClass("border-blue-500");
+    expect(businessButton).toHaveClass("border-emerald-500");
     expect(screen.getByLabelText(/business name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/business type/i)).toBeInTheDocument();
   });
@@ -49,7 +49,7 @@ describe("OnboardingForm", () => {
 
     await user.click(individualButton!);
 
-    expect(individualButton).toHaveClass("border-blue-500");
+    expect(individualButton).toHaveClass("border-emerald-500");
     expect(screen.queryByLabelText(/business name/i)).not.toBeInTheDocument();
   });
 

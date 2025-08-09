@@ -63,8 +63,10 @@ export default function SignupForm() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center">Sign Up</h2>
+    <div className="max-w-md mx-auto p-8 bg-white rounded-2xl shadow-md border border-neutral-200">
+      <h2 className="text-2xl font-bold mb-6 text-center text-neutral-900">
+        Sign Up
+      </h2>
 
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -82,7 +84,7 @@ export default function SignupForm() {
         <div>
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-neutral-800 mb-1"
           >
             Email
           </label>
@@ -90,7 +92,7 @@ export default function SignupForm() {
             {...register("email")}
             type="email"
             id="email"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-neutral-900"
             placeholder="Enter your email"
           />
           {errors.email && (
@@ -101,7 +103,7 @@ export default function SignupForm() {
         <div>
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-neutral-800 mb-1"
           >
             Password
           </label>
@@ -109,7 +111,7 @@ export default function SignupForm() {
             {...register("password")}
             type="password"
             id="password"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-neutral-900"
             placeholder="Enter your password"
           />
           {errors.password && (
@@ -122,7 +124,7 @@ export default function SignupForm() {
         <div>
           <label
             htmlFor="confirmPassword"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-neutral-800 mb-1"
           >
             Confirm Password
           </label>
@@ -130,7 +132,7 @@ export default function SignupForm() {
             {...register("confirmPassword")}
             type="password"
             id="confirmPassword"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-neutral-900"
             placeholder="Confirm your password"
           />
           {errors.confirmPassword && (
@@ -143,7 +145,7 @@ export default function SignupForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-emerald-600 text-white py-2.5 px-4 rounded-md hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ease-out cursor-pointer active:scale-[0.98]"
         >
           {isLoading ? "Signing up..." : "Sign Up"}
         </button>
