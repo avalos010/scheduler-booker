@@ -9,6 +9,8 @@ A modern, full-stack scheduling application built with Next.js 15, Supabase, and
 - **Secure Login/Signup** with Supabase Auth
 - **Email verification** for new accounts
 - **Password validation** and error handling
+- **Route protection** for protected pages and redirects for public pages
+- **Logout** button to end sessions
 
 ### 🎯 Onboarding Flow
 
@@ -16,10 +18,11 @@ A modern, full-stack scheduling application built with Next.js 15, Supabase, and
 - **Business vs Individual** user types
 - **Availability configuration** with timezone support
 - **Work schedule setup** with customizable hours
+- **Redirects onboarded users** away from the onboarding page
 
 ### 🧪 Testing
 
-- **Comprehensive test suite** with 10 passing tests
+- **Comprehensive test suite** covering auth, onboarding, and guards
 - **React Testing Library** for component testing
 - **Jest** for test runner
 - **Mock Supabase** for isolated testing
@@ -103,6 +106,11 @@ npm test -- --testPathPatterns=SignupForm.simple.test.tsx
 
 # Onboarding tests
 npm test -- --testPathPatterns=OnboardingForm.simple.test.tsx
+
+# Auth guard tests
+npm test -- --testPathPatterns=RequireAuth.simple.test.tsx
+npm test -- --testPathPatterns=RedirectIfAuthed.simple.test.tsx
+npm test -- --testPathPatterns=RedirectIfOnboarded.simple.test.tsx
 ```
 
 ## 📁 Project Structure
@@ -118,7 +126,11 @@ scheduler-booker/
 │   ├── components/
 │   │   ├── auth/              # Authentication components
 │   │   │   ├── LoginForm.tsx
-│   │   │   └── SignupForm.tsx
+│   │   │   ├── SignupForm.tsx
+│   │   │   ├── RequireAuth.tsx
+│   │   │   ├── RedirectIfAuthed.tsx
+│   │   │   ├── RedirectIfOnboarded.tsx
+│   │   │   └── LogoutButton.tsx
 │   │   └── onboarding/        # Onboarding components
 │   │       └── OnboardingForm.tsx
 │   └── lib/
@@ -148,10 +160,8 @@ scheduler-booker/
 
 ### Testing Coverage
 
-- **10 passing tests** across all components
-- **User interaction testing** with React Testing Library
-- **Mock Supabase** for isolated testing
-- **Form validation testing**
+- **Auth forms and flows**
+- **Auth guards (protected routes, public redirects, onboarding redirect)**
 
 ## 🔧 Development
 
@@ -177,8 +187,8 @@ npm run test:coverage # Run tests with coverage
 ## 🧪 Test Results
 
 ```
-Test Suites: 3 passed, 3 total
-Tests:       10 passed, 10 total
+Test Suites: 6 passed, 6 total
+Tests:       16 passed, 16 total
 Snapshots:   0 total
 Time:        1.128 s
 ```

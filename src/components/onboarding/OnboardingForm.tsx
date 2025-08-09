@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -68,16 +69,17 @@ export default function OnboardingForm() {
     setStep(2);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const onAvailabilitySubmit = async (data: AvailabilityData) => {
     setIsLoading(true);
     try {
-      // Here you would save the onboarding data to your database
-      console.log("Onboarding data:", { ...formData, ...data });
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Redirect to dashboard or next step
+      // Save a minimal onboarded flag in user metadata
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user) {
+        await supabase.auth.updateUser({
+          data: { onboarded: true },
+        });
+      }
       window.location.href = "/dashboard";
     } catch (error) {
       console.error("Error saving onboarding data:", error);
