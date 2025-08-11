@@ -14,6 +14,16 @@ jest.mock("./src/lib/supabase", () => ({
       getUser: jest.fn().mockResolvedValue({ data: { user: null } }),
       updateUser: jest.fn(),
     },
+    from: jest.fn(() => ({
+      select: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          single: jest.fn(),
+          order: jest.fn(),
+        })),
+      })),
+      insert: jest.fn(),
+      upsert: jest.fn(),
+    })),
   },
 }));
 

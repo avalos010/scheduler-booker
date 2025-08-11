@@ -20,14 +20,17 @@ export default function DashboardPage() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-blue-50 p-6 rounded-lg">
+                <a
+                  href="/dashboard/availability"
+                  className="bg-blue-50 p-6 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
+                >
                   <h3 className="text-lg font-semibold text-blue-900 mb-2">
                     📅 Manage Availability
                   </h3>
                   <p className="text-blue-700 text-sm">
                     Update your working hours and available time slots
                   </p>
-                </div>
+                </a>
 
                 <div className="bg-green-50 p-6 rounded-lg">
                   <h3 className="text-lg font-semibold text-green-900 mb-2">

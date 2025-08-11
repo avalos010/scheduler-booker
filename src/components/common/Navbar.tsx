@@ -51,9 +51,23 @@ export default function Navbar() {
               <div className="ml-4 hidden md:flex items-center gap-4">
                 <Link
                   href="/dashboard"
-                  className="text-sm text-neutral-700 hover:text-neutral-900"
+                  className={`text-sm px-3 py-2 rounded-md transition-colors ${
+                    pathname === "/dashboard"
+                      ? "bg-neutral-100 text-neutral-900"
+                      : "text-neutral-700 hover:text-neutral-900 hover:bg-neutral-50"
+                  }`}
                 >
                   Dashboard
+                </Link>
+                <Link
+                  href="/dashboard/availability"
+                  className={`text-sm px-3 py-2 rounded-md transition-colors ${
+                    pathname === "/dashboard/availability"
+                      ? "bg-neutral-100 text-neutral-900"
+                      : "text-neutral-700 hover:text-neutral-900 hover:bg-neutral-50"
+                  }`}
+                >
+                  Availability
                 </Link>
               </div>
             )}
