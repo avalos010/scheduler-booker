@@ -18,34 +18,37 @@ describe("SignupForm", () => {
   it("renders signup form with all fields", () => {
     render(<SignupForm />);
 
+    expect(screen.getByLabelText(/email address/i)).toBeDefined();
+    expect(screen.getByLabelText(/^password$/i)).toBeDefined();
+    expect(screen.getByLabelText(/confirm password/i)).toBeDefined();
     expect(
-      screen.getByRole("heading", { name: "Sign Up" })
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /sign up/i })
-    ).toBeInTheDocument();
+      screen.getByRole("button", { name: /create account/i })
+    ).toBeDefined();
   });
 
   it("handles successful signup", async () => {
     const user = userEvent.setup();
-    mockSupabase.auth.signUp.mockResolvedValueOnce({
+    (mockSupabase.auth.signUp as jest.Mock).mockResolvedValueOnce({
       data: { user: { id: "123", email: TEST_USER.email } },
       error: null,
     });
 
     render(<SignupForm />);
 
-    const emailInput = screen.getByLabelText(/email/i);
+    const emailInput = screen.getByLabelText(/email address/i);
     const passwordInput = screen.getByLabelText(/^password$/i);
     const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole("button", { name: /sign up/i });
+    const termsCheckbox = screen.getByLabelText(
+      /i agree to the terms of service/i
+    );
+    const submitButton = screen.getByRole("button", {
+      name: /create account/i,
+    });
 
     await user.type(emailInput, TEST_USER.email);
     await user.type(passwordInput, TEST_USER.password);
     await user.type(confirmPasswordInput, TEST_USER.password);
+    await user.click(termsCheckbox);
     await user.click(submitButton);
 
     await waitFor(() => {
@@ -56,32 +59,66 @@ describe("SignupForm", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/signup successful/i)).toBeInTheDocument();
+      expect(screen.getByText(/signup successful/i)).toBeDefined();
     });
   });
 
   it("handles signup error", async () => {
     const user = userEvent.setup();
     const errorMessage = "Email already exists";
-    mockSupabase.auth.signUp.mockResolvedValueOnce({
+    (mockSupabase.auth.signUp as jest.Mock).mockResolvedValueOnce({
       data: { user: null },
       error: { message: errorMessage },
     });
 
     render(<SignupForm />);
 
-    const emailInput = screen.getByLabelText(/email/i);
+    const emailInput = screen.getByLabelText(/email address/i);
     const passwordInput = screen.getByLabelText(/^password$/i);
     const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole("button", { name: /sign up/i });
+    const termsCheckbox = screen.getByLabelText(
+      /i agree to the terms of service/i
+    );
+    const submitButton = screen.getByRole("button", {
+      name: /create account/i,
+    });
 
     await user.type(emailInput, TEST_USER.email);
     await user.type(passwordInput, TEST_USER.password);
     await user.type(confirmPasswordInput, TEST_USER.password);
+    await user.click(termsCheckbox);
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText(errorMessage)).toBeInTheDocument();
+      expect(screen.getByText(errorMessage)).toBeDefined();
     });
+  });
+
+  it("renders terms agreement checkbox", () => {
+    render(<SignupForm />);
+    expect(
+      screen.getByLabelText(/i agree to the terms of service/i)
+    ).toBeDefined();
+  });
+
+  it("toggles password visibility", async () => {
+    const user = userEvent.setup();
+    render(<SignupForm />);
+
+    const passwordInput = screen.getByLabelText(/^password$/i);
+    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
+    const toggleButtons = screen.getAllByRole("button", { name: "" }); // Eye icon buttons
+
+    // Passwords should be hidden by default
+    expect(passwordInput.getAttribute("type")).toBe("password");
+    expect(confirmPasswordInput.getAttribute("type")).toBe("password");
+
+    // Click first toggle to show password
+    await user.click(toggleButtons[0]);
+    expect(passwordInput.getAttribute("type")).toBe("text");
+
+    // Click second toggle to show confirm password
+    await user.click(toggleButtons[1]);
+    expect(confirmPasswordInput.getAttribute("type")).toBe("text");
   });
 });

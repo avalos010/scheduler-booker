@@ -5,6 +5,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase";
+import {
+  EnvelopeIcon,
+  LockClosedIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/outline";
 
 const signupSchema = z
   .object({
@@ -23,6 +30,8 @@ export default function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -63,59 +72,82 @@ export default function SignupForm() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-8 bg-white rounded-2xl shadow-md border border-neutral-200">
-      <h2 className="text-2xl font-bold mb-6 text-center text-neutral-900">
-        Sign Up
-      </h2>
-
+    <div className="space-y-6">
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center">
+          <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
           {error}
         </div>
       )}
 
       {message && (
-        <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+        <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm flex items-center">
+          <CheckCircleIcon className="w-5 h-5 mr-2 text-green-600" />
           {message}
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-neutral-800 mb-1"
+            className="block text-sm font-semibold text-gray-700 mb-2"
           >
-            Email
+            Email address
           </label>
-          <input
-            {...register("email")}
-            type="email"
-            id="email"
-            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-neutral-900"
-            placeholder="Enter your email"
-          />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              {...register("email")}
+              type="email"
+              id="email"
+              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+              placeholder="Enter your email"
+            />
+          </div>
           {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+            <p className="mt-2 text-sm text-red-600 flex items-center">
+              <div className="w-1 h-1 bg-red-500 rounded-full mr-2"></div>
+              {errors.email.message}
+            </p>
           )}
         </div>
 
         <div>
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-neutral-800 mb-1"
+            className="block text-sm font-semibold text-gray-700 mb-2"
           >
             Password
           </label>
-          <input
-            {...register("password")}
-            type="password"
-            id="password"
-            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-neutral-900"
-            placeholder="Enter your password"
-          />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <LockClosedIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              {...register("password")}
+              type={showPassword ? "text" : "password"}
+              id="password"
+              className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+              placeholder="Create a password"
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+              ) : (
+                <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+              )}
+            </button>
+          </div>
           {errors.password && (
-            <p className="mt-1 text-sm text-red-600">
+            <p className="mt-2 text-sm text-red-600 flex items-center">
+              <div className="w-1 h-1 bg-red-500 rounded-full mr-2"></div>
               {errors.password.message}
             </p>
           )}
@@ -124,30 +156,80 @@ export default function SignupForm() {
         <div>
           <label
             htmlFor="confirmPassword"
-            className="block text-sm font-medium text-neutral-800 mb-1"
+            className="block text-sm font-semibold text-gray-700 mb-2"
           >
-            Confirm Password
+            Confirm password
           </label>
-          <input
-            {...register("confirmPassword")}
-            type="password"
-            id="confirmPassword"
-            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-neutral-900"
-            placeholder="Confirm your password"
-          />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <LockClosedIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              {...register("confirmPassword")}
+              type={showConfirmPassword ? "text" : "password"}
+              id="confirmPassword"
+              className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+              placeholder="Confirm your password"
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              {showConfirmPassword ? (
+                <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+              ) : (
+                <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+              )}
+            </button>
+          </div>
           {errors.confirmPassword && (
-            <p className="mt-1 text-sm text-red-600">
+            <p className="mt-2 text-sm text-red-600 flex items-center">
+              <div className="w-1 h-1 bg-red-500 rounded-full mr-2"></div>
               {errors.confirmPassword.message}
             </p>
           )}
         </div>
 
+        <div className="flex items-start">
+          <input
+            id="terms"
+            name="terms"
+            type="checkbox"
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
+            required
+          />
+          <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
+            I agree to the{" "}
+            <a
+              href="#"
+              className="text-blue-600 hover:text-blue-500 font-medium"
+            >
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a
+              href="#"
+              className="text-blue-600 hover:text-blue-500 font-medium"
+            >
+              Privacy Policy
+            </a>
+          </label>
+        </div>
+
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-emerald-600 text-white py-2.5 px-4 rounded-md hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ease-out cursor-pointer active:scale-[0.98]"
+          className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:-translate-y-0.5"
         >
-          {isLoading ? "Signing up..." : "Sign Up"}
+          {isLoading ? (
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Creating account...
+            </div>
+          ) : (
+            "Create account"
+          )}
         </button>
       </form>
     </div>

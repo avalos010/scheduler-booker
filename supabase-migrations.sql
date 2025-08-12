@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS user_availability_settings (
   break_duration_minutes INTEGER DEFAULT 60,
   advance_booking_days INTEGER DEFAULT 30,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id)
 );
 
 -- User working hours (default for each day of week)

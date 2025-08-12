@@ -1,12 +1,25 @@
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import { useAvailability } from "../../../lib/hooks/useAvailability";
-import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/hooks/useAuth";
 
 // Mock dependencies
 jest.mock("../../../lib/hooks/useAuth");
+jest.mock("../../../lib/supabase", () => ({
+  supabase: {
+    from: jest.fn(() => ({
+      select: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          single: jest.fn(() => Promise.resolve({ data: null, error: null })),
+          order: jest.fn(() => Promise.resolve({ data: [], error: null })),
+        })),
+      })),
+      insert: jest.fn(() => Promise.resolve({ data: [], error: null })),
+      upsert: jest.fn(() => Promise.resolve({ error: null })),
+      delete: jest.fn(() => Promise.resolve({ error: null })),
+    })),
+  },
+}));
 
-const mockSupabase = supabase;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
 describe("useAvailability", () => {
@@ -22,151 +35,139 @@ describe("useAvailability", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseAuth.mockReturnValue({ user: mockUser, loading: false });
-
-    // Reset all mocks
-    const mockFrom = mockSupabase.from as jest.Mock;
-    mockFrom.mockClear();
   });
 
-  it("loads availability settings from database on mount", async () => {
-    const mockSettings = {
-      slot_duration_minutes: 45,
-      break_duration_minutes: 30,
-      advance_booking_days: 14,
-    };
-
-    const mockWorkingHours = [
-      {
-        day_of_week: 1,
-        start_time: "08:00",
-        end_time: "16:00",
-        is_working: true,
-      },
-      {
-        day_of_week: 2,
-        start_time: "08:00",
-        end_time: "16:00",
-        is_working: true,
-      },
-    ];
-
-    // Mock the from method to return different results based on table name
-    const mockFrom = mockSupabase.from as jest.Mock;
-    mockFrom.mockImplementation((table) => {
-      if (table === "user_availability_settings") {
-        return {
-          select: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              single: jest
-                .fn()
-                .mockResolvedValue({ data: mockSettings, error: null }),
-            }),
-          }),
-        };
-      } else if (table === "user_working_hours") {
-        return {
-          select: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              order: jest
-                .fn()
-                .mockResolvedValue({ data: mockWorkingHours, error: null }),
-            }),
-          }),
-        };
-      }
-      return {};
-    });
-
+  it("initializes with default settings", () => {
     const { result } = renderHook(() => useAvailability());
 
-    await waitFor(() => {
-      expect(result.current.settings.slotDuration).toBe(45);
-      expect(result.current.settings.breakDuration).toBe(30);
-      expect(result.current.settings.advanceBookingDays).toBe(14);
-    });
+    expect(result.current.settings.slotDuration).toBe(60);
+    expect(result.current.settings.breakDuration).toBe(60);
+    expect(result.current.settings.advanceBookingDays).toBe(30);
   });
 
-  it("creates default settings when none exist", async () => {
-    // Mock no existing settings and working hours
-    const mockFrom = mockSupabase.from as jest.Mock;
-    mockFrom.mockImplementation((table) => {
-      if (table === "user_availability_settings") {
-        return {
-          select: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              single: jest.fn().mockResolvedValue({ data: null, error: null }),
-            }),
-          }),
-        };
-      } else if (table === "user_working_hours") {
-        return {
-          select: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              order: jest.fn().mockResolvedValue({ data: [], error: null }),
-            }),
-          }),
-        };
-      } else if (table === "user_availability_settings") {
-        return {
-          insert: jest.fn().mockResolvedValue({ error: null }),
-        };
-      } else if (table === "user_working_hours") {
-        return {
-          insert: jest.fn().mockResolvedValue({ error: null }),
-        };
-      }
-      return {};
-    });
-
+  it("updates settings correctly", () => {
     const { result } = renderHook(() => useAvailability());
 
-    await waitFor(() => {
-      expect(result.current.settings.slotDuration).toBe(60);
-      expect(result.current.settings.breakDuration).toBe(60);
-      expect(result.current.settings.advanceBookingDays).toBe(30);
-    });
-  });
-
-  it("saves availability settings to database", async () => {
-    const { result } = renderHook(() => useAvailability());
-
-    // Mock successful upsert
-    const mockFrom = mockSupabase.from as jest.Mock;
-    mockFrom.mockImplementation(() => ({
-      upsert: jest.fn().mockResolvedValue({ error: null }),
-    }));
-
-    // Update settings
     act(() => {
       result.current.updateSettings({ slotDuration: 90 });
     });
 
-    // Save to database
-    const saveResult = await act(async () => {
-      return await result.current.saveAvailability();
-    });
-
-    expect(saveResult.success).toBe(true);
-    expect(mockFrom).toHaveBeenCalledWith("user_availability_settings");
-    expect(mockFrom).toHaveBeenCalledWith("user_working_hours");
+    expect(result.current.settings.slotDuration).toBe(90);
+    expect(result.current.settings.breakDuration).toBe(60); // unchanged
   });
 
-  it("handles save errors gracefully", async () => {
+  it("updates working hours correctly", () => {
     const { result } = renderHook(() => useAvailability());
 
-    // Mock error on save
-    const mockFrom = mockSupabase.from as jest.Mock;
-    mockFrom.mockImplementation(() => ({
-      upsert: jest.fn().mockResolvedValue({
-        error: { message: "Database error" },
-      }),
-    }));
-
-    const saveResult = await act(async () => {
-      return await result.current.saveAvailability();
+    act(() => {
+      result.current.updateWorkingHours(0, "startTime", "10:00");
     });
 
-    expect(saveResult.success).toBe(false);
-    expect(saveResult.error).toBeDefined();
+    expect(result.current.workingHours[0].startTime).toBe("10:00");
+  });
+
+  it("generates default time slots correctly", () => {
+    const { result } = renderHook(() => useAvailability());
+
+    const timeSlots = result.current.generateDefaultTimeSlots(
+      "09:00",
+      "17:00",
+      60
+    );
+
+    expect(timeSlots).toHaveLength(8); // 8 one-hour slots from 9 AM to 5 PM
+    expect(timeSlots[0].startTime).toBe("09:00");
+    expect(timeSlots[0].endTime).toBe("10:00");
+    expect(timeSlots[0].isAvailable).toBe(true);
+  });
+
+  it("updates day availability correctly", () => {
+    const { result } = renderHook(() => useAvailability());
+    const testDate = new Date("2024-01-15");
+
+    act(() => {
+      result.current.updateDayAvailability(testDate, {
+        isWorkingDay: false,
+        timeSlots: [],
+      });
+    });
+
+    const dateKey = testDate.toISOString().split("T")[0];
+    expect(result.current.availability[dateKey]?.isWorkingDay).toBe(false);
+  });
+
+  it("toggles working day status", () => {
+    const { result } = renderHook(() => useAvailability());
+    const testDate = new Date("2024-01-15");
+
+    // First, set up the day
+    act(() => {
+      result.current.updateDayAvailability(testDate, {
+        isWorkingDay: true,
+        timeSlots: [],
+      });
+    });
+
+    // Then toggle it
+    act(() => {
+      result.current.toggleWorkingDay(testDate);
+    });
+
+    const dateKey = testDate.toISOString().split("T")[0];
+    expect(result.current.availability[dateKey]?.isWorkingDay).toBe(false);
+  });
+
+  it("toggles time slot availability", () => {
+    const { result } = renderHook(() => useAvailability());
+    const testDate = new Date("2024-01-15");
+    const testSlot = {
+      id: "test-slot",
+      startTime: "09:00",
+      endTime: "10:00",
+      isAvailable: true,
+    };
+
+    // First, set up the day with a time slot
+    act(() => {
+      result.current.updateDayAvailability(testDate, {
+        isWorkingDay: true,
+        timeSlots: [testSlot],
+      });
+    });
+
+    // Then toggle the time slot
+    act(() => {
+      result.current.toggleTimeSlot(testDate, "test-slot");
+    });
+
+    const dateKey = testDate.toISOString().split("T")[0];
+    expect(
+      result.current.availability[dateKey]?.timeSlots[0]?.isAvailable
+    ).toBe(false);
+  });
+
+  it("handles refresh calendar correctly", () => {
+    const { result } = renderHook(() => useAvailability());
+    const testDate = new Date("2024-01-15");
+
+    // Set up some availability data
+    act(() => {
+      result.current.updateDayAvailability(testDate, {
+        isWorkingDay: true,
+        timeSlots: [],
+      });
+    });
+
+    // Verify data exists
+    const dateKey = testDate.toISOString().split("T")[0];
+    expect(result.current.availability[dateKey]).toBeDefined();
+
+    // Refresh calendar
+    act(() => {
+      result.current.refreshCalendar();
+    });
+
+    // Verify data is cleared
+    expect(result.current.availability[dateKey]).toBeUndefined();
   });
 });

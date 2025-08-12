@@ -1,30 +1,42 @@
+import Link from "next/link";
 import SignupForm from "@/components/auth/SignupForm";
-import RedirectIfAuthed from "@/components/auth/RedirectIfAuthed";
+import { UserPlusIcon } from "@heroicons/react/24/outline";
 
 export default function SignupPage() {
   return (
-    <RedirectIfAuthed>
-      <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div>
-            <h1 className="text-center text-3xl font-extrabold text-gray-900">
-              Create your account
-            </h1>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              Sign up to get started
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center px-4 py-12">
+      <div className="max-w-md w-full">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mb-4">
+            <UserPlusIcon className="w-8 h-8 text-white" />
           </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Create Account
+          </h1>
+          <p className="text-gray-600">
+            Join thousands of professionals managing their schedules efficiently
+          </p>
+        </div>
+
+        {/* Form Card */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
           <SignupForm />
-          <div className="text-center">
+        </div>
+
+        {/* Footer */}
+        <div className="text-center mt-8">
+          <p className="text-gray-600">
+            Already have an account?{" "}
             <a
               href="/login"
-              className="text-indigo-600 hover:text-indigo-500 font-medium"
+              className="text-blue-600 hover:text-blue-500 font-semibold transition-colors"
             >
-              Already have an account? Sign in
+              Sign in
             </a>
-          </div>
+          </p>
         </div>
       </div>
-    </RedirectIfAuthed>
+    </div>
   );
 }
