@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "./useAuth";
 
@@ -47,6 +47,27 @@ export function useAvailability() {
     breakDuration: 60,
     advanceBookingDays: 30,
   });
+
+  // Comprehensive loading state
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingSteps, setLoadingSteps] = useState({
+    workingHours: false,
+    settings: false,
+    exceptions: false,
+    timeSlots: false,
+  });
+
+  // Check if all data is loaded
+  const isFullyLoaded = useMemo(() => {
+    return (
+      workingHours.length > 0 &&
+      settings.slotDuration > 0 &&
+      loadingSteps.workingHours &&
+      loadingSteps.settings &&
+      loadingSteps.exceptions &&
+      loadingSteps.timeSlots
+    );
+  }, [workingHours, settings, loadingSteps]);
 
   // Default time slots generator
   const generateDefaultTimeSlots = useCallback(
@@ -408,8 +429,10 @@ export function useAvailability() {
           breakDuration: settingsToUse.break_duration_minutes,
           advanceBookingDays: settingsToUse.advance_booking_days,
         });
+        setLoadingSteps((prev) => ({ ...prev, settings: true }));
       } else {
         await createDefaultSettings();
+        setLoadingSteps((prev) => ({ ...prev, settings: true }));
       }
 
       // Load working hours
@@ -442,8 +465,10 @@ export function useAvailability() {
           return formatted;
         });
         setWorkingHours(formattedHours);
+        setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
       } else {
         await createDefaultWorkingHours();
+        setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
       }
 
       return { success: true };
@@ -551,6 +576,9 @@ export function useAvailability() {
           isWorkingDay: false,
         });
       }
+
+      // Mark time slots as loaded for this date
+      setLoadingSteps((prev) => ({ ...prev, timeSlots: true }));
     },
     [
       user,
@@ -759,6 +787,7 @@ export function useAvailability() {
         });
       }
 
+      setLoadingSteps((prev) => ({ ...prev, exceptions: true }));
       return { success: true };
     } catch (error) {
       console.error("Error loading day availability exceptions:", error);
@@ -776,10 +805,20 @@ export function useAvailability() {
     }
   }, [user, loadAvailability, loadDayAvailabilityExceptions]);
 
+  // Update overall loading state when all steps are complete
+  useEffect(() => {
+    if (isFullyLoaded) {
+      setIsLoading(false);
+    }
+  }, [isFullyLoaded]);
+
   return {
     availability,
     workingHours,
     settings,
+    isLoading,
+    isFullyLoaded,
+    loadingSteps,
     updateDayAvailability,
     toggleTimeSlot,
     toggleWorkingDay,
@@ -795,6 +834,9 @@ export function useAvailability() {
     saveDayAvailabilityException,
     loadDayAvailabilityExceptions,
     setAvailability,
+    markTimeSlotsLoaded: () => {
+      setLoadingSteps((prev) => ({ ...prev, timeSlots: true }));
+    },
     refreshCalendar: () => {
       // This will trigger a re-render and regenerate time slots
       setAvailability({});

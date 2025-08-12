@@ -34,15 +34,17 @@ export default function AvailabilityCalendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showDayModal, setShowDayModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const {
     availability,
     workingHours,
+    isFullyLoaded,
+    loadingSteps,
     toggleWorkingDay,
     generateTimeSlotsForDate,
     loadTimeSlotsForDate,
     setAvailability,
     loadDayAvailabilityExceptions,
+    markTimeSlotsLoaded,
   } = useAvailability();
 
   // Generate calendar days for the current month
@@ -95,7 +97,18 @@ export default function AvailabilityCalendar() {
         }));
       }
     }
-  }, [currentMonth, generateTimeSlotsForDate, availability, workingHours]);
+
+    // Mark time slots as loaded after processing all days
+    setTimeout(() => {
+      markTimeSlotsLoaded();
+    }, 100);
+  }, [
+    currentMonth,
+    generateTimeSlotsForDate,
+    availability,
+    workingHours,
+    markTimeSlotsLoaded,
+  ]);
 
   // Function to refresh calendar data
   const refreshCalendar = useCallback(async () => {
@@ -129,7 +142,6 @@ export default function AvailabilityCalendar() {
   // Set loading to false when working hours are loaded
   useEffect(() => {
     if (workingHours.length > 0) {
-      setIsLoading(false);
       // Load day availability exceptions after working hours are loaded
       loadDayAvailabilityExceptions();
     }
@@ -174,9 +186,11 @@ export default function AvailabilityCalendar() {
           </button>
           <button
             onClick={async () => {
-              setIsLoading(true);
+              // Reset loading state and reload data
+              setAvailability({});
+              // Reset loading steps to show loading state again
+              // Note: This would require adding a reset function to the hook
               await loadDayAvailabilityExceptions();
-              setIsLoading(false);
             }}
             className="px-6 py-3 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-200 border border-gray-300 hover:border-gray-400 flex items-center space-x-2"
             title="Refresh calendar data"
@@ -206,7 +220,7 @@ export default function AvailabilityCalendar() {
       </div>
 
       {/* Calendar Grid */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden relative">
         {/* Day headers */}
         <div className="grid grid-cols-7 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
@@ -220,12 +234,107 @@ export default function AvailabilityCalendar() {
         </div>
 
         {/* Calendar days */}
-        {isLoading ? (
-          <div className="col-span-7 p-12 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 font-medium">
-              Loading your calendar...
-            </p>
+        {!isFullyLoaded ? (
+          <div className="grid grid-cols-7">
+            {/* Generate skeleton days for the current month */}
+            {Array.from({ length: 42 }, (_, index) => {
+              const skeletonDay = new Date(currentMonth);
+              skeletonDay.setDate(1);
+              skeletonDay.setDate(
+                skeletonDay.getDate() + index - skeletonDay.getDay()
+              );
+
+              return (
+                <div
+                  key={`skeleton-${index}`}
+                  className="min-h-[160px] border-r border-b border-gray-100 bg-white opacity-0 animate-[fadeIn_0.5s_ease-out_forwards]"
+                  style={{
+                    animationDelay: `${index * 0.05}s`,
+                  }}
+                >
+                  <div className="p-4">
+                    {/* Date number skeleton */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-6 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded"></div>
+                      </div>
+                      {/* Toggle button skeleton */}
+                      <div className="w-7 h-7 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded-full"></div>
+                    </div>
+
+                    {/* Content skeleton */}
+                    <div className="space-y-3">
+                      {/* Time slots indicator skeleton */}
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded"></div>
+                        <div className="w-20 h-3 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded"></div>
+                      </div>
+
+                      {/* Slot dots skeleton */}
+                      <div className="flex flex-wrap gap-1">
+                        {Array.from({ length: 4 }, (_, i) => (
+                          <div
+                            key={i}
+                            className="w-2 h-2 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded-full"
+                            style={{
+                              animationDelay: `${index * 0.05 + i * 0.1}s`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Loading progress overlay */}
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600 font-medium mb-4">
+                  Loading your calendar...
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        loadingSteps.workingHours
+                          ? "bg-green-500"
+                          : "bg-gray-300"
+                      }`}
+                    ></div>
+                    <span className="text-sm text-gray-500">Working hours</span>
+                  </div>
+                  <div className="flex items-center justify-center space-x-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        loadingSteps.settings ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                    ></div>
+                    <span className="text-sm text-gray-500">Settings</span>
+                  </div>
+                  <div className="flex items-center justify-center space-x-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        loadingSteps.exceptions ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                    ></div>
+                    <span className="text-sm text-gray-500">
+                      Day exceptions
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-center space-x-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        loadingSteps.timeSlots ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                    ></div>
+                    <span className="text-sm text-gray-500">Time slots</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-7">
