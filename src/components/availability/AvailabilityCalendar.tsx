@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   format,
   startOfMonth,
@@ -44,6 +44,8 @@ export default function AvailabilityCalendar() {
     loadTimeSlotsForDate,
     setAvailability,
     loadDayAvailabilityExceptions,
+    resetCalendarToDefaults,
+    loadAvailability,
     markTimeSlotsLoaded,
   } = useAvailability();
 
@@ -57,12 +59,42 @@ export default function AvailabilityCalendar() {
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentMonth]);
 
+  // Track if we've already processed the current month
+  const processedMonthRef = useRef<string>("");
+  const timeSlotsMarkedRef = useRef<boolean>(false);
+
   // Generate time slots for the current month when component first mounts
   useEffect(() => {
     // Only generate time slots if working hours are loaded
     if (workingHours.length === 0) {
+      console.log("Working hours not loaded yet, skipping month processing");
       return;
     }
+
+    console.log(
+      "Working hours loaded:",
+      workingHours.map((wh) => `${wh.day}: working=${wh.isWorking}`)
+    );
+
+    // Check if we've already processed this month
+    const monthKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}`;
+    if (
+      processedMonthRef.current === monthKey &&
+      processedMonthRef.current !== ""
+    ) {
+      console.log("Month already processed, skipping:", monthKey);
+      return;
+    }
+
+    console.log("Processing month:", monthKey);
+    console.log(
+      "Current availability state:",
+      Object.keys(availability).length,
+      "days"
+    );
+
+    // Reset the time slots marked flag for new month
+    timeSlotsMarkedRef.current = false;
 
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -76,43 +108,65 @@ export default function AvailabilityCalendar() {
       days.push(new Date(day));
     }
 
+    console.log("Processing", days.length, "days");
+
     for (const day of days) {
       const dateKey = day.toISOString().split("T")[0];
       const dayOfWeek = day.getDay();
       const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       const dayHours = workingHours[dayIndex];
 
-      // Always set the default working day status based on working hours
-      if (!availability[dateKey]) {
-        if (dayHours && dayHours.isWorking) {
-          // Generate time slots for working day
-          generateTimeSlotsForDate(day);
-        } else {
-          // Mark as non-working day based on default working hours
-          setAvailability((prev) => ({
-            ...prev,
-            [dateKey]: {
-              date: day,
-              timeSlots: [],
-              isWorkingDay: false,
-            },
-          }));
-        }
+      console.log(
+        `Day ${dateKey}: working=${
+          dayHours?.isWorking
+        }, hasAvailability=${!!availability[dateKey]}`
+      );
+
+      // Always process each day based on working hours, regardless of current availability state
+      if (dayHours && dayHours.isWorking) {
+        console.log(`Generating time slots for ${dateKey}`);
+        // Generate time slots for working day - await this!
+        generateTimeSlotsForDate(day);
+      } else {
+        console.log(`Marking ${dateKey} as non-working day`);
+        // Mark as non-working day based on default working hours
+        setAvailability((prev) => ({
+          ...prev,
+          [dateKey]: {
+            date: day,
+            timeSlots: [],
+            isWorkingDay: false,
+          },
+        }));
       }
     }
 
-    // Mark time slots as loaded after processing all days
-    setTimeout(() => {
-      console.log("Marking time slots as loaded");
-      markTimeSlotsLoaded();
-    }, 2000); // Increased to 2 seconds to make skeleton visible
+    // Mark this month as processed
+    processedMonthRef.current = monthKey;
+
+    // Mark time slots as loaded after processing all days (only once per month)
+    if (!timeSlotsMarkedRef.current) {
+      setTimeout(() => {
+        console.log("Marking time slots as loaded");
+        markTimeSlotsLoaded();
+        timeSlotsMarkedRef.current = true;
+      }, 2000); // Increased to 2 seconds to make skeleton visible
+    }
   }, [
     currentMonth,
     generateTimeSlotsForDate,
-    availability,
     workingHours,
     markTimeSlotsLoaded,
   ]);
+
+  // Reset refs when month changes
+  useEffect(() => {
+    const monthKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}`;
+    if (processedMonthRef.current !== monthKey) {
+      processedMonthRef.current = "";
+      timeSlotsMarkedRef.current = false;
+    }
+  }, [currentMonth]);
 
   // Function to refresh calendar data
   const refreshCalendar = useCallback(async () => {
@@ -228,6 +282,31 @@ export default function AvailabilityCalendar() {
             <span>Refresh</span>
           </button>
           <button
+            onClick={async () => {
+              // Reset calendar to default working hours
+              await resetCalendarToDefaults();
+              // Reload everything fresh by calling loadAvailability
+              await loadAvailability();
+            }}
+            className="px-6 py-3 text-sm font-medium text-red-700 hover:text-red-900 hover:bg-red-50 rounded-xl transition-all duration-200 border border-red-300 hover:border-red-400 flex items-center space-x-2"
+            title="Reset calendar to default working hours"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+            <span>Reset to Defaults</span>
+          </button>
+          <button
             onClick={() => navigateMonth("next")}
             className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-105"
           >
@@ -319,10 +398,16 @@ export default function AvailabilityCalendar() {
           <div className="grid grid-cols-7">
             {calendarDays.map((day) => {
               const dateKey = day.toISOString().split("T")[0];
+              // Get the default working day status from working hours
+              const dayOfWeek = day.getDay();
+              const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+              const dayHours = workingHours[dayIndex];
+              const defaultIsWorking = dayHours?.isWorking ?? false;
+
               const dayAvailability = availability[dateKey] || {
                 date: day,
                 timeSlots: [],
-                isWorkingDay: false,
+                isWorkingDay: defaultIsWorking,
               };
               const isCurrentMonth = isSameMonth(day, currentMonth);
               const isSelected = selectedDate && isSameDay(day, selectedDate);
@@ -380,13 +465,20 @@ export default function AvailabilityCalendar() {
                           await toggleWorkingDay(day);
                           console.log("toggleWorkingDay function called");
                         }}
-                        className={`w-7 h-7 rounded-full border-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer ${
+                        disabled={workingHours.length === 0}
+                        className={`w-7 h-7 rounded-full border-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                          workingHours.length === 0
+                            ? "opacity-50 cursor-not-allowed"
+                            : "cursor-pointer"
+                        } ${
                           dayAvailability.isWorkingDay
                             ? "bg-green-500 border-green-500 shadow-md hover:shadow-lg hover:bg-green-600"
                             : "bg-gray-300 border-gray-300 hover:bg-gray-400 hover:border-gray-400"
                         }`}
                         title={
-                          dayAvailability.isWorkingDay
+                          workingHours.length === 0
+                            ? "Loading working hours..."
+                            : dayAvailability.isWorkingDay
                             ? "Working day - Click to disable"
                             : "Non-working day - Click to enable"
                         }

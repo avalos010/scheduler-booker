@@ -160,6 +160,12 @@ export function useAvailability() {
       console.log("Current workingHours:", workingHours);
       console.log("Current settings:", settings);
 
+      // Check if working hours are loaded
+      if (workingHours.length === 0) {
+        console.log("Working hours not loaded yet, cannot toggle day");
+        return;
+      }
+
       const dateKey = date.toISOString().split("T")[0];
       const currentDay = availability[dateKey];
 
@@ -213,6 +219,7 @@ export function useAvailability() {
         const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
         const dayHours = workingHours[dayIndex];
 
+        // Default to the opposite of what the working hours say
         const newIsWorking = !(dayHours?.isWorking ?? false);
         let newTimeSlots: TimeSlot[] = [];
 
@@ -394,6 +401,8 @@ export function useAvailability() {
       }
 
       if (settingsData && settingsData.length > 0) {
+        console.log("Loaded settings from database:", settingsData);
+
         // If multiple settings exist, use the most recent one and clean up duplicates
         let settingsToUse = settingsData[0];
 
@@ -424,6 +433,12 @@ export function useAvailability() {
           }
         }
 
+        console.log("Using settings:", {
+          slotDuration: settingsToUse.slot_duration_minutes,
+          breakDuration: settingsToUse.break_duration_minutes,
+          advanceBookingDays: settingsToUse.advance_booking_days,
+        });
+
         setSettings({
           slotDuration: settingsToUse.slot_duration_minutes,
           breakDuration: settingsToUse.break_duration_minutes,
@@ -431,6 +446,7 @@ export function useAvailability() {
         });
         setLoadingSteps((prev) => ({ ...prev, settings: true }));
       } else {
+        console.log("No settings found, creating defaults");
         await createDefaultSettings();
         setLoadingSteps((prev) => ({ ...prev, settings: true }));
       }
@@ -443,6 +459,8 @@ export function useAvailability() {
         .order("day_of_week");
 
       if (hoursData && hoursData.length > 0) {
+        console.log("Raw working hours data from database:", hoursData);
+
         const dayNames = [
           "Monday",
           "Tuesday",
@@ -456,6 +474,12 @@ export function useAvailability() {
           // Map array index to day_of_week: Monday=1, Tuesday=2, ..., Sunday=0
           const dayOfWeek = index === 6 ? 0 : index + 1;
           const hourData = hoursData.find((h) => h.day_of_week === dayOfWeek);
+
+          console.log(
+            `Day ${day} (index ${index}, day_of_week ${dayOfWeek}):`,
+            hourData
+          );
+
           const formatted = {
             day,
             startTime: hourData?.start_time || "09:00",
@@ -465,11 +489,16 @@ export function useAvailability() {
                 ? hourData.is_working
                 : index < 5, // Mon-Fri working by default, but respect database values
           };
+
+          console.log(`Formatted ${day}:`, formatted);
           return formatted;
         });
+
+        console.log("Final formatted working hours:", formattedHours);
         setWorkingHours(formattedHours);
         setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
       } else {
+        console.log("No working hours found, creating defaults");
         await createDefaultWorkingHours();
         setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
       }
@@ -486,20 +515,29 @@ export function useAvailability() {
     if (!user) return { success: false, error: "No user" };
 
     try {
+      console.log("Saving settings:", {
+        slotDuration: settings.slotDuration,
+        breakDuration: settings.breakDuration,
+        advanceBookingDays: settings.advanceBookingDays,
+      });
+
       // Save settings
-      const { error: settingsError } = await supabase
+      const { data: settingsData, error: settingsError } = await supabase
         .from("user_availability_settings")
         .upsert({
           user_id: user.id,
           slot_duration_minutes: settings.slotDuration,
           break_duration_minutes: settings.breakDuration,
           advance_booking_days: settings.advanceBookingDays,
-        });
+        })
+        .select();
 
       if (settingsError) {
         console.error("Error saving settings:", settingsError);
         throw settingsError;
       }
+
+      console.log("Settings saved successfully:", settingsData);
 
       // Save working hours
       const workingHoursData = workingHours.map((hour, index) => ({
@@ -540,17 +578,28 @@ export function useAvailability() {
       const dayHours = workingHours[dayIndex];
 
       if (dayHours && dayHours.isWorking) {
+        console.log("Settings for time slot generation:", {
+          startTime: dayHours.startTime,
+          endTime: dayHours.endTime,
+          slotDuration: settings.slotDuration,
+        });
+
         const timeSlots = generateDefaultTimeSlots(
           dayHours.startTime,
           dayHours.endTime,
           settings.slotDuration
         );
 
+        console.log("Generated time slots:", timeSlots);
+        console.log("Updating availability state for", dateKey);
+
         // Update local state
         updateDayAvailability(date, {
           timeSlots,
           isWorkingDay: true,
         });
+
+        console.log("Availability state updated, checking if it was saved...");
 
         // Save to database
         const slotsData = timeSlots.map((slot) => ({
@@ -798,6 +847,54 @@ export function useAvailability() {
     }
   }, [user]);
 
+  // Reset calendar to default working hours (clear all exceptions)
+  const resetCalendarToDefaults = useCallback(async () => {
+    if (!user) return { success: false, error: "No user" };
+
+    try {
+      console.log("Resetting calendar to default working hours...");
+
+      // Clear all availability exceptions
+      const { error: deleteExceptionsError } = await supabase
+        .from("user_availability_exceptions")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (deleteExceptionsError) {
+        console.error("Error deleting exceptions:", deleteExceptionsError);
+        throw deleteExceptionsError;
+      }
+
+      // Clear all time slots
+      const { error: deleteSlotsError } = await supabase
+        .from("user_time_slots")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (deleteSlotsError) {
+        console.error("Error deleting time slots:", deleteSlotsError);
+        throw deleteSlotsError;
+      }
+
+      // Clear local availability state
+      setAvailability({});
+
+      // Reset loading steps to force reload
+      setLoadingSteps({
+        workingHours: false,
+        settings: false,
+        exceptions: false,
+        timeSlots: false,
+      });
+
+      console.log("Calendar reset successfully, reloading defaults...");
+      return { success: true };
+    } catch (error) {
+      console.error("Error resetting calendar:", error);
+      return { success: false, error };
+    }
+  }, [user]);
+
   // Load data on mount
   useEffect(() => {
     if (user) {
@@ -836,6 +933,7 @@ export function useAvailability() {
     loadTimeSlotsForDate,
     saveDayAvailabilityException,
     loadDayAvailabilityExceptions,
+    resetCalendarToDefaults,
     setAvailability,
     markTimeSlotsLoaded: () => {
       console.log("markTimeSlotsLoaded called, setting timeSlots to true");

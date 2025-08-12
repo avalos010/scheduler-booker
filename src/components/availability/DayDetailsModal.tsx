@@ -41,10 +41,17 @@ export default function DayDetailsModal({
   if (!isOpen || !selectedDate) return null;
 
   const dateKey = selectedDate.toISOString().split("T")[0];
+
+  // Get the default working day status from working hours
+  const dayOfWeek = selectedDate.getDay();
+  const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const dayHours = workingHours[dayIndex];
+  const defaultIsWorking = dayHours?.isWorking ?? false;
+
   const dayAvailability = availability[dateKey] || {
     date: selectedDate,
     timeSlots: [],
-    isWorkingDay: true,
+    isWorkingDay: defaultIsWorking,
   };
 
   return (
