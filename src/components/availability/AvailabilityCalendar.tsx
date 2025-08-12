@@ -21,10 +21,7 @@ import {
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
-  PlayIcon,
   PauseIcon,
-  SunIcon,
-  MoonIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useAvailability, type TimeSlot } from "@/lib/hooks/useAvailability";
@@ -38,9 +35,7 @@ export default function AvailabilityCalendar() {
     availability,
     workingHours,
     isFullyLoaded,
-    loadingSteps,
     toggleWorkingDay,
-    generateTimeSlotsForDate,
     loadTimeSlotsForDate,
     setAvailability,
     loadDayAvailabilityExceptions,
@@ -91,24 +86,13 @@ export default function AvailabilityCalendar() {
 
     // Process days sequentially
     const processDaysSequentially = async () => {
-      for (const day of days) {
-        const dateKey = day.toISOString().split("T")[0];
-        const dayOfWeek = day.getDay();
-        const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        const dayHours = workingHours[dayIndex];
+      // Load availability exceptions first
+      await loadDayAvailabilityExceptions();
 
-        if (dayHours && dayHours.isWorking) {
-          await generateTimeSlotsForDate(day);
-        } else {
-          setAvailability((prev) => ({
-            ...prev,
-            [dateKey]: {
-              date: day,
-              timeSlots: [],
-              isWorkingDay: false,
-            },
-          }));
-        }
+      for (const day of days) {
+        // Use loadTimeSlotsForDate instead of generateTimeSlotsForDate
+        // This function properly handles exceptions
+        await loadTimeSlotsForDate(day);
       }
 
       // Mark time slots as loaded after processing all days
@@ -116,13 +100,18 @@ export default function AvailabilityCalendar() {
         setTimeout(() => {
           markTimeSlotsLoaded();
           timeSlotsMarkedRef.current = true;
-        }, 1000);
+        }, 100);
       }
     };
 
     processDaysSequentially();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentMonth, workingHours]);
+  }, [
+    currentMonth,
+    workingHours,
+    loadDayAvailabilityExceptions,
+    loadTimeSlotsForDate,
+  ]);
 
   // Refresh calendar when working hours change
   useEffect(() => {
@@ -138,6 +127,10 @@ export default function AvailabilityCalendar() {
     // Clear current availability to force regeneration
     setAvailability({});
 
+    // Reset processed month to force regeneration
+    processedMonthRef.current = "";
+    timeSlotsMarkedRef.current = false;
+
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
 
@@ -150,38 +143,25 @@ export default function AvailabilityCalendar() {
       days.push(new Date(day));
     }
 
-    // Process days sequentially to ensure proper time slot generation
+    // Load availability exceptions first
+    await loadDayAvailabilityExceptions();
+
+    // Process days sequentially using loadTimeSlotsForDate which handles exceptions properly
     for (const day of days) {
-      const dateKey = day.toISOString().split("T")[0];
-      const dayOfWeek = day.getDay();
-      const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      const dayHours = workingHours[dayIndex];
-
-      if (dayHours && dayHours.isWorking) {
-        await generateTimeSlotsForDate(day);
-      } else {
-        // Mark as non-working day based on default working hours
-        setAvailability((prev) => ({
-          ...prev,
-          [dateKey]: {
-            date: day,
-            timeSlots: [],
-            isWorkingDay: false,
-          },
-        }));
-      }
+      await loadTimeSlotsForDate(day);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentMonth, generateTimeSlotsForDate, workingHours]);
 
-  // Set loading to false when working hours are loaded
-  useEffect(() => {
-    if (workingHours.length > 0) {
-      // Load day availability exceptions after working hours are loaded
-      loadDayAvailabilityExceptions();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workingHours.length]);
+    // Mark time slots as loaded
+    markTimeSlotsLoaded();
+  }, [
+    currentMonth,
+    setAvailability,
+    loadDayAvailabilityExceptions,
+    loadTimeSlotsForDate,
+    markTimeSlotsLoaded,
+  ]);
+
+  // Note: loadDayAvailabilityExceptions is now called from the main calendar processing effect
 
   const navigateMonth = (direction: "prev" | "next") => {
     setCurrentMonth(
@@ -221,13 +201,7 @@ export default function AvailabilityCalendar() {
             <span>Today</span>
           </button>
           <button
-            onClick={async () => {
-              // Reset loading state and reload data
-              setAvailability({});
-              // Reset loading steps to show loading state again
-              // Note: This would require adding a reset function to the hook
-              await loadDayAvailabilityExceptions();
-            }}
+            onClick={refreshCalendar}
             className="px-6 py-3 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-200 border border-gray-300 hover:border-gray-400 flex items-center space-x-2"
             title="Refresh calendar data"
           >
@@ -271,30 +245,7 @@ export default function AvailabilityCalendar() {
             </svg>
             <span>Reset to Defaults</span>
           </button>
-          <button
-            onClick={async () => {
-              // Test time slot generation for today
-              const today = new Date();
-              await generateTimeSlotsForDate(today);
-            }}
-            className="px-6 py-3 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-200 border border-blue-300 hover:border-blue-400 flex items-center space-x-2"
-            title="Test time slot generation for today"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-            <span>Test Generation</span>
-          </button>
+
           <button
             onClick={() => navigateMonth("next")}
             className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-105"
@@ -391,12 +342,11 @@ export default function AvailabilityCalendar() {
               const dayOfWeek = day.getDay();
               const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
               const dayHours = workingHours[dayIndex];
-              const defaultIsWorking = dayHours?.isWorking ?? false;
 
               const dayAvailability = availability[dateKey] || {
                 date: day,
                 timeSlots: [],
-                isWorkingDay: defaultIsWorking,
+                isWorkingDay: dayHours?.isWorking ?? false, // Use working hours configuration
               };
               const isCurrentMonth = isSameMonth(day, currentMonth);
               const isSelected = selectedDate && isSameDay(day, selectedDate);

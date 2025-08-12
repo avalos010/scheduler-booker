@@ -1,6 +1,14 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "./useAuth";
+import {
+  saveToCache,
+  loadFromCache,
+  clearCache,
+  updateCacheAvailability,
+  updateCacheWorkingHours,
+  updateCacheSettings,
+} from "@/lib/cache-utils";
 
 export interface TimeSlot {
   id: string;
@@ -110,16 +118,23 @@ export function useAvailability() {
   const updateDayAvailability = useCallback(
     (date: Date, updates: Partial<DayAvailability>) => {
       const dateKey = date.toISOString().split("T")[0];
-      setAvailability((prev) => ({
-        ...prev,
-        [dateKey]: {
-          ...prev[dateKey],
-          ...updates,
-          date,
-        },
-      }));
+      setAvailability((prev) => {
+        const updated = {
+          ...prev,
+          [dateKey]: {
+            ...prev[dateKey],
+            ...updates,
+            date,
+          },
+        };
+        // Update cache when availability changes
+        if (user) {
+          updateCacheAvailability(user.id, updated);
+        }
+        return updated;
+      });
     },
-    []
+    [user]
   );
 
   // Toggle time slot availability
@@ -137,6 +152,14 @@ export function useAvailability() {
 
         // Update local state
         updateDayAvailability(date, { timeSlots: updatedSlots });
+
+        // Update cache with modified time slots
+        setAvailability((prev) => {
+          if (user) {
+            updateCacheAvailability(user.id, prev);
+          }
+          return prev;
+        });
 
         // Save to database
         if (user) {
@@ -264,10 +287,16 @@ export function useAvailability() {
       setWorkingHours((prev) => {
         const updated = [...prev];
         updated[index] = { ...updated[index], [field]: value };
+
+        // Update cache with new working hours
+        if (user) {
+          updateCacheWorkingHours(user.id, updated);
+        }
+
         return updated;
       });
     },
-    [workingHours.length]
+    [workingHours.length, user]
   );
 
   // Update settings
@@ -276,9 +305,18 @@ export function useAvailability() {
       // Don't update if settings are not loaded yet
       if (settings.slotDuration === 0) return;
 
-      setSettings((prev) => ({ ...prev, ...updates }));
+      setSettings((prev) => {
+        const updated = { ...prev, ...updates };
+
+        // Update cache with new settings
+        if (user) {
+          updateCacheSettings(user.id, updated);
+        }
+
+        return updated;
+      });
     },
-    [settings.slotDuration]
+    [settings.slotDuration, user]
   );
 
   // Create default availability settings
@@ -356,7 +394,7 @@ export function useAvailability() {
       }, // Sunday
     ];
 
-    const { data: insertData, error: insertError } = await supabase
+    const { error: insertError } = await supabase
       .from("user_working_hours")
       .insert(defaultHours.map((h) => ({ ...h, user_id: user.id })))
       .select();
@@ -391,125 +429,173 @@ export function useAvailability() {
   }, [user]);
 
   // Load availability from database
-  const loadAvailability = useCallback(async () => {
-    if (!user) {
-      return { success: false, error: "No user" };
-    }
-
-    try {
-      // Load settings
-      const { data: settingsData, error: settingsError } = await supabase
-        .from("user_availability_settings")
-        .select("*")
-        .eq("user_id", user.id);
-
-      if (settingsError) {
-        console.error("Error loading settings:", settingsError);
+  const loadAvailability = useCallback(
+    async (forceRefresh = false) => {
+      if (!user) {
+        return { success: false, error: "No user" };
       }
 
-      if (settingsData && settingsData.length > 0) {
-        // If multiple settings exist, use the most recent one and clean up duplicates
-        let settingsToUse = settingsData[0];
+      // Try to load from cache first (unless force refresh is requested)
+      if (!forceRefresh) {
+        const cachedData = loadFromCache(user.id);
+        if (cachedData) {
+          console.log("Loading from cache...");
+          setAvailability(cachedData.availability);
+          setWorkingHours(cachedData.workingHours);
+          setSettings(cachedData.settings);
+          setLoadingSteps({
+            workingHours: true,
+            settings: true,
+            exceptions: true,
+            timeSlots: true,
+          });
+          return { success: true, fromCache: true };
+        }
+      }
 
-        if (settingsData.length > 1) {
-          // Use the most recent record (assuming there's a created_at or updated_at field)
-          // For now, just use the first one and delete the rest
-          settingsToUse = settingsData[0];
+      console.log("Loading from database...");
+      try {
+        // Load settings
+        const { data: settingsData, error: settingsError } = await supabase
+          .from("user_availability_settings")
+          .select("*")
+          .eq("user_id", user.id);
 
-          // Delete duplicate records (keep only the first one)
-          const duplicateIds = settingsData.slice(1).map((record) => record.id);
-          if (duplicateIds.length > 0) {
-            const { error: deleteError } = await supabase
-              .from("user_availability_settings")
-              .delete()
-              .in("id", duplicateIds);
-
-            if (deleteError) {
-              console.error("Error deleting duplicate settings:", deleteError);
-            }
-          }
+        if (settingsError) {
+          console.error("Error loading settings:", settingsError);
         }
 
-        setSettings({
-          slotDuration: settingsToUse.slot_duration_minutes,
-          breakDuration: settingsToUse.break_duration_minutes,
-          advanceBookingDays: settingsToUse.advance_booking_days,
+        if (settingsData && settingsData.length > 0) {
+          // If multiple settings exist, use the most recent one and clean up duplicates
+          let settingsToUse = settingsData[0];
+
+          if (settingsData.length > 1) {
+            // Use the most recent record (assuming there's a created_at or updated_at field)
+            // For now, just use the first one and delete the rest
+            settingsToUse = settingsData[0];
+
+            // Delete duplicate records (keep only the first one)
+            const duplicateIds = settingsData
+              .slice(1)
+              .map((record) => record.id);
+            if (duplicateIds.length > 0) {
+              const { error: deleteError } = await supabase
+                .from("user_availability_settings")
+                .delete()
+                .in("id", duplicateIds);
+
+              if (deleteError) {
+                console.error(
+                  "Error deleting duplicate settings:",
+                  deleteError
+                );
+              }
+            }
+          }
+
+          setSettings({
+            slotDuration: settingsToUse.slot_duration_minutes,
+            breakDuration: settingsToUse.break_duration_minutes,
+            advanceBookingDays: settingsToUse.advance_booking_days,
+          });
+          setLoadingSteps((prev) => ({ ...prev, settings: true }));
+        } else {
+          console.log("No settings found, creating defaults");
+          await createDefaultSettings();
+          setLoadingSteps((prev) => ({ ...prev, settings: true }));
+        }
+
+        // Load working hours
+        const { data: hoursData, error: hoursError } = await supabase
+          .from("user_working_hours")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("day_of_week");
+
+        if (hoursError) {
+          console.error("Error loading working hours:", hoursError);
+        }
+
+        if (hoursData && hoursData.length > 0) {
+          console.log("Raw working hours data from database:", hoursData);
+
+          const dayNames = [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+          ];
+          const formattedHours = dayNames.map((day, index) => {
+            // Map array index to day_of_week: Monday=1, Tuesday=2, ..., Sunday=0
+            const dayOfWeek = index === 6 ? 0 : index + 1;
+            const hourData = hoursData.find((h) => h.day_of_week === dayOfWeek);
+
+            console.log(
+              `Day ${day} (index ${index}, day_of_week ${dayOfWeek}):`,
+              hourData
+            );
+
+            const formatted = {
+              day,
+              startTime: hourData?.start_time || "09:00",
+              endTime: hourData?.end_time || "17:00",
+              isWorking:
+                hourData?.is_working !== undefined
+                  ? hourData.is_working
+                  : index < 5, // Mon-Fri working by default, but respect database values
+            };
+
+            console.log(`Formatted ${day}:`, formatted);
+            return formatted;
+          });
+
+          console.log("Final formatted working hours:", formattedHours);
+          setWorkingHours(formattedHours);
+          setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
+          console.log("Working hours state updated, loading steps:", {
+            workingHours: true,
+          });
+        } else {
+          console.log("No working hours found, creating defaults");
+          await createDefaultWorkingHours();
+          setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
+          console.log("Default working hours created, loading steps:", {
+            workingHours: true,
+          });
+        }
+
+        // Save to cache after successful load
+        saveToCache(user.id, {
+          availability: {},
+          workingHours: workingHours.length > 0 ? workingHours : [],
+          settings:
+            settings.slotDuration > 0
+              ? settings
+              : {
+                  slotDuration: 60,
+                  breakDuration: 60,
+                  advanceBookingDays: 30,
+                },
+          exceptions: {},
         });
-        setLoadingSteps((prev) => ({ ...prev, settings: true }));
-      } else {
-        console.log("No settings found, creating defaults");
-        await createDefaultSettings();
-        setLoadingSteps((prev) => ({ ...prev, settings: true }));
+
+        return { success: true };
+      } catch (error) {
+        console.error("Error loading availability:", error);
+        return { success: false, error };
       }
-
-      // Load working hours
-      const { data: hoursData, error: hoursError } = await supabase
-        .from("user_working_hours")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("day_of_week");
-
-      if (hoursError) {
-        console.error("Error loading working hours:", hoursError);
-      }
-
-      if (hoursData && hoursData.length > 0) {
-        console.log("Raw working hours data from database:", hoursData);
-
-        const dayNames = [
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday",
-          "Saturday",
-          "Sunday",
-        ];
-        const formattedHours = dayNames.map((day, index) => {
-          // Map array index to day_of_week: Monday=1, Tuesday=2, ..., Sunday=0
-          const dayOfWeek = index === 6 ? 0 : index + 1;
-          const hourData = hoursData.find((h) => h.day_of_week === dayOfWeek);
-
-          console.log(
-            `Day ${day} (index ${index}, day_of_week ${dayOfWeek}):`,
-            hourData
-          );
-
-          const formatted = {
-            day,
-            startTime: hourData?.start_time || "09:00",
-            endTime: hourData?.end_time || "17:00",
-            isWorking:
-              hourData?.is_working !== undefined
-                ? hourData.is_working
-                : index < 5, // Mon-Fri working by default, but respect database values
-          };
-
-          console.log(`Formatted ${day}:`, formatted);
-          return formatted;
-        });
-
-        console.log("Final formatted working hours:", formattedHours);
-        setWorkingHours(formattedHours);
-        setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
-        console.log("Working hours state updated, loading steps:", {
-          workingHours: true,
-        });
-      } else {
-        console.log("No working hours found, creating defaults");
-        await createDefaultWorkingHours();
-        setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
-        console.log("Default working hours created, loading steps:", {
-          workingHours: true,
-        });
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error("Error loading availability:", error);
-      return { success: false, error };
-    }
-  }, [user, createDefaultSettings, createDefaultWorkingHours]);
+    },
+    [
+      user,
+      createDefaultSettings,
+      createDefaultWorkingHours,
+      settings,
+      workingHours,
+    ]
+  );
 
   // Save availability to database
   const saveAvailability = useCallback(async () => {
@@ -562,6 +648,14 @@ export function useAvailability() {
       // Clear availability state to force regeneration with new settings
       setAvailability({});
 
+      // Update cache with new working hours and settings
+      saveToCache(user.id, {
+        availability: {},
+        workingHours,
+        settings,
+        exceptions: {},
+      });
+
       return { success: true };
     } catch (error) {
       console.error("Error saving availability:", error);
@@ -588,14 +682,19 @@ export function useAvailability() {
         );
 
         // Update local state immediately
-        setAvailability((prev) => ({
-          ...prev,
-          [dateKey]: {
-            date,
-            timeSlots,
-            isWorkingDay: true,
-          },
-        }));
+        setAvailability((prev) => {
+          const updated = {
+            ...prev,
+            [dateKey]: {
+              date,
+              timeSlots,
+              isWorkingDay: true,
+            },
+          };
+          // Update cache with new availability
+          updateCacheAvailability(user.id, updated);
+          return updated;
+        });
 
         // Save to database
         const slotsData = timeSlots.map((slot) => ({
@@ -617,14 +716,19 @@ export function useAvailability() {
         }
       } else {
         // Update local state to mark as non-working day
-        setAvailability((prev) => ({
-          ...prev,
-          [dateKey]: {
-            date,
-            timeSlots: [],
-            isWorkingDay: false,
-          },
-        }));
+        setAvailability((prev) => {
+          const updated = {
+            ...prev,
+            [dateKey]: {
+              date,
+              timeSlots: [],
+              isWorkingDay: false,
+            },
+          };
+          // Update cache with new availability
+          updateCacheAvailability(user.id, updated);
+          return updated;
+        });
       }
 
       // Mark time slots as loaded for this date
@@ -875,6 +979,9 @@ export function useAvailability() {
       // Clear local availability state
       setAvailability({});
 
+      // Clear cache since we're resetting everything
+      clearCache(user.id);
+
       // Reset loading steps to force reload
       setLoadingSteps({
         workingHours: false,
@@ -908,6 +1015,21 @@ export function useAvailability() {
     }
   }, [isFullyLoaded]);
 
+  // Cache control functions
+  const clearCalendarCache = useCallback(() => {
+    if (user) {
+      clearCache(user.id);
+      console.log("Calendar cache cleared");
+    }
+  }, [user]);
+
+  const refreshFromDatabase = useCallback(async () => {
+    if (user) {
+      return await loadAvailability(true); // Force refresh from database
+    }
+    return { success: false, error: "No user" };
+  }, [user, loadAvailability]);
+
   return {
     availability,
     workingHours,
@@ -938,5 +1060,8 @@ export function useAvailability() {
       // This will trigger a re-render and regenerate time slots
       setAvailability({});
     },
+    // Cache control functions
+    clearCalendarCache,
+    refreshFromDatabase,
   };
 }
