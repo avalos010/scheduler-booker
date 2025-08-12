@@ -460,7 +460,10 @@ export function useAvailability() {
             day,
             startTime: hourData?.start_time || "09:00",
             endTime: hourData?.end_time || "17:00",
-            isWorking: hourData?.is_working ?? index < 5, // Mon-Fri working by default
+            isWorking:
+              hourData?.is_working !== undefined
+                ? hourData.is_working
+                : index < 5, // Mon-Fri working by default, but respect database values
           };
           return formatted;
         });
@@ -835,6 +838,7 @@ export function useAvailability() {
     loadDayAvailabilityExceptions,
     setAvailability,
     markTimeSlotsLoaded: () => {
+      console.log("markTimeSlotsLoaded called, setting timeSlots to true");
       setLoadingSteps((prev) => ({ ...prev, timeSlots: true }));
     },
     refreshCalendar: () => {

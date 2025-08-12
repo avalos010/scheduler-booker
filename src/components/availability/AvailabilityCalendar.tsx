@@ -82,26 +82,30 @@ export default function AvailabilityCalendar() {
       const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       const dayHours = workingHours[dayIndex];
 
-      // Only generate if we don't already have data for this day and it's a working day
-      if (!availability[dateKey] && dayHours && dayHours.isWorking) {
-        generateTimeSlotsForDate(day);
-      } else if (!availability[dateKey]) {
-        // Mark as non-working day
-        setAvailability((prev) => ({
-          ...prev,
-          [dateKey]: {
-            date: day,
-            timeSlots: [],
-            isWorkingDay: false,
-          },
-        }));
+      // Always set the default working day status based on working hours
+      if (!availability[dateKey]) {
+        if (dayHours && dayHours.isWorking) {
+          // Generate time slots for working day
+          generateTimeSlotsForDate(day);
+        } else {
+          // Mark as non-working day based on default working hours
+          setAvailability((prev) => ({
+            ...prev,
+            [dateKey]: {
+              date: day,
+              timeSlots: [],
+              isWorkingDay: false,
+            },
+          }));
+        }
       }
     }
 
     // Mark time slots as loaded after processing all days
     setTimeout(() => {
+      console.log("Marking time slots as loaded");
       markTimeSlotsLoaded();
-    }, 100);
+    }, 2000); // Increased to 2 seconds to make skeleton visible
   }, [
     currentMonth,
     generateTimeSlotsForDate,
@@ -135,6 +139,16 @@ export default function AvailabilityCalendar() {
 
       if (dayHours && dayHours.isWorking) {
         await generateTimeSlotsForDate(day);
+      } else {
+        // Mark as non-working day based on default working hours
+        setAvailability((prev) => ({
+          ...prev,
+          [dateKey]: {
+            date: day,
+            timeSlots: [],
+            isWorkingDay: false,
+          },
+        }));
       }
     }
   }, [currentMonth, generateTimeSlotsForDate, workingHours]);
@@ -154,6 +168,9 @@ export default function AvailabilityCalendar() {
         : addMonths(currentMonth, 1)
     );
   };
+
+  // Debug loading state
+  console.log("Calendar loading state:", { isFullyLoaded, loadingSteps });
 
   return (
     <div className="space-y-6">
@@ -235,105 +252,67 @@ export default function AvailabilityCalendar() {
 
         {/* Calendar days */}
         {!isFullyLoaded ? (
-          <div className="grid grid-cols-7">
-            {/* Generate skeleton days for the current month */}
-            {Array.from({ length: 42 }, (_, index) => {
-              const skeletonDay = new Date(currentMonth);
-              skeletonDay.setDate(1);
-              skeletonDay.setDate(
-                skeletonDay.getDate() + index - skeletonDay.getDay()
-              );
+          <div>
+            <div className="p-8 text-center bg-gray-50 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                Loading Calendar...
+              </h3>
+              <p className="text-gray-600">
+                Please wait while we prepare your availability calendar
+              </p>
+            </div>
+            <div className="grid grid-cols-7">
+              {/* Generate skeleton days for the current month */}
+              {Array.from({ length: 42 }, (_, index) => {
+                const skeletonDay = new Date(currentMonth);
+                skeletonDay.setDate(1);
+                skeletonDay.setDate(
+                  skeletonDay.getDate() + index - skeletonDay.getDay()
+                );
 
-              return (
-                <div
-                  key={`skeleton-${index}`}
-                  className="min-h-[160px] border-r border-b border-gray-100 bg-white opacity-0 animate-[fadeIn_0.5s_ease-out_forwards]"
-                  style={{
-                    animationDelay: `${index * 0.05}s`,
-                  }}
-                >
-                  <div className="p-4">
-                    {/* Date number skeleton */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded"></div>
+                return (
+                  <div
+                    key={`skeleton-${index}`}
+                    className="min-h-[160px] border-r border-b border-gray-100 bg-gray-50"
+                    style={{
+                      animationDelay: `${index * 0.05}s`,
+                    }}
+                  >
+                    <div className="p-4">
+                      {/* Date number skeleton */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-6 h-6 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded"></div>
+                        </div>
+                        {/* Toggle button skeleton */}
+                        <div className="w-7 h-7 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded-full"></div>
                       </div>
-                      {/* Toggle button skeleton */}
-                      <div className="w-7 h-7 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded-full"></div>
+
+                      {/* Content skeleton */}
+                      <div className="space-y-3">
+                        {/* Time slots indicator skeleton */}
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded"></div>
+                          <div className="w-20 h-3 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded"></div>
+                        </div>
+
+                        {/* Slot dots skeleton */}
+                        <div className="flex flex-wrap gap-1">
+                          {Array.from({ length: 4 }, (_, i) => (
+                            <div
+                              key={i}
+                              className="w-2 h-2 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded-full"
+                              style={{
+                                animationDelay: `${index * 0.05 + i * 0.1}s`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     </div>
-
-                    {/* Content skeleton */}
-                    <div className="space-y-3">
-                      {/* Time slots indicator skeleton */}
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded"></div>
-                        <div className="w-20 h-3 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded"></div>
-                      </div>
-
-                      {/* Slot dots skeleton */}
-                      <div className="flex flex-wrap gap-1">
-                        {Array.from({ length: 4 }, (_, i) => (
-                          <div
-                            key={i}
-                            className="w-2 h-2 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200px_100%] animate-[shimmer_2s_ease-in-out_infinite] rounded-full"
-                            style={{
-                              animationDelay: `${index * 0.05 + i * 0.1}s`,
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
                   </div>
-                </div>
-              );
-            })}
-
-            {/* Loading progress overlay */}
-            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600 font-medium mb-4">
-                  Loading your calendar...
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-center space-x-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        loadingSteps.workingHours
-                          ? "bg-green-500"
-                          : "bg-gray-300"
-                      }`}
-                    ></div>
-                    <span className="text-sm text-gray-500">Working hours</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        loadingSteps.settings ? "bg-green-500" : "bg-gray-300"
-                      }`}
-                    ></div>
-                    <span className="text-sm text-gray-500">Settings</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        loadingSteps.exceptions ? "bg-green-500" : "bg-gray-300"
-                      }`}
-                    ></div>
-                    <span className="text-sm text-gray-500">
-                      Day exceptions
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        loadingSteps.timeSlots ? "bg-green-500" : "bg-gray-300"
-                      }`}
-                    ></div>
-                    <span className="text-sm text-gray-500">Time slots</span>
-                  </div>
-                </div>
-              </div>
+                );
+              })}
             </div>
           </div>
         ) : (
