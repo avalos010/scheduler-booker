@@ -73,14 +73,25 @@ export function useAvailability() {
   const generateDefaultTimeSlots = useCallback(
     (startTime: string, endTime: string, slotDuration: number): TimeSlot[] => {
       const slots: TimeSlot[] = [];
-      let currentTime = new Date(`2000-01-01T${startTime}`);
-      const endDateTime = new Date(`2000-01-01T${endTime}`);
+
+      // Ensure time strings have proper format (add seconds if missing)
+      const startTimeFormatted = startTime.includes(":")
+        ? startTime
+        : `${startTime}:00`;
+      const endTimeFormatted = endTime.includes(":")
+        ? endTime
+        : `${endTime}:00`;
+
+      let currentTime = new Date(`2000-01-01T${startTimeFormatted}`);
+      const endDateTime = new Date(`2000-01-01T${endTimeFormatted}`);
 
       while (currentTime < endDateTime) {
         const slotEnd = new Date(currentTime.getTime() + slotDuration * 60000);
         if (slotEnd <= endDateTime) {
           const slot = {
-            id: crypto.randomUUID(), // Generate proper UUID
+            id: crypto.randomUUID
+              ? crypto.randomUUID()
+              : `slot_${Date.now()}_${Math.random()}`, // Generate proper UUID or fallback
             startTime: currentTime.toTimeString().slice(0, 5),
             endTime: slotEnd.toTimeString().slice(0, 5),
             isAvailable: true,
@@ -189,16 +200,12 @@ export function useAvailability() {
           const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
           const dayHours = workingHours[dayIndex];
 
-          console.log("Day of week:", dayOfWeek, "Day index:", dayIndex);
-          console.log("Day hours:", dayHours);
-
           if (dayHours && dayHours.isWorking) {
             newTimeSlots = generateDefaultTimeSlots(
               dayHours.startTime,
               dayHours.endTime,
               settings.slotDuration
             );
-            console.log("Generated new time slots:", newTimeSlots);
           }
         }
 
@@ -210,10 +217,7 @@ export function useAvailability() {
 
         // Save to database
         await saveDayAvailabilityException(date, newIsWorking, newTimeSlots);
-
-        console.log("Updated day availability");
       } else {
-        console.log("No current day data found, creating new day");
         // Create a new day entry if it doesn't exist
         const dayOfWeek = date.getDay();
         const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
@@ -239,10 +243,9 @@ export function useAvailability() {
 
         // Save to database
         await saveDayAvailabilityException(date, newIsWorking, newTimeSlots);
-
-        console.log("Created new day availability");
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       availability,
       workingHours,
@@ -255,21 +258,27 @@ export function useAvailability() {
   // Update working hours
   const updateWorkingHours = useCallback(
     (index: number, field: keyof WorkingHours, value: string | boolean) => {
+      // Don't update if working hours array is empty (still loading)
+      if (workingHours.length === 0) return;
+
       setWorkingHours((prev) => {
         const updated = [...prev];
         updated[index] = { ...updated[index], [field]: value };
         return updated;
       });
     },
-    []
+    [workingHours.length]
   );
 
   // Update settings
   const updateSettings = useCallback(
     (updates: Partial<AvailabilitySettings>) => {
+      // Don't update if settings are not loaded yet
+      if (settings.slotDuration === 0) return;
+
       setSettings((prev) => ({ ...prev, ...updates }));
     },
-    []
+    [settings.slotDuration]
   );
 
   // Create default availability settings
@@ -366,20 +375,18 @@ export function useAvailability() {
         // Map array index to database day_of_week: Monday=1, Tuesday=2, ..., Sunday=0
         const dayOfWeek = index === 6 ? 0 : index + 1;
         const hourData = defaultHours.find((h) => h.day_of_week === dayOfWeek);
-        return {
+        const formatted = {
           day,
           startTime: hourData?.start_time || "09:00",
           endTime: hourData?.end_time || "17:00",
           isWorking: hourData?.is_working ?? index < 5,
         };
+        return formatted;
       });
+
       setWorkingHours(formattedHours);
     } else {
       console.error("Error inserting default working hours:", insertError);
-      console.error(
-        "Insert data:",
-        defaultHours.map((h) => ({ ...h, user_id: user.id }))
-      );
     }
   }, [user]);
 
@@ -401,16 +408,10 @@ export function useAvailability() {
       }
 
       if (settingsData && settingsData.length > 0) {
-        console.log("Loaded settings from database:", settingsData);
-
         // If multiple settings exist, use the most recent one and clean up duplicates
         let settingsToUse = settingsData[0];
 
         if (settingsData.length > 1) {
-          console.warn(
-            `Found ${settingsData.length} settings records for user ${user.id}, cleaning up duplicates`
-          );
-
           // Use the most recent record (assuming there's a created_at or updated_at field)
           // For now, just use the first one and delete the rest
           settingsToUse = settingsData[0];
@@ -425,19 +426,9 @@ export function useAvailability() {
 
             if (deleteError) {
               console.error("Error deleting duplicate settings:", deleteError);
-            } else {
-              console.log(
-                `Deleted ${duplicateIds.length} duplicate settings records`
-              );
             }
           }
         }
-
-        console.log("Using settings:", {
-          slotDuration: settingsToUse.slot_duration_minutes,
-          breakDuration: settingsToUse.break_duration_minutes,
-          advanceBookingDays: settingsToUse.advance_booking_days,
-        });
 
         setSettings({
           slotDuration: settingsToUse.slot_duration_minutes,
@@ -457,6 +448,10 @@ export function useAvailability() {
         .select("*")
         .eq("user_id", user.id)
         .order("day_of_week");
+
+      if (hoursError) {
+        console.error("Error loading working hours:", hoursError);
+      }
 
       if (hoursData && hoursData.length > 0) {
         console.log("Raw working hours data from database:", hoursData);
@@ -497,10 +492,16 @@ export function useAvailability() {
         console.log("Final formatted working hours:", formattedHours);
         setWorkingHours(formattedHours);
         setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
+        console.log("Working hours state updated, loading steps:", {
+          workingHours: true,
+        });
       } else {
         console.log("No working hours found, creating defaults");
         await createDefaultWorkingHours();
         setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
+        console.log("Default working hours created, loading steps:", {
+          workingHours: true,
+        });
       }
 
       return { success: true };
@@ -512,15 +513,12 @@ export function useAvailability() {
 
   // Save availability to database
   const saveAvailability = useCallback(async () => {
-    if (!user) return { success: false, error: "No user" };
+    if (!user) {
+      console.error("saveAvailability called but no user available");
+      return { success: false, error: "No user" };
+    }
 
     try {
-      console.log("Saving settings:", {
-        slotDuration: settings.slotDuration,
-        breakDuration: settings.breakDuration,
-        advanceBookingDays: settings.advanceBookingDays,
-      });
-
       // Save settings
       const { data: settingsData, error: settingsError } = await supabase
         .from("user_availability_settings")
@@ -548,11 +546,18 @@ export function useAvailability() {
         is_working: hour.isWorking,
       }));
 
+      console.log("Saving working hours data:", workingHoursData);
+
       const { error: hoursError } = await supabase
         .from("user_working_hours")
         .upsert(workingHoursData, { onConflict: "user_id,day_of_week" });
 
-      if (hoursError) throw hoursError;
+      if (hoursError) {
+        console.error("Error saving working hours:", hoursError);
+        throw hoursError;
+      } else {
+        console.log("Working hours saved successfully");
+      }
 
       // Clear availability state to force regeneration with new settings
       setAvailability({});
@@ -567,9 +572,7 @@ export function useAvailability() {
   // Generate time slots for a specific date
   const generateTimeSlotsForDate = useCallback(
     async (date: Date) => {
-      if (!user) {
-        return;
-      }
+      if (!user) return;
 
       const dateKey = date.toISOString().split("T")[0];
       const dayOfWeek = date.getDay();
@@ -578,28 +581,21 @@ export function useAvailability() {
       const dayHours = workingHours[dayIndex];
 
       if (dayHours && dayHours.isWorking) {
-        console.log("Settings for time slot generation:", {
-          startTime: dayHours.startTime,
-          endTime: dayHours.endTime,
-          slotDuration: settings.slotDuration,
-        });
-
         const timeSlots = generateDefaultTimeSlots(
           dayHours.startTime,
           dayHours.endTime,
           settings.slotDuration
         );
 
-        console.log("Generated time slots:", timeSlots);
-        console.log("Updating availability state for", dateKey);
-
-        // Update local state
-        updateDayAvailability(date, {
-          timeSlots,
-          isWorkingDay: true,
-        });
-
-        console.log("Availability state updated, checking if it was saved...");
+        // Update local state immediately
+        setAvailability((prev) => ({
+          ...prev,
+          [dateKey]: {
+            date,
+            timeSlots,
+            isWorkingDay: true,
+          },
+        }));
 
         // Save to database
         const slotsData = timeSlots.map((slot) => ({
@@ -618,15 +614,17 @@ export function useAvailability() {
 
         if (insertError) {
           console.error("Error saving time slots to database:", insertError);
-        } else {
-          console.log("Time slots saved to database successfully");
         }
       } else {
         // Update local state to mark as non-working day
-        updateDayAvailability(date, {
-          timeSlots: [],
-          isWorkingDay: false,
-        });
+        setAvailability((prev) => ({
+          ...prev,
+          [dateKey]: {
+            date,
+            timeSlots: [],
+            isWorkingDay: false,
+          },
+        }));
       }
 
       // Mark time slots as loaded for this date
@@ -637,7 +635,7 @@ export function useAvailability() {
       workingHours,
       settings.slotDuration,
       generateDefaultTimeSlots,
-      updateDayAvailability,
+      setAvailability,
     ]
   );
 
@@ -852,8 +850,6 @@ export function useAvailability() {
     if (!user) return { success: false, error: "No user" };
 
     try {
-      console.log("Resetting calendar to default working hours...");
-
       // Clear all availability exceptions
       const { error: deleteExceptionsError } = await supabase
         .from("user_availability_exceptions")
@@ -887,7 +883,6 @@ export function useAvailability() {
         timeSlots: false,
       });
 
-      console.log("Calendar reset successfully, reloading defaults...");
       return { success: true };
     } catch (error) {
       console.error("Error resetting calendar:", error);
@@ -903,7 +898,8 @@ export function useAvailability() {
         loadDayAvailabilityExceptions();
       });
     }
-  }, [user, loadAvailability, loadDayAvailabilityExceptions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Update overall loading state when all steps are complete
   useEffect(() => {
@@ -936,7 +932,6 @@ export function useAvailability() {
     resetCalendarToDefaults,
     setAvailability,
     markTimeSlotsLoaded: () => {
-      console.log("markTimeSlotsLoaded called, setting timeSlots to true");
       setLoadingSteps((prev) => ({ ...prev, timeSlots: true }));
     },
     refreshCalendar: () => {

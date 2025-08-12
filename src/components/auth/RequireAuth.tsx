@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 type RequireAuthProps = {
   children: React.ReactNode;
@@ -10,31 +9,16 @@ type RequireAuthProps = {
 
 export default function RequireAuth({ children }: RequireAuthProps) {
   const router = useRouter();
-  const [isChecking, setIsChecking] = useState(true);
-  const [isAuthed, setIsAuthed] = useState(false);
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    let isMounted = true;
-    async function check() {
-      try {
-        const { data } = await supabase.auth.getUser();
-        if (!isMounted) return;
-        if (data?.user) {
-          setIsAuthed(true);
-        } else {
-          router.replace("/login");
-        }
-      } finally {
-        if (isMounted) setIsChecking(false);
-      }
-    }
-    check();
-    return () => {
-      isMounted = false;
-    };
-  }, [router]);
+  // Redirect to login if not authenticated
+  if (!loading && !user) {
+    router.replace("/login");
+    return null;
+  }
 
-  if (isChecking) {
+  // Show loading while checking authentication
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-800">
         Checking authentication...
@@ -42,7 +26,6 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     );
   }
 
-  if (!isAuthed) return null;
-
+  // User is authenticated, render children
   return <>{children}</>;
 }

@@ -11,6 +11,7 @@ export default function AvailabilitySettings() {
     updateWorkingHours,
     updateSettings,
     saveAvailability,
+    isLoading,
   } = useAvailability();
 
   const [isSaving, setIsSaving] = useState(false);
@@ -22,10 +23,12 @@ export default function AvailabilitySettings() {
   const toggleWorkingDay = (index: number) => {
     updateWorkingHours(index, "isWorking", !workingHours[index].isWorking);
 
-    // Auto-save when working hours change
-    setTimeout(() => {
-      saveAvailability();
-    }, 100);
+    // Auto-save when working hours change (only if not loading)
+    if (!isLoading) {
+      setTimeout(() => {
+        saveAvailability();
+      }, 100);
+    }
   };
 
   const handleSaveSettings = async () => {
@@ -59,6 +62,18 @@ export default function AvailabilitySettings() {
 
   return (
     <div className="space-y-6">
+      {/* Loading State */}
+      {isLoading && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 bg-blue-500 rounded-full animate-pulse"></div>
+            <span className="text-blue-800 text-sm">
+              Loading availability settings...
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Default Working Hours */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -87,12 +102,23 @@ export default function AvailabilitySettings() {
 
                 <button
                   onClick={() => toggleWorkingDay(index)}
+                  disabled={isLoading}
                   className={`w-5 h-5 rounded-full border-2 transition-all ${
                     hours.isWorking
                       ? "bg-green-500 border-green-500 shadow-sm"
                       : "bg-gray-300 border-gray-300"
+                  } ${
+                    isLoading
+                      ? "opacity-50 cursor-not-allowed"
+                      : "cursor-pointer"
                   }`}
-                  title={hours.isWorking ? "Working day" : "Non-working day"}
+                  title={
+                    isLoading
+                      ? "Loading..."
+                      : hours.isWorking
+                      ? "Working day"
+                      : "Non-working day"
+                  }
                 />
               </div>
 
@@ -104,6 +130,7 @@ export default function AvailabilitySettings() {
                       updateWorkingHours(index, "startTime", time)
                     }
                     placeholder="Start time"
+                    disabled={isLoading}
                   />
                   <span className="text-gray-500 text-sm font-medium">to</span>
                   <TimePicker
@@ -112,6 +139,7 @@ export default function AvailabilitySettings() {
                       updateWorkingHours(index, "endTime", time)
                     }
                     placeholder="End time"
+                    disabled={isLoading}
                   />
                 </div>
               )}
@@ -135,7 +163,10 @@ export default function AvailabilitySettings() {
               onChange={(e) =>
                 updateSettings({ slotDuration: Number(e.target.value) })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+              disabled={isLoading}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
               <option value={15}>15 minutes</option>
               <option value={30}>30 minutes</option>
@@ -155,7 +186,10 @@ export default function AvailabilitySettings() {
               onChange={(e) =>
                 updateSettings({ breakDuration: Number(e.target.value) })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+              disabled={isLoading}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
               <option value={0}>No break</option>
               <option value={15}>15 minutes</option>
@@ -184,7 +218,10 @@ export default function AvailabilitySettings() {
             onChange={(e) =>
               updateSettings({ advanceBookingDays: Number(e.target.value) })
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+            disabled={isLoading}
+            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 ${
+              isLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           />
           <p className="text-xs text-gray-500 mt-1">
             How many days in advance clients can book appointments
@@ -209,15 +246,20 @@ export default function AvailabilitySettings() {
       <div className="pt-4">
         <button
           onClick={handleSaveSettings}
-          disabled={isSaving}
+          disabled={isSaving || isLoading}
           className={`w-full py-2 px-4 rounded-md focus:ring-2 focus:ring-offset-2 transition-colors ${
-            isSaving
+            isSaving || isLoading
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
           } text-white`}
         >
-          {isSaving ? "Saving..." : "Save Settings"}
+          {isSaving ? "Saving..." : isLoading ? "Loading..." : "Save Settings"}
         </button>
+        {isLoading && (
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            Please wait while we load your settings...
+          </p>
+        )}
       </div>
 
       {/* Quick Actions */}
