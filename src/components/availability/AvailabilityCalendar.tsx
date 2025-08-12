@@ -26,7 +26,8 @@ import {
   PauseIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
-import { useAvailability, type TimeSlot } from "@/lib/hooks/useAvailability";
+import { useAvailability } from "@/lib/hooks/useAvailabilityNew";
+import type { TimeSlot } from "@/lib/types/availability";
 import DayDetailsModal from "./DayDetailsModal";
 
 export default function AvailabilityCalendar() {
@@ -38,7 +39,7 @@ export default function AvailabilityCalendar() {
     workingHours,
     isFullyLoaded,
     toggleWorkingDay,
-    loadTimeSlotsForDate,
+
     setAvailability,
 
     resetCalendarToDefaults,
@@ -420,7 +421,7 @@ export default function AvailabilityCalendar() {
                     if (!isPastDay || hasBookedSlots) {
                       setSelectedDate(day);
                       setShowDayModal(true);
-                      loadTimeSlotsForDate(day);
+                      // Day will be processed through optimized batch loading
                     }
                   }}
                   title={

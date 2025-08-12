@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { format } from "date-fns";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { useAvailability } from "@/lib/hooks/useAvailability";
+import { useAvailability } from "@/lib/hooks/useAvailabilityNew";
 
 interface DayDetailsModalProps {
   isOpen: boolean;

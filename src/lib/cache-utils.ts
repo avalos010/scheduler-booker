@@ -3,7 +3,7 @@ import type {
   WorkingHours,
   AvailabilitySettings,
   TimeSlot,
-} from "./hooks/useAvailability";
+} from "./types/availability";
 
 export interface CachedAvailabilityData {
   availability: Record<string, DayAvailability>;

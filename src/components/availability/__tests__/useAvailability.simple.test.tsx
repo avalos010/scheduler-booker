@@ -1,23 +1,56 @@
 import { renderHook, act } from "@testing-library/react";
-import { useAvailability } from "../../../lib/hooks/useAvailability";
+import { useAvailability } from "../../../lib/hooks/useAvailabilityNew";
 import { useAuth } from "../../../lib/hooks/useAuth";
+import { TimeSlotUtils } from "../../../lib/utils/timeSlotUtils";
 
 // Mock dependencies
 jest.mock("../../../lib/hooks/useAuth");
+// Create a comprehensive mock that handles all the method chaining
+interface MockChain {
+  select: jest.Mock;
+  eq: jest.Mock;
+  single: jest.Mock;
+  order: jest.Mock;
+  gte: jest.Mock;
+  lte: jest.Mock;
+  insert: jest.Mock;
+  upsert: jest.Mock;
+  delete: jest.Mock;
+  onConflict: jest.Mock;
+}
+
+const createMockChain = (
+  finalResult = { data: [], error: null }
+): MockChain => {
+  const chain: MockChain = {
+    select: jest.fn(() => chain),
+    eq: jest.fn(() => chain),
+    single: jest.fn(() => Promise.resolve(finalResult)),
+    order: jest.fn(() => Promise.resolve(finalResult)),
+    gte: jest.fn(() => chain),
+    lte: jest.fn(() => chain),
+    insert: jest.fn(() => chain),
+    upsert: jest.fn(() => chain),
+    delete: jest.fn(() => chain),
+    onConflict: jest.fn(() => Promise.resolve({ error: null })),
+  };
+  return chain;
+};
+
 jest.mock("../../../lib/supabase", () => ({
   supabase: {
-    from: jest.fn(() => ({
-      select: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          single: jest.fn(() => Promise.resolve({ data: null, error: null })),
-          order: jest.fn(() => Promise.resolve({ data: [], error: null })),
-        })),
-      })),
-      insert: jest.fn(() => Promise.resolve({ data: [], error: null })),
-      upsert: jest.fn(() => Promise.resolve({ error: null })),
-      delete: jest.fn(() => Promise.resolve({ error: null })),
-    })),
+    from: jest.fn(() => createMockChain()),
   },
+}));
+
+// Mock cache utilities
+jest.mock("../../../lib/cache-utils", () => ({
+  saveToCache: jest.fn(),
+  loadFromCache: jest.fn(() => null),
+  clearCache: jest.fn(),
+  updateCacheAvailability: jest.fn(),
+  updateCacheWorkingHours: jest.fn(),
+  updateCacheSettings: jest.fn(),
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -67,9 +100,7 @@ describe("useAvailability", () => {
   });
 
   it("generates default time slots correctly", () => {
-    const { result } = renderHook(() => useAvailability());
-
-    const timeSlots = result.current.generateDefaultTimeSlots(
+    const timeSlots = TimeSlotUtils.generateDefaultTimeSlots(
       "09:00",
       "17:00",
       60
