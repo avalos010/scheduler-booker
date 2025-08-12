@@ -13,6 +13,8 @@ import {
   startOfWeek,
   endOfWeek,
   isToday,
+  isBefore,
+  startOfDay,
 } from "date-fns";
 import {
   ChevronLeftIcon,
@@ -38,10 +40,12 @@ export default function AvailabilityCalendar() {
     toggleWorkingDay,
     loadTimeSlotsForDate,
     setAvailability,
-    loadDayAvailabilityExceptions,
+
     resetCalendarToDefaults,
     loadAvailability,
     markTimeSlotsLoaded,
+    loadTimeSlotsForMonth,
+    processMonthDays,
   } = useAvailability();
 
   // Generate calendar days for the current month
@@ -84,15 +88,24 @@ export default function AvailabilityCalendar() {
       days.push(new Date(day));
     }
 
-    // Process days sequentially
-    const processDaysSequentially = async () => {
-      // Load availability exceptions first
-      await loadDayAvailabilityExceptions();
+    // Optimized: Process days in batch
+    const processDaysOptimized = async () => {
+      const processMonthStart = startOfMonth(currentMonth);
+      const processMonthEnd = endOfMonth(currentMonth);
 
-      for (const day of days) {
-        // Use loadTimeSlotsForDate instead of generateTimeSlotsForDate
-        // This function properly handles exceptions
-        await loadTimeSlotsForDate(day);
+      // Load all month data in 2 queries instead of N queries per day
+      const monthData = await loadTimeSlotsForMonth(
+        processMonthStart,
+        processMonthEnd
+      );
+
+      if (monthData) {
+        // Process all days with the batched data (no more database calls)
+        await processMonthDays(
+          days,
+          monthData.exceptionsMap,
+          monthData.slotsMap
+        );
       }
 
       // Mark time slots as loaded after processing all days
@@ -100,17 +113,17 @@ export default function AvailabilityCalendar() {
         setTimeout(() => {
           markTimeSlotsLoaded();
           timeSlotsMarkedRef.current = true;
-        }, 100);
+        }, 50); // Reduced timeout since we're faster now
       }
     };
 
-    processDaysSequentially();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    processDaysOptimized();
   }, [
     currentMonth,
     workingHours,
-    loadDayAvailabilityExceptions,
-    loadTimeSlotsForDate,
+    loadTimeSlotsForMonth,
+    processMonthDays,
+    markTimeSlotsLoaded,
   ]);
 
   // Refresh calendar when working hours change
@@ -131,24 +144,27 @@ export default function AvailabilityCalendar() {
     processedMonthRef.current = "";
     timeSlotsMarkedRef.current = false;
 
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
+    const refreshMonthStart = startOfMonth(currentMonth);
+    const refreshMonthEnd = endOfMonth(currentMonth);
 
     // Regenerate time slots for the current month
     const days: Date[] = [];
     for (let i = 0; i < 31; i++) {
-      const day = new Date(monthStart);
-      day.setDate(monthStart.getDate() + i);
-      if (day > monthEnd) break;
+      const day = new Date(refreshMonthStart);
+      day.setDate(refreshMonthStart.getDate() + i);
+      if (day > refreshMonthEnd) break;
       days.push(new Date(day));
     }
 
-    // Load availability exceptions first
-    await loadDayAvailabilityExceptions();
+    // Optimized refresh: Load all month data in batch
+    const monthData = await loadTimeSlotsForMonth(
+      refreshMonthStart,
+      refreshMonthEnd
+    );
 
-    // Process days sequentially using loadTimeSlotsForDate which handles exceptions properly
-    for (const day of days) {
-      await loadTimeSlotsForDate(day);
+    if (monthData) {
+      // Process all days with batched data
+      await processMonthDays(days, monthData.exceptionsMap, monthData.slotsMap);
     }
 
     // Mark time slots as loaded
@@ -156,8 +172,8 @@ export default function AvailabilityCalendar() {
   }, [
     currentMonth,
     setAvailability,
-    loadDayAvailabilityExceptions,
-    loadTimeSlotsForDate,
+    loadTimeSlotsForMonth,
+    processMonthDays,
     markTimeSlotsLoaded,
   ]);
 
@@ -351,13 +367,40 @@ export default function AvailabilityCalendar() {
               const isCurrentMonth = isSameMonth(day, currentMonth);
               const isSelected = selectedDate && isSameDay(day, selectedDate);
               const isCurrentDay = isToday(day);
+              const isPastDay = isBefore(day, startOfDay(new Date()));
 
-              // console.log("Day availability:", dayAvailability);
+              // Check if past day has any booked time slots (meetings/history)
+              const hasBookedSlots = dayAvailability.timeSlots.some(
+                (slot: TimeSlot) => slot.isBooked
+              );
+
+              // For past days: only show if they have bookings/meetings, and don't show as available
+              const shouldShowPastDay = !isPastDay || hasBookedSlots;
+              const shouldShowAsAvailable =
+                !isPastDay && dayAvailability.isWorkingDay;
+
+              // Don't render past days unless they have bookings
+              if (!shouldShowPastDay) {
+                return (
+                  <div
+                    key={day.toString()}
+                    className="min-h-[160px] border-r border-b border-gray-100 bg-gray-100 opacity-50"
+                  >
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-xl font-bold text-gray-400">
+                          {format(day, "d")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <div
                   key={day.toString()}
-                  className={`min-h-[160px] border-r border-b border-gray-100 cursor-pointer transition-all duration-200 hover:bg-blue-50 hover:shadow-md ${
+                  className={`min-h-[160px] border-r border-b border-gray-100 transition-all duration-200 ${
                     !isCurrentMonth ? "text-gray-300 bg-gray-50" : ""
                   } ${
                     isSelected
@@ -367,15 +410,26 @@ export default function AvailabilityCalendar() {
                     isCurrentDay
                       ? "bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200"
                       : ""
+                  } ${
+                    isPastDay
+                      ? "bg-gray-50 cursor-default"
+                      : "cursor-pointer hover:bg-blue-50 hover:shadow-md"
                   }`}
                   onClick={() => {
-                    // Set as selected date and open modal
-                    setSelectedDate(day);
-                    setShowDayModal(true);
-                    // Load or generate time slots for this day
-                    loadTimeSlotsForDate(day);
+                    // Only allow interaction for current/future days or past days with bookings
+                    if (!isPastDay || hasBookedSlots) {
+                      setSelectedDate(day);
+                      setShowDayModal(true);
+                      loadTimeSlotsForDate(day);
+                    }
                   }}
-                  title={`Click to view and edit day details`}
+                  title={
+                    isPastDay && hasBookedSlots
+                      ? "Past day with meeting history - Click to view"
+                      : isPastDay
+                      ? "Past day - No meetings"
+                      : "Click to view and edit day details"
+                  }
                 >
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-4">
@@ -391,45 +445,92 @@ export default function AvailabilityCalendar() {
                           <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                         )}
                       </div>
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          await toggleWorkingDay(day);
-                        }}
-                        disabled={workingHours.length === 0}
-                        className={`w-7 h-7 rounded-full border-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                          workingHours.length === 0
-                            ? "opacity-50 cursor-not-allowed"
-                            : "cursor-pointer"
-                        } ${
-                          dayAvailability.isWorkingDay
-                            ? "bg-green-500 border-green-500 shadow-md hover:shadow-lg hover:bg-green-600"
-                            : "bg-gray-300 border-gray-300 hover:bg-gray-400 hover:border-gray-400"
-                        }`}
-                        title={
-                          workingHours.length === 0
-                            ? "Loading working hours..."
-                            : dayAvailability.isWorkingDay
-                            ? "Working day - Click to disable"
-                            : "Non-working day - Click to enable"
-                        }
-                      >
-                        {dayAvailability.isWorkingDay && (
-                          <CheckCircleIcon className="w-4 h-4 text-white mx-auto" />
-                        )}
-                      </button>
+                      {!isPastDay && (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await toggleWorkingDay(day);
+                          }}
+                          disabled={workingHours.length === 0}
+                          className={`w-7 h-7 rounded-full border-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            workingHours.length === 0
+                              ? "opacity-50 cursor-not-allowed"
+                              : "cursor-pointer"
+                          } ${
+                            shouldShowAsAvailable
+                              ? "bg-green-500 border-green-500 shadow-md hover:shadow-lg hover:bg-green-600"
+                              : "bg-gray-300 border-gray-300 hover:bg-gray-400 hover:border-gray-400"
+                          }`}
+                          title={
+                            workingHours.length === 0
+                              ? "Loading working hours..."
+                              : shouldShowAsAvailable
+                              ? "Working day - Click to disable"
+                              : "Non-working day - Click to enable"
+                          }
+                        >
+                          {shouldShowAsAvailable && (
+                            <CheckCircleIcon className="w-4 h-4 text-white mx-auto" />
+                          )}
+                        </button>
+                      )}
+                      {isPastDay && hasBookedSlots && (
+                        <div className="w-7 h-7 rounded-full bg-blue-100 border-2 border-blue-300 flex items-center justify-center">
+                          <ClockIcon className="w-4 h-4 text-blue-600" />
+                        </div>
+                      )}
                     </div>
 
                     {/* Quick availability indicator */}
-                    {dayAvailability.isWorkingDay &&
-                    dayAvailability.timeSlots.length > 0 ? (
+                    {isPastDay && hasBookedSlots ? (
+                      // Past day with meetings - show booking history
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <ClockIcon className="w-4 h-4 text-blue-500" />
+                          <div className="text-xs text-gray-600 font-medium">
+                            {
+                              dayAvailability.timeSlots.filter(
+                                (slot: TimeSlot) => slot.isBooked
+                              ).length
+                            }{" "}
+                            past meetings
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {dayAvailability.timeSlots
+                            .slice(0, 4)
+                            .map((slot: TimeSlot) => (
+                              <div
+                                key={slot.id}
+                                className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                                  slot.isBooked
+                                    ? "bg-blue-400 shadow-sm"
+                                    : "bg-gray-200"
+                                }`}
+                                title={`${slot.startTime} - ${slot.endTime} ${
+                                  slot.isBooked ? "(Booked)" : ""
+                                }`}
+                              />
+                            ))}
+                          {dayAvailability.timeSlots.length > 4 && (
+                            <div className="text-xs text-gray-400 font-medium">
+                              +{dayAvailability.timeSlots.length - 4}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : !isPastDay &&
+                      dayAvailability.isWorkingDay &&
+                      dayAvailability.timeSlots.length > 0 ? (
+                      // Future/current day with available slots
                       <div className="space-y-3">
                         <div className="flex items-center space-x-2">
                           <ClockIcon className="w-4 h-4 text-green-500" />
                           <div className="text-xs text-gray-600 font-medium">
                             {
                               dayAvailability.timeSlots.filter(
-                                (slot: TimeSlot) => slot.isAvailable
+                                (slot: TimeSlot) =>
+                                  slot.isAvailable && !slot.isBooked
                               ).length
                             }{" "}
                             slots available
@@ -442,11 +543,19 @@ export default function AvailabilityCalendar() {
                               <div
                                 key={slot.id}
                                 className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                                  slot.isAvailable
+                                  slot.isBooked
+                                    ? "bg-blue-400 shadow-sm"
+                                    : slot.isAvailable
                                     ? "bg-green-400 shadow-sm"
                                     : "bg-gray-300"
                                 }`}
-                                title={`${slot.startTime} - ${slot.endTime}`}
+                                title={`${slot.startTime} - ${slot.endTime} ${
+                                  slot.isBooked
+                                    ? "(Booked)"
+                                    : slot.isAvailable
+                                    ? "(Available)"
+                                    : "(Unavailable)"
+                                }`}
                               />
                             ))}
                           {dayAvailability.timeSlots.length > 4 && (
@@ -456,17 +565,17 @@ export default function AvailabilityCalendar() {
                           )}
                         </div>
                       </div>
-                    ) : dayAvailability.isWorkingDay ? (
+                    ) : !isPastDay && dayAvailability.isWorkingDay ? (
                       <div className="flex items-center space-x-2 text-xs text-gray-400">
                         <XCircleIcon className="w-4 h-4" />
                         <span>No slots configured</span>
                       </div>
-                    ) : (
+                    ) : !isPastDay ? (
                       <div className="flex items-center space-x-2 text-xs text-gray-400">
                         <PauseIcon className="w-4 h-4" />
                         <span>Non-working day</span>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               );

@@ -15,6 +15,7 @@ export interface TimeSlot {
   startTime: string;
   endTime: string;
   isAvailable: boolean;
+  isBooked?: boolean; // Optional for backward compatibility
 }
 
 export interface DayAvailability {
@@ -103,6 +104,7 @@ export function useAvailability() {
             startTime: currentTime.toTimeString().slice(0, 5),
             endTime: slotEnd.toTimeString().slice(0, 5),
             isAvailable: true,
+            isBooked: false, // New slots are not booked by default
           };
           slots.push(slot);
         }
@@ -743,7 +745,62 @@ export function useAvailability() {
     ]
   );
 
-  // Load time slots for a specific date
+  // Optimized: Load all time slots for a month in batch
+  const loadTimeSlotsForMonth = useCallback(
+    async (startDate: Date, endDate: Date) => {
+      if (!user) return;
+
+      const startDateKey = startDate.toISOString().split("T")[0];
+      const endDateKey = endDate.toISOString().split("T")[0];
+
+      // Batch load all exceptions for the month
+      const { data: exceptionsData } = await supabase
+        .from("user_availability_exceptions")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("date", startDateKey)
+        .lte("date", endDateKey);
+
+      // Batch load all time slots for the month
+      const { data: slotsData } = await supabase
+        .from("user_time_slots")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("date", startDateKey)
+        .lte("date", endDateKey)
+        .order("date, start_time");
+
+      // Create lookup maps for fast access
+      const exceptionsMap = new Map();
+      if (exceptionsData) {
+        exceptionsData.forEach((exception) => {
+          exceptionsMap.set(exception.date, exception);
+        });
+      }
+
+      const slotsMap = new Map();
+      if (slotsData) {
+        slotsData.forEach((slot) => {
+          const dateKey = slot.date;
+          if (!slotsMap.has(dateKey)) {
+            slotsMap.set(dateKey, []);
+          }
+          slotsMap.get(dateKey).push({
+            id: slot.id,
+            startTime: slot.start_time,
+            endTime: slot.end_time,
+            isAvailable: slot.is_available,
+            isBooked: slot.is_booked,
+          });
+        });
+      }
+
+      return { exceptionsMap, slotsMap };
+    },
+    [user]
+  );
+
+  // Load time slots for a specific date (kept for backward compatibility)
   const loadTimeSlotsForDate = useCallback(
     async (date: Date) => {
       if (!user) return;
@@ -775,6 +832,7 @@ export function useAvailability() {
               startTime: slot.start_time,
               endTime: slot.end_time,
               isAvailable: slot.is_available,
+              isBooked: slot.is_booked,
             }));
 
             updateDayAvailability(date, {
@@ -799,8 +857,32 @@ export function useAvailability() {
         const dayHours = workingHours[dayIndex];
 
         if (dayHours && dayHours.isWorking) {
-          // Generate time slots for working day
-          await generateTimeSlotsForDate(date);
+          // Check if time slots already exist in database
+          const { data: existingSlotsData } = await supabase
+            .from("user_time_slots")
+            .select("*")
+            .eq("user_id", user.id)
+            .eq("date", dateKey)
+            .order("start_time");
+
+          if (existingSlotsData && existingSlotsData.length > 0) {
+            // Use existing time slots (preserves booking status)
+            const timeSlots = existingSlotsData.map((slot) => ({
+              id: slot.id,
+              startTime: slot.start_time,
+              endTime: slot.end_time,
+              isAvailable: slot.is_available,
+              isBooked: slot.is_booked,
+            }));
+
+            updateDayAvailability(date, {
+              timeSlots,
+              isWorkingDay: true,
+            });
+          } else {
+            // Generate new time slots for working day
+            await generateTimeSlotsForDate(date);
+          }
         } else {
           // Mark as non-working day
           updateDayAvailability(date, {
@@ -811,6 +893,112 @@ export function useAvailability() {
       }
     },
     [user, workingHours, generateTimeSlotsForDate, updateDayAvailability]
+  );
+
+  // Optimized: Process multiple days using batched data
+  const processMonthDays = useCallback(
+    async (
+      days: Date[],
+      exceptionsMap: Map<string, { is_available: boolean; reason?: string }>,
+      slotsMap: Map<string, TimeSlot[]>
+    ) => {
+      const newAvailability: Record<string, DayAvailability> = {};
+
+      for (const day of days) {
+        const dateKey = day.toISOString().split("T")[0];
+        const exception = exceptionsMap.get(dateKey);
+        const existingSlots = slotsMap.get(dateKey) || [];
+
+        if (exception) {
+          // Use exception data
+          if (exception.is_available) {
+            if (existingSlots.length > 0) {
+              newAvailability[dateKey] = {
+                date: day,
+                timeSlots: existingSlots,
+                isWorkingDay: true,
+              };
+            } else {
+              // Generate slots for working day exception
+              const dayOfWeek = day.getDay();
+              const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+              const dayHours = workingHours[dayIndex];
+
+              if (dayHours && dayHours.isWorking) {
+                const generatedSlots = generateDefaultTimeSlots(
+                  dayHours.startTime,
+                  dayHours.endTime,
+                  settings.slotDuration
+                );
+                newAvailability[dateKey] = {
+                  date: day,
+                  timeSlots: generatedSlots,
+                  isWorkingDay: true,
+                };
+              } else {
+                newAvailability[dateKey] = {
+                  date: day,
+                  timeSlots: [],
+                  isWorkingDay: true, // Exception overrides default
+                };
+              }
+            }
+          } else {
+            // Non-working day exception
+            newAvailability[dateKey] = {
+              date: day,
+              timeSlots: [],
+              isWorkingDay: false,
+            };
+          }
+        } else {
+          // No exception, use working hours
+          const dayOfWeek = day.getDay();
+          const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+          const dayHours = workingHours[dayIndex];
+
+          if (dayHours && dayHours.isWorking) {
+            if (existingSlots.length > 0) {
+              // Use existing slots (preserves bookings)
+              newAvailability[dateKey] = {
+                date: day,
+                timeSlots: existingSlots,
+                isWorkingDay: true,
+              };
+            } else {
+              // Generate new slots
+              const generatedSlots = generateDefaultTimeSlots(
+                dayHours.startTime,
+                dayHours.endTime,
+                settings.slotDuration
+              );
+              newAvailability[dateKey] = {
+                date: day,
+                timeSlots: generatedSlots,
+                isWorkingDay: true,
+              };
+            }
+          } else {
+            // Non-working day
+            newAvailability[dateKey] = {
+              date: day,
+              timeSlots: existingSlots, // Preserve any existing bookings
+              isWorkingDay: false,
+            };
+          }
+        }
+      }
+
+      // Update state with all processed days at once
+      setAvailability((prev) => {
+        const updated = { ...prev, ...newAvailability };
+        if (user) {
+          updateCacheAvailability(user.id, updated);
+        }
+        return updated;
+      });
+    },
+    [user, workingHours, settings.slotDuration, generateDefaultTimeSlots]
   );
 
   // Save day availability exception to database
@@ -1063,5 +1251,8 @@ export function useAvailability() {
     // Cache control functions
     clearCalendarCache,
     refreshFromDatabase,
+    // Optimized batch functions
+    loadTimeSlotsForMonth,
+    processMonthDays,
   };
 }
