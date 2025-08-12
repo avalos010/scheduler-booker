@@ -215,10 +215,16 @@ export function useAvailability() {
             date,
             workingHours
           );
-          if (dayHours && dayHours.isWorking) {
+          if (dayHours) {
             newTimeSlots = TimeSlotUtils.generateDefaultTimeSlots(
               dayHours.startTime,
               dayHours.endTime,
+              settings.slotDuration
+            );
+          } else {
+            newTimeSlots = TimeSlotUtils.generateDefaultTimeSlots(
+              "09:00",
+              "17:00",
               settings.slotDuration
             );
           }
@@ -246,12 +252,20 @@ export function useAvailability() {
         const newIsWorking = !(dayHours?.isWorking ?? false);
         let newTimeSlots: TimeSlot[] = [];
 
-        if (newIsWorking && dayHours?.isWorking) {
-          newTimeSlots = TimeSlotUtils.generateDefaultTimeSlots(
-            dayHours.startTime,
-            dayHours.endTime,
-            settings.slotDuration
-          );
+        if (newIsWorking) {
+          if (dayHours) {
+            newTimeSlots = TimeSlotUtils.generateDefaultTimeSlots(
+              dayHours.startTime,
+              dayHours.endTime,
+              settings.slotDuration
+            );
+          } else {
+            newTimeSlots = TimeSlotUtils.generateDefaultTimeSlots(
+              "09:00",
+              "17:00",
+              settings.slotDuration
+            );
+          }
         }
 
         // Update local state
@@ -276,6 +290,34 @@ export function useAvailability() {
       availability,
       updateDayAvailability,
     ]
+  );
+
+  // Regenerate slots for a specific day with custom parameters
+  const regenerateDaySlots = useCallback(
+    async (
+      date: Date,
+      startTime: string,
+      endTime: string,
+      slotDuration: number
+    ) => {
+      if (!user) return { success: false, error: "No user" };
+
+      const newSlots = TimeSlotUtils.generateDefaultTimeSlots(
+        startTime,
+        endTime,
+        slotDuration
+      );
+
+      updateDayAvailability(date, {
+        isWorkingDay: true,
+        timeSlots: newSlots,
+      });
+
+      await AvailabilityManager.saveDaySlots(user.id, date, newSlots);
+
+      return { success: true };
+    },
+    [user, updateDayAvailability]
   );
 
   // Update working hours
@@ -398,5 +440,8 @@ export function useAvailability() {
     refreshCalendar: () => {
       setAvailability({});
     },
+
+    // Per-day utilities
+    regenerateDaySlots,
   };
 }

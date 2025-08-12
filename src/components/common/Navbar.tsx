@@ -38,14 +38,14 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="max-w-7xl mx-auto px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Link
               href={isAuthed ? "/dashboard" : "/"}
               className="flex items-center space-x-2"
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm ring-1 ring-blue-400/40">
                 <CalendarDaysIcon className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900">
@@ -58,8 +58,8 @@ export default function Navbar() {
                   href="/dashboard"
                   className={`text-sm px-4 py-2 rounded-lg transition-all duration-200 ${
                     pathname === "/dashboard"
-                      ? "bg-blue-50 text-blue-700 font-medium"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                      ? "bg-blue-50 text-blue-700 font-medium ring-1 ring-blue-200"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 ring-1 ring-transparent hover:ring-gray-200"
                   }`}
                 >
                   Dashboard
@@ -68,8 +68,8 @@ export default function Navbar() {
                   href="/dashboard/availability"
                   className={`text-sm px-4 py-2 rounded-lg transition-all duration-200 ${
                     pathname === "/dashboard/availability"
-                      ? "bg-blue-50 text-blue-700 font-medium"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                      ? "bg-blue-50 text-blue-700 font-medium ring-1 ring-blue-200"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 ring-1 ring-transparent hover:ring-gray-200"
                   }`}
                 >
                   Availability
@@ -83,7 +83,7 @@ export default function Navbar() {
               !isAuthRoute ? (
                 <>
                   {userEmail && (
-                    <span className="hidden sm:inline text-sm text-gray-700 bg-gray-100 px-3 py-2 rounded-lg font-medium">
+                    <span className="hidden sm:inline text-sm text-gray-700 bg-white/70 px-3 py-2 rounded-lg font-medium ring-1 ring-gray-200">
                       {userEmail}
                     </span>
                   )}
@@ -101,7 +101,7 @@ export default function Navbar() {
                   </Link>
                   <Link
                     href="/signup"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
                   >
                     Get Started
                   </Link>

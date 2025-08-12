@@ -1,23 +1,41 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { useAvailability } from "@/lib/hooks/useAvailabilityNew";
+import TimePicker from "./TimePicker";
+import type { DayAvailability, WorkingHours } from "@/lib/types/availability";
 
 interface DayDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedDate: Date | null;
+  availability: Record<string, DayAvailability>;
+  workingHours: WorkingHours[];
+  toggleTimeSlot: (date: Date, slotId: string) => Promise<void> | void;
+  toggleWorkingDay: (date: Date) => Promise<void> | void;
+  regenerateDaySlots: (
+    date: Date,
+    startTime: string,
+    endTime: string,
+    slotDuration: number
+  ) => Promise<{ success: boolean; error?: unknown }> | { success: boolean };
 }
 
 export default function DayDetailsModal({
   isOpen,
   onClose,
   selectedDate,
+  availability,
+  workingHours,
+  toggleTimeSlot,
+  toggleWorkingDay,
+  regenerateDaySlots,
 }: DayDetailsModalProps) {
-  const { availability, workingHours, toggleTimeSlot, toggleWorkingDay } =
-    useAvailability();
+  const [customStart, setCustomStart] = useState<string>("09:00");
+  const [customEnd, setCustomEnd] = useState<string>("17:00");
+  const [customDuration, setCustomDuration] = useState<number>(60);
+  const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
 
   // Close modal on escape key
   useEffect(() => {
@@ -37,6 +55,18 @@ export default function DayDetailsModal({
       document.body.style.overflow = "unset";
     };
   }, [isOpen, onClose]);
+
+  // Initialize custom controls from defaults when selection changes
+  useEffect(() => {
+    if (!selectedDate) return;
+    const dayOfWeek = selectedDate.getDay();
+    const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const dayHours = workingHours[dayIndex];
+    if (dayHours) {
+      setCustomStart(dayHours.startTime || "09:00");
+      setCustomEnd(dayHours.endTime || "17:00");
+    }
+  }, [selectedDate, workingHours]);
 
   if (!isOpen || !selectedDate) return null;
 
@@ -120,6 +150,51 @@ export default function DayDetailsModal({
                   <h3 className="text-lg font-medium text-gray-700">
                     Time Slots
                   </h3>
+                </div>
+
+                {/* Custom schedule controls */}
+                <div className="flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 p-3 border border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">From</span>
+                    <TimePicker value={customStart} onChange={setCustomStart} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">to</span>
+                    <TimePicker value={customEnd} onChange={setCustomEnd} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Duration</span>
+                    <select
+                      value={customDuration}
+                      onChange={(e) =>
+                        setCustomDuration(Number(e.target.value))
+                      }
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    >
+                      <option value={15}>15m</option>
+                      <option value={30}>30m</option>
+                      <option value={45}>45m</option>
+                      <option value={60}>60m</option>
+                      <option value={90}>90m</option>
+                      <option value={120}>120m</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setIsRegenerating(true);
+                      await regenerateDaySlots(
+                        selectedDate,
+                        customStart,
+                        customEnd,
+                        customDuration
+                      );
+                      setIsRegenerating(false);
+                    }}
+                    className="ml-auto rounded-lg bg-blue-600 px-4 py-2 text-white text-sm hover:bg-blue-700 transition-colors disabled:opacity-60"
+                    disabled={isRegenerating}
+                  >
+                    {isRegenerating ? "Regenerating..." : "Regenerate slots"}
+                  </button>
                 </div>
 
                 {dayAvailability.timeSlots.length > 0 ? (

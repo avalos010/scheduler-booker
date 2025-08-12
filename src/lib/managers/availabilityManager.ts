@@ -273,6 +273,44 @@ export class AvailabilityManager {
   }
 
   /**
+   * Replace all slots for a day (used when regenerating custom slots)
+   */
+  static async saveDaySlots(userId: string, date: Date, timeSlots: TimeSlot[]) {
+    try {
+      const dateKey = TimeSlotUtils.formatDateKey(date);
+
+      // Clear previous slots for that day
+      await AvailabilityService.deleteTimeSlotsForDate(userId, dateKey);
+
+      if (timeSlots.length > 0) {
+        await AvailabilityService.saveTimeSlots(
+          timeSlots.map((slot) => ({
+            user_id: userId,
+            date: dateKey,
+            start_time: slot.startTime,
+            end_time: slot.endTime,
+            is_available: slot.isAvailable,
+            is_booked: Boolean(slot.isBooked),
+          }))
+        );
+      }
+
+      // Ensure the exception marks the day as working
+      await AvailabilityService.saveException({
+        user_id: userId,
+        date: dateKey,
+        is_available: true,
+        reason: "Custom day schedule",
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error saving day slots:", error);
+      return { success: false, error };
+    }
+  }
+
+  /**
    * Reset calendar to defaults (clear all exceptions and time slots)
    */
   static async resetToDefaults(userId: string) {

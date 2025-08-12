@@ -39,6 +39,8 @@ export default function AvailabilityCalendar() {
     workingHours,
     isFullyLoaded,
     toggleWorkingDay,
+    toggleTimeSlot,
+    regenerateDaySlots,
 
     setAvailability,
 
@@ -590,6 +592,11 @@ export default function AvailabilityCalendar() {
         isOpen={showDayModal}
         onClose={() => setShowDayModal(false)}
         selectedDate={selectedDate}
+        availability={availability}
+        workingHours={workingHours}
+        toggleTimeSlot={toggleTimeSlot}
+        toggleWorkingDay={toggleWorkingDay}
+        regenerateDaySlots={regenerateDaySlots}
       />
     </div>
   );
