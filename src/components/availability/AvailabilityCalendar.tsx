@@ -356,17 +356,25 @@ export default function AvailabilityCalendar() {
         ) : (
           <div className="grid grid-cols-7">
             {calendarDays.map((day) => {
-              const dateKey = day.toISOString().split("T")[0];
+              const dateKeyLocal = format(day, "yyyy-MM-dd");
+              const dateKeyIso = day.toISOString().split("T")[0];
+              const prevDay = new Date(day.getTime() - 24 * 60 * 60 * 1000);
+              const nextDay = new Date(day.getTime() + 24 * 60 * 60 * 1000);
+              const prevKeyLocal = format(prevDay, "yyyy-MM-dd");
+              const nextKeyLocal = format(nextDay, "yyyy-MM-dd");
               // Get the default working day status from working hours
               const dayOfWeek = day.getDay();
               const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
               const dayHours = workingHours[dayIndex];
 
-              const dayAvailability = availability[dateKey] || {
-                date: day,
-                timeSlots: [],
-                isWorkingDay: dayHours?.isWorking ?? false, // Use working hours configuration
-              };
+              const dayAvailability = availability[dateKeyLocal] ||
+                availability[dateKeyIso] ||
+                availability[prevKeyLocal] ||
+                availability[nextKeyLocal] || {
+                  date: day,
+                  timeSlots: [],
+                  isWorkingDay: dayHours?.isWorking ?? false, // Use working hours configuration
+                };
               const isCurrentMonth = isSameMonth(day, currentMonth);
               const isSelected = selectedDate && isSameDay(day, selectedDate);
               const isCurrentDay = isToday(day);

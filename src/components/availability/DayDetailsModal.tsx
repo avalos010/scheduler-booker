@@ -70,7 +70,8 @@ export default function DayDetailsModal({
 
   if (!isOpen || !selectedDate) return null;
 
-  const dateKey = selectedDate.toISOString().split("T")[0];
+  const dateKeyLocal = format(selectedDate, "yyyy-MM-dd");
+  const dateKeyIso = selectedDate.toISOString().split("T")[0];
 
   // Get the default working day status from working hours
   const dayOfWeek = selectedDate.getDay();
@@ -78,42 +79,44 @@ export default function DayDetailsModal({
   const dayHours = workingHours[dayIndex];
   const defaultIsWorking = dayHours?.isWorking ?? false;
 
-  const dayAvailability = availability[dateKey] || {
-    date: selectedDate,
-    timeSlots: [],
-    isWorkingDay: defaultIsWorking,
-  };
+  const dayAvailability = availability[dateKeyLocal] ||
+    availability[dateKeyIso] || {
+      date: selectedDate,
+      timeSlots: [],
+      isWorkingDay: defaultIsWorking,
+    };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0 bg-black/50 transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col">
+      <div className="relative w-full max-w-3xl h-[85vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white/95 backdrop-blur">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
               {format(selectedDate, "EEEE, MMMM d, yyyy")}
             </h2>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-600 mt-1 text-sm">
               Manage your availability for this day
             </p>
           </div>
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Dismiss"
           >
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4">
           <div className="space-y-6">
             {/* Working Day Toggle */}
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -129,7 +132,7 @@ export default function DayDetailsModal({
               </div>
               <button
                 onClick={() => toggleWorkingDay(selectedDate)}
-                className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
+                className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                   dayAvailability.isWorkingDay
                     ? "bg-green-500 border-green-500 shadow-sm"
                     : "bg-gray-300 border-gray-300"
@@ -145,11 +148,19 @@ export default function DayDetailsModal({
             {/* Time Slots */}
             {dayAvailability.isWorkingDay ? (
               <div className="space-y-4">
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <h3 className="text-lg font-medium text-gray-700">
+                  <h3 className="text-lg font-medium text-gray-800">
                     Time Slots
                   </h3>
+                  <span className="ml-2 text-sm text-gray-500">
+                    {
+                      dayAvailability.timeSlots.filter(
+                        (s) => s.isAvailable && !s.isBooked
+                      ).length
+                    }
+                    /{dayAvailability.timeSlots.length} available
+                  </span>
                 </div>
 
                 {/* Custom schedule controls */}
@@ -198,27 +209,47 @@ export default function DayDetailsModal({
                 </div>
 
                 {dayAvailability.timeSlots.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    {dayAvailability.timeSlots.map((slot) => (
-                      <button
-                        key={slot.id}
-                        onClick={async () =>
-                          await toggleTimeSlot(selectedDate, slot.id)
-                        }
-                        className={`p-4 text-left rounded-lg border-2 transition-all hover:scale-105 ${
-                          slot.isAvailable
-                            ? "bg-green-50 border-green-300 text-green-800 hover:bg-green-100"
-                            : "bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100"
-                        }`}
-                      >
-                        <div className="font-medium text-lg">
-                          {slot.startTime} - {slot.endTime}
-                        </div>
-                        <div className="text-sm mt-1">
-                          {slot.isAvailable ? "Available" : "Unavailable"}
-                        </div>
-                      </button>
-                    ))}
+                  <div className="rounded-lg border border-gray-200 p-2 bg-white">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {dayAvailability.timeSlots.map((slot) => (
+                        <button
+                          key={slot.id}
+                          onClick={async () =>
+                            await toggleTimeSlot(selectedDate, slot.id)
+                          }
+                          className={`flex items-center justify-between px-3 py-2 text-sm rounded-md border transition-colors ${
+                            slot.isAvailable
+                              ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100"
+                              : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                          }`}
+                          title={
+                            slot.isAvailable
+                              ? "Mark unavailable"
+                              : "Mark available"
+                          }
+                        >
+                          <span className="font-medium">
+                            {slot.startTime} - {slot.endTime}
+                          </span>
+                          <span
+                            className={`ml-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                              slot.isAvailable
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-200 text-gray-700"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-1.5 w-1.5 rounded-full ${
+                                slot.isAvailable
+                                  ? "bg-green-600"
+                                  : "bg-gray-500"
+                              }`}
+                            />
+                            {slot.isAvailable ? "Available" : "Unavailable"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
@@ -239,7 +270,7 @@ export default function DayDetailsModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl flex-shrink-0">
+        <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-white/95 backdrop-blur">
           <button
             onClick={onClose}
             className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
