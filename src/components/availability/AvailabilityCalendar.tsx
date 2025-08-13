@@ -37,18 +37,17 @@ export default function AvailabilityCalendar() {
   const {
     availability,
     workingHours,
+    settings,
     isFullyLoaded,
     toggleWorkingDay,
     toggleTimeSlot,
     regenerateDaySlots,
-
     setAvailability,
-
     resetCalendarToDefaults,
     loadAvailability,
-    markTimeSlotsLoaded,
     loadTimeSlotsForMonth,
     processMonthDays,
+    markTimeSlotsLoaded,
   } = useAvailability();
 
   // Generate calendar days for the current month
@@ -67,14 +66,32 @@ export default function AvailabilityCalendar() {
 
   // Main calendar processing effect - handles month changes and working hours updates
   useEffect(() => {
-    // Only process if working hours are loaded
-    if (workingHours.length === 0) return;
+    console.log("📅 Calendar effect triggered:", {
+      workingHoursLength: workingHours.length,
+      currentMonth: currentMonth.toISOString(),
+      isFullyLoaded,
+      availabilityKeys: Object.keys(availability).length,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Only process if working hours are loaded AND data is fully loaded
+    if (workingHours.length === 0 || !isFullyLoaded) {
+      console.log("⏳ Waiting for data to be fully loaded:", {
+        workingHoursLength: workingHours.length,
+        isFullyLoaded,
+      });
+      return;
+    }
 
     const monthKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}`;
 
     // Skip if month already processed
-    if (processedMonthRef.current === monthKey) return;
+    if (processedMonthRef.current === monthKey) {
+      console.log("✅ Month already processed, skipping");
+      return;
+    }
 
+    console.log("🔄 Processing new month, resetting flags");
     // Reset flags for new month
     timeSlotsMarkedRef.current = false;
     processedMonthRef.current = monthKey;
@@ -129,56 +146,26 @@ export default function AvailabilityCalendar() {
     markTimeSlotsLoaded,
   ]);
 
-  // Refresh calendar when working hours change
+  // Reset processed month when data changes (so calendar reprocesses with new data)
   useEffect(() => {
-    if (workingHours.length > 0) {
-      // Reset processed month to force regeneration
-      processedMonthRef.current = "";
-      timeSlotsMarkedRef.current = false;
-    }
-  }, [workingHours.length]);
+    console.log("🔄 Data changed, resetting processed month flag");
+    processedMonthRef.current = "";
+    timeSlotsMarkedRef.current = false;
+  }, [workingHours, settings]);
 
   // Function to refresh calendar data
   const refreshCalendar = useCallback(async () => {
+    console.log("🔄 refreshCalendar called at:", new Date().toISOString());
+
     // Clear current availability to force regeneration
     setAvailability({});
 
-    // Reset processed month to force regeneration
+    // Reset processed month flag to force regeneration
     processedMonthRef.current = "";
     timeSlotsMarkedRef.current = false;
 
-    const refreshMonthStart = startOfMonth(currentMonth);
-    const refreshMonthEnd = endOfMonth(currentMonth);
-
-    // Regenerate time slots for the current month
-    const days: Date[] = [];
-    for (let i = 0; i < 31; i++) {
-      const day = new Date(refreshMonthStart);
-      day.setDate(refreshMonthStart.getDate() + i);
-      if (day > refreshMonthEnd) break;
-      days.push(new Date(day));
-    }
-
-    // Optimized refresh: Load all month data in batch
-    const monthData = await loadTimeSlotsForMonth(
-      refreshMonthStart,
-      refreshMonthEnd
-    );
-
-    if (monthData) {
-      // Process all days with batched data
-      await processMonthDays(days, monthData.exceptionsMap, monthData.slotsMap);
-    }
-
-    // Mark time slots as loaded
-    markTimeSlotsLoaded();
-  }, [
-    currentMonth,
-    setAvailability,
-    loadTimeSlotsForMonth,
-    processMonthDays,
-    markTimeSlotsLoaded,
-  ]);
+    console.log("🔄 refreshCalendar completed, flags reset");
+  }, []);
 
   // Note: loadDayAvailabilityExceptions is now called from the main calendar processing effect
 

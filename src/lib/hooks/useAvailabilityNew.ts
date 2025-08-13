@@ -55,30 +55,55 @@ export function useAvailability() {
   // Load availability data
   const loadAvailability = useCallback(
     async (forceRefresh = false) => {
-      if (!user) return { success: false, error: "No user" };
+      if (!user) return;
+
+      console.log("🔄 loadAvailability called for user:", user.id);
 
       try {
+        // Comment out cache for now to focus on DB loading
+        // const result = await AvailabilityManager.loadAvailabilityData(
+        //   user.id,
+        //   forceRefresh
+        // );
+
+        // Force refresh from database
+        console.log("📡 Calling AvailabilityManager.loadAvailabilityData...");
         const result = await AvailabilityManager.loadAvailabilityData(
           user.id,
-          forceRefresh
+          true // Always force refresh
         );
 
-        if (result.success && result.data) {
+        console.log("📥 AvailabilityManager result:", result);
+
+        if (result.success && "data" in result && result.data) {
+          console.log("✅ Data loaded successfully:", {
+            workingHoursCount: result.data.workingHours?.length,
+            settings: result.data.settings,
+            availabilityCount: Object.keys(result.data.availability || {})
+              .length,
+          });
+
           setAvailability(result.data.availability);
           setWorkingHours(result.data.workingHours);
           setSettings(result.data.settings);
-          setLoadingSteps({
-            workingHours: true,
-            settings: true,
-            exceptions: true,
-            timeSlots: true,
-          });
-        }
 
-        return result;
+          // Add a delay before marking as fully loaded to prevent flash
+          setTimeout(() => {
+            setLoadingSteps({
+              workingHours: true,
+              settings: true,
+              exceptions: true,
+              timeSlots: true,
+            });
+          }, 800); // 800ms delay to allow calendar to process and render
+        } else {
+          console.error(
+            "❌ AvailabilityManager returned error:",
+            "error" in result ? result.error : "Unknown error"
+          );
+        }
       } catch (error) {
-        console.error("Error in loadAvailability:", error);
-        return { success: false, error };
+        console.error("💥 Error in loadAvailability:", error);
       }
     },
     [user]
@@ -138,9 +163,10 @@ export function useAvailability() {
       // Update state with all processed days at once
       setAvailability((prev) => {
         const updated = { ...prev, ...newAvailability };
-        if (user) {
-          CacheService.updateAvailability(user.id, updated);
-        }
+        // Comment out cache for now to focus on DB loading
+        // if (user) {
+        //   CacheService.updateAvailability(user.id, updated);
+        // }
         return updated;
       });
     },
@@ -393,8 +419,18 @@ export function useAvailability() {
 
   // Load data on mount
   useEffect(() => {
+    console.log("🚀 useEffect for initial load triggered:", {
+      user: !!user,
+      userId: user?.id,
+      userEmail: user?.email,
+      timestamp: new Date().toISOString(),
+    });
+
     if (user) {
+      console.log("👤 User available, calling loadAvailability");
       loadAvailability();
+    } else {
+      console.log("⏳ No user available, skipping loadAvailability");
     }
   }, [user, loadAvailability]);
 

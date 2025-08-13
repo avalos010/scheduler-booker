@@ -1,5 +1,5 @@
 import { AvailabilityService } from "../services/availabilityService";
-import { CacheService } from "../services/cacheService";
+// import { CacheService } from "../services/cacheService";
 import { TimeSlotUtils } from "../utils/timeSlotUtils";
 import type {
   TimeSlot,
@@ -13,25 +13,33 @@ export class AvailabilityManager {
    * Load all availability data for a user (with caching)
    */
   static async loadAvailabilityData(userId: string, forceRefresh = false) {
+    console.log(
+      "🏗️ AvailabilityManager.loadAvailabilityData called for user:",
+      userId
+    );
+
     // Try cache first unless force refresh
     if (!forceRefresh) {
-      const cachedData = CacheService.loadFromCache(userId);
-      if (cachedData) {
-        console.log("Loading from cache...");
-        return {
-          success: true,
-          fromCache: true,
-          data: cachedData,
-        };
-      }
+      // const cachedData = CacheService.loadFromCache(userId);
+      // if (cachedData) {
+      //   console.log("Loading from cache...");
+      //   return {
+      //     success: true,
+      //     fromCache: true,
+      //     data: cachedData,
+      //   };
+      // }
     }
 
-    console.log("Loading from database...");
+    console.log("📡 Loading from database...");
 
     try {
       // Load settings
+      console.log("⚙️ Loading settings...");
       let settings: AvailabilitySettings;
       const settingsData = await AvailabilityService.loadSettings(userId);
+
+      console.log("📊 Settings data from DB:", settingsData);
 
       if (settingsData && settingsData.length > 0) {
         // Handle duplicates if they exist
@@ -49,8 +57,10 @@ export class AvailabilityManager {
           breakDuration: settingsToUse.break_duration_minutes,
           advanceBookingDays: settingsToUse.advance_booking_days,
         };
+
+        console.log("✅ Settings loaded:", settings);
       } else {
-        console.log("No settings found, creating defaults");
+        console.log("📝 No settings found, creating defaults");
         const defaultSettings = await AvailabilityService.createDefaultSettings(
           userId
         );
@@ -59,32 +69,38 @@ export class AvailabilityManager {
           breakDuration: defaultSettings.break_duration_minutes,
           advanceBookingDays: defaultSettings.advance_booking_days,
         };
+        console.log("✅ Default settings created:", settings);
       }
 
       // Load working hours
+      console.log("🕐 Loading working hours...");
       let workingHours: WorkingHours[];
       const hoursData = await AvailabilityService.loadWorkingHours(userId);
 
+      console.log("📊 Working hours data from DB:", hoursData);
+
       if (hoursData && hoursData.length > 0) {
         workingHours = TimeSlotUtils.formatWorkingHoursFromDatabase(hoursData);
+        console.log("✅ Working hours loaded:", workingHours);
       } else {
-        console.log("No working hours found, creating defaults");
+        console.log("📝 No working hours found, creating defaults");
         const defaultHours =
           await AvailabilityService.createDefaultWorkingHours(userId);
         workingHours = TimeSlotUtils.formatWorkingHoursFromDatabase(
           defaultHours || []
         );
+        console.log("✅ Default working hours created:", workingHours);
       }
 
       // Save to cache
-      CacheService.saveToCache(userId, {
-        availability: {},
-        workingHours,
-        settings,
-        exceptions: {},
-      });
+      // CacheService.saveToCache(userId, {
+      //   availability: {},
+      //   workingHours,
+      //   settings,
+      //   exceptions: {},
+      // });
 
-      return {
+      const result = {
         success: true,
         fromCache: false,
         data: {
@@ -94,8 +110,14 @@ export class AvailabilityManager {
           exceptions: {},
         },
       };
+
+      console.log("🎯 AvailabilityManager returning result:", result);
+      return result;
     } catch (error) {
-      console.error("Error loading availability:", error);
+      console.error(
+        "💥 Error in AvailabilityManager.loadAvailabilityData:",
+        error
+      );
       return { success: false, error };
     }
   }
@@ -125,12 +147,12 @@ export class AvailabilityManager {
       await AvailabilityService.saveWorkingHours(workingHoursData);
 
       // Update cache
-      CacheService.saveToCache(userId, {
-        availability: {},
-        workingHours,
-        settings,
-        exceptions: {},
-      });
+      // CacheService.saveToCache(userId, {
+      //   availability: {},
+      //   workingHours,
+      //   settings,
+      //   exceptions: {},
+      // });
 
       return { success: true };
     } catch (error) {
@@ -322,7 +344,7 @@ export class AvailabilityManager {
       ]);
 
       // Clear cache
-      CacheService.clearCache(userId);
+      // CacheService.clearCache(userId);
 
       return { success: true };
     } catch (error) {
