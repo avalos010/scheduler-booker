@@ -1,11 +1,8 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import OnboardingForm from "@/components/onboarding/OnboardingForm";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export default async function OnboardingPage() {
-  const cookieStore = await cookies();
-
   const supabase = await createSupabaseServerClient();
 
   // Get session on server side

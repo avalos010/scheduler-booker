@@ -77,7 +77,7 @@ function buildSlots(start: string, end: string, duration: number): TimeSlot[] {
 describe("AvailabilityCalendar UI", () => {
   const today = new Date();
   const dateKey = format(today, "yyyy-MM-dd");
-  const dayIndex = (() => {
+  const _dayIndex = (() => {
     const d = today.getDay();
     return d === 0 ? 6 : d - 1; // Monday=0..Sunday=6
   })();

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { HydrationSafeInput } from "@/components/common/HydrationSafeElement";
 
 const userTypeSchema = z.object({
   userType: z.enum(["business", "individual"]),
@@ -167,7 +168,7 @@ export default function OnboardingForm() {
                 >
                   Business Name
                 </label>
-                <input
+                <HydrationSafeInput
                   {...userTypeForm.register("businessName")}
                   type="text"
                   id="businessName"
@@ -210,7 +211,7 @@ export default function OnboardingForm() {
                 ? "Your Name"
                 : "Full Name"}
             </label>
-            <input
+            <HydrationSafeInput
               {...userTypeForm.register("name")}
               type="text"
               id="name"
@@ -311,7 +312,7 @@ export default function OnboardingForm() {
             >
               Start Time
             </label>
-            <input
+            <HydrationSafeInput
               {...availabilityForm.register("startTime")}
               type="time"
               id="startTime"
@@ -331,7 +332,7 @@ export default function OnboardingForm() {
             >
               End Time
             </label>
-            <input
+            <HydrationSafeInput
               {...availabilityForm.register("endTime")}
               type="time"
               id="endTime"

@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -12,11 +11,6 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export default async function DashboardPage() {
-  // Force fresh authentication check by adding cache busting
-  const timestamp = Date.now();
-
-  const cookieStore = await cookies();
-
   const supabase = await createSupabaseServerClient();
 
   // Get session on server side

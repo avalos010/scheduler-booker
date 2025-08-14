@@ -3,7 +3,6 @@ import {
   ClientAvailabilityService,
   type UserWorkingHour,
 } from "../services/clientAvailabilityService";
-import { CacheService } from "../services/cacheService";
 import { TimeSlotUtils } from "../utils/timeSlotUtils";
 import type {
   TimeSlot,
@@ -82,7 +81,7 @@ export function useAvailability() {
   }, [workingHours, settings, loadingSteps]);
 
   // Load availability data
-  const loadAvailability = useCallback(async (forceRefresh = false) => {
+  const loadAvailability = useCallback(async () => {
     console.log("🔄 loadAvailability called");
 
     try {

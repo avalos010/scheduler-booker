@@ -1,4 +1,3 @@
-import Link from "next/link";
 import SignupForm from "@/components/auth/SignupForm";
 import { UserPlusIcon } from "@heroicons/react/24/outline";
 

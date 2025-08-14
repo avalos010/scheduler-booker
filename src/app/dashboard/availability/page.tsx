@@ -1,12 +1,9 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import AvailabilityCalendar from "@/components/availability/AvailabilityCalendar";
 import { AvailabilityManager } from "@/lib/managers/availabilityManager";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export default async function AvailabilityPage() {
-  const cookieStore = await cookies();
-
   const supabase = await createSupabaseServerClient();
 
   // Get session on server side

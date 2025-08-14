@@ -47,7 +47,7 @@ export default function AvailabilitySettings() {
       } else {
         setSaveMessage({
           type: "error",
-          text: `Failed to save settings: ${result.error}`,
+          text: `Failed to save settings: ${result.message || "Unknown error"}`,
         });
       }
     } catch {

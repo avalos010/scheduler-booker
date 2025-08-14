@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase";
-import type { TimeSlot } from "../types/availability";
 
 export interface AvailabilityException {
   id?: string;

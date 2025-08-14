@@ -29,13 +29,15 @@ export async function createSupabaseServerClient() {
 }
 
 // Middleware Supabase instance (for middleware)
-export function createSupabaseMiddlewareClient(requestCookies: any) {
+export function createSupabaseMiddlewareClient(requestCookies: {
+  getAll: () => { name: string; value: string }[];
+}) {
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return requestCookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll() {
         // Middleware cookies are handled differently
         // This is just for reading cookies in middleware
       },

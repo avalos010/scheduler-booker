@@ -1,5 +1,3 @@
-import type { TimeSlot } from "../types/availability";
-
 export interface AvailabilityException {
   id?: string;
   user_id: string;

@@ -1,10 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
     const supabase = await createSupabaseServerClient();
 
     // Get the authenticated user
@@ -27,7 +25,7 @@ export async function GET() {
     }
 
     return NextResponse.json({ settings: data });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

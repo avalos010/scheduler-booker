@@ -1,10 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
     const supabase = await createSupabaseServerClient();
 
     // Get the authenticated user
@@ -68,7 +66,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -78,7 +76,6 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const cookieStore = await cookies();
     const supabase = await createSupabaseServerClient();
 
     // Get the authenticated user
@@ -114,7 +111,7 @@ export async function PUT(request: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -124,7 +121,6 @@ export async function PUT(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
     const supabase = await createSupabaseServerClient();
 
     // Get the authenticated user
@@ -166,7 +162,7 @@ export async function GET(request: Request) {
       user: user.id,
       query: { date, startDate, endDate },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
