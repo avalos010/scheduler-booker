@@ -1,29 +1,17 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { redirect } from "next/navigation";
 
 type RequireAuthProps = {
   children: React.ReactNode;
 };
 
-export default function RequireAuth({ children }: RequireAuthProps) {
-  const router = useRouter();
-  const { user, loading } = useAuth();
+export default async function RequireAuth({ children }: RequireAuthProps) {
+  const supabase = await createSupabaseServerClient();
 
-  // Redirect to login if not authenticated
-  if (!loading && !user) {
-    router.replace("/login");
-    return null;
-  }
+  const { data: { session }, error } = await supabase.auth.getSession();
 
-  // Show loading while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-gray-800">
-        Checking authentication...
-      </div>
-    );
+  if (error || !session) {
+    redirect("/login");
   }
 
   // User is authenticated, render children

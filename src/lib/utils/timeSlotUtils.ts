@@ -12,7 +12,8 @@ export class TimeSlotUtils {
   static generateDefaultTimeSlots(
     startTime: string,
     endTime: string,
-    slotDuration: number
+    slotDuration: number,
+    breakDuration: number = 0
   ): TimeSlot[] {
     const slots: TimeSlot[] = [];
 
@@ -39,7 +40,11 @@ export class TimeSlotUtils {
         };
         slots.push(slot);
       }
-      currentTime = slotEnd;
+
+      // Move to next slot (including break duration)
+      currentTime = new Date(
+        currentTime.getTime() + (slotDuration + breakDuration) * 60000
+      );
     }
 
     return slots;
@@ -145,7 +150,8 @@ export class TimeSlotUtils {
             const generatedSlots = this.generateDefaultTimeSlots(
               dayHours.startTime,
               dayHours.endTime,
-              settings.slotDuration
+              settings.slotDuration,
+              settings.breakDuration
             );
             return {
               date,
@@ -185,7 +191,8 @@ export class TimeSlotUtils {
           const generatedSlots = this.generateDefaultTimeSlots(
             dayHours.startTime,
             dayHours.endTime,
-            settings.slotDuration
+            settings.slotDuration,
+            settings.breakDuration
           );
           return {
             date,

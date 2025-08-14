@@ -92,9 +92,73 @@ export class AvailabilityManager {
         console.log("✅ Default working hours created:", workingHours);
       }
 
+      // Load time slots and exceptions for the current month
+      console.log("📅 Loading time slots and exceptions...");
+      const currentDate = new Date();
+      const monthStart = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        1
+      );
+      const monthEnd = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      );
+
+      console.log("📅 Date range for loading:", {
+        monthStart: monthStart.toISOString(),
+        monthEnd: monthEnd.toISOString(),
+        monthStartKey: TimeSlotUtils.formatDateKey(monthStart),
+        monthEndKey: TimeSlotUtils.formatDateKey(monthEnd),
+      });
+
+      const monthData = await this.loadMonthData(userId, monthStart, monthEnd);
+
+      let availability: Record<string, DayAvailability> = {};
+
+      if (monthData) {
+        // Generate availability for the current month
+        const daysInMonth = [];
+        for (
+          let d = new Date(monthStart);
+          d <= monthEnd;
+          d.setDate(d.getDate() + 1)
+        ) {
+          daysInMonth.push(new Date(d));
+        }
+
+        console.log("📅 Processing days:", {
+          totalDays: daysInMonth.length,
+          sampleDays: daysInMonth
+            .slice(0, 3)
+            .map((d) => TimeSlotUtils.formatDateKey(d)),
+        });
+
+        availability = this.processMultipleDays(
+          daysInMonth,
+          workingHours,
+          settings,
+          monthData.exceptionsMap,
+          monthData.slotsMap
+        );
+
+        console.log("✅ Generated availability for month:", {
+          daysProcessed: Object.keys(availability).length,
+          daysWithSlots: Object.values(availability).filter(
+            (day) => day.timeSlots.length > 0
+          ).length,
+          sampleDay: Object.values(availability).find(
+            (day) => day.timeSlots.length > 0
+          ),
+        });
+      } else {
+        console.log("⚠️ Could not load month data, availability will be empty");
+      }
+
       // Save to cache
       // CacheService.saveToCache(userId, {
-      //   availability: {},
+      //   availability,
       //   workingHours,
       //   settings,
       //   exceptions: {},
@@ -104,7 +168,7 @@ export class AvailabilityManager {
         success: true,
         fromCache: false,
         data: {
-          availability: {},
+          availability,
           workingHours,
           settings,
           exceptions: {},
@@ -169,6 +233,12 @@ export class AvailabilityManager {
       const startDateKey = TimeSlotUtils.formatDateKey(startDate);
       const endDateKey = TimeSlotUtils.formatDateKey(endDate);
 
+      console.log("📅 Loading month data:", {
+        userId,
+        startDate: startDateKey,
+        endDate: endDateKey,
+      });
+
       // Batch load exceptions and time slots
       const [exceptionsData, slotsData] = await Promise.all([
         AvailabilityService.loadExceptionsForDateRange(
@@ -183,11 +253,23 @@ export class AvailabilityManager {
         ),
       ]);
 
+      console.log("📅 Month data loaded:", {
+        exceptionsCount: exceptionsData?.length || 0,
+        slotsCount: slotsData?.length || 0,
+        sampleSlots: slotsData?.slice(0, 3) || [],
+      });
+
       // Create lookup maps for fast access
       const exceptionsMap = TimeSlotUtils.createExceptionsMap(
         exceptionsData || []
       );
       const slotsMap = TimeSlotUtils.createSlotsMap(slotsData || []);
+
+      console.log("📅 Created lookup maps:", {
+        exceptionsMapSize: exceptionsMap.size,
+        slotsMapSize: slotsMap.size,
+        sampleSlotsMap: Array.from(slotsMap.entries()).slice(0, 2),
+      });
 
       return { exceptionsMap, slotsMap };
     } catch (error) {
@@ -206,12 +288,25 @@ export class AvailabilityManager {
     exceptionsMap: Map<string, { is_available: boolean; reason?: string }>,
     slotsMap: Map<string, TimeSlot[]>
   ): Record<string, DayAvailability> {
+    console.log("🏗️ Processing multiple days:", {
+      daysCount: days.length,
+      workingHoursCount: workingHours.length,
+      exceptionsMapSize: exceptionsMap.size,
+      slotsMapSize: slotsMap.size,
+    });
+
     const newAvailability: Record<string, DayAvailability> = {};
 
     for (const day of days) {
       const dateKey = TimeSlotUtils.formatDateKey(day);
       const exception = exceptionsMap.get(dateKey);
       const existingSlots = slotsMap.get(dateKey) || [];
+
+      if (existingSlots.length > 0) {
+        console.log(
+          `📅 Day ${dateKey} has ${existingSlots.length} existing slots`
+        );
+      }
 
       const dayAvailability = TimeSlotUtils.processDayAvailability(
         day,
@@ -223,6 +318,16 @@ export class AvailabilityManager {
 
       newAvailability[dateKey] = dayAvailability;
     }
+
+    console.log("🏗️ Finished processing days:", {
+      totalDays: Object.keys(newAvailability).length,
+      daysWithSlots: Object.values(newAvailability).filter(
+        (day) => day.timeSlots.length > 0
+      ).length,
+      sampleDay: Object.values(newAvailability).find(
+        (day) => day.timeSlots.length > 0
+      ),
+    });
 
     return newAvailability;
   }

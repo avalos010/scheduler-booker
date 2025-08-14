@@ -56,12 +56,44 @@ export class AvailabilityService {
       advance_booking_days: 30,
     };
 
-    const { error } = await supabase
-      .from("user_availability_settings")
-      .upsert(defaultSettings, { onConflict: "user_id" });
+    try {
+      // Try to insert directly first
+      const { data, error } = await supabase
+        .from("user_availability_settings")
+        .insert(defaultSettings)
+        .select()
+        .single();
 
-    if (error) throw error;
-    return defaultSettings;
+      if (error) {
+        // If insert fails due to RLS, try to get existing settings
+        console.log(
+          "📝 Insert failed, checking for existing settings:",
+          error.message
+        );
+        const { data: existingData, error: selectError } = await supabase
+          .from("user_availability_settings")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (selectError) {
+          console.error("📝 Error checking existing settings:", selectError);
+          // Return default settings object as fallback
+          return defaultSettings;
+        }
+
+        if (existingData) {
+          console.log("📝 Found existing settings, using them");
+          return existingData;
+        }
+      }
+
+      return data || defaultSettings;
+    } catch (error) {
+      console.error("📝 Error in createDefaultSettings:", error);
+      // Return default settings object as fallback
+      return defaultSettings;
+    }
   }
 
   static async saveSettings(settings: UserAvailabilitySettings) {
@@ -88,22 +120,90 @@ export class AvailabilityService {
 
   static async createDefaultWorkingHours(userId: string) {
     const defaultHours = [
-      { day_of_week: 1, start_time: "09:00", end_time: "17:00", is_working: true }, // Monday
-      { day_of_week: 2, start_time: "09:00", end_time: "17:00", is_working: true }, // Tuesday
-      { day_of_week: 3, start_time: "09:00", end_time: "17:00", is_working: true }, // Wednesday
-      { day_of_week: 4, start_time: "09:00", end_time: "17:00", is_working: true }, // Thursday
-      { day_of_week: 5, start_time: "09:00", end_time: "17:00", is_working: true }, // Friday
-      { day_of_week: 6, start_time: "10:00", end_time: "15:00", is_working: false }, // Saturday
-      { day_of_week: 0, start_time: "10:00", end_time: "15:00", is_working: false }, // Sunday
+      {
+        day_of_week: 1,
+        start_time: "09:00",
+        end_time: "17:00",
+        is_working: true,
+      }, // Monday
+      {
+        day_of_week: 2,
+        start_time: "09:00",
+        end_time: "17:00",
+        is_working: true,
+      }, // Tuesday
+      {
+        day_of_week: 3,
+        start_time: "09:00",
+        end_time: "17:00",
+        is_working: true,
+      }, // Wednesday
+      {
+        day_of_week: 4,
+        start_time: "09:00",
+        end_time: "17:00",
+        is_working: true,
+      }, // Thursday
+      {
+        day_of_week: 5,
+        start_time: "09:00",
+        end_time: "17:00",
+        is_working: true,
+      }, // Friday
+      {
+        day_of_week: 6,
+        start_time: "10:00",
+        end_time: "15:00",
+        is_working: false,
+      }, // Saturday
+      {
+        day_of_week: 0,
+        start_time: "10:00",
+        end_time: "15:00",
+        is_working: false,
+      }, // Sunday
     ];
 
-    const { data, error } = await supabase
-      .from("user_working_hours")
-      .insert(defaultHours.map((h) => ({ ...h, user_id: userId })))
-      .select();
+    try {
+      // Try to insert directly first
+      const { data, error } = await supabase
+        .from("user_working_hours")
+        .insert(defaultHours.map((h) => ({ ...h, user_id: userId })))
+        .select();
 
-    if (error) throw error;
-    return data;
+      if (error) {
+        // If insert fails due to RLS, try to get existing working hours
+        console.log(
+          "📝 Working hours insert failed, checking for existing:",
+          error.message
+        );
+        const { data: existingData, error: selectError } = await supabase
+          .from("user_working_hours")
+          .select("*")
+          .eq("user_id", userId)
+          .order("day_of_week");
+
+        if (selectError) {
+          console.error(
+            "📝 Error checking existing working hours:",
+            selectError
+          );
+          // Return empty array as fallback
+          return [];
+        }
+
+        if (existingData && existingData.length > 0) {
+          console.log("📝 Found existing working hours, using them");
+          return existingData;
+        }
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error("📝 Error in createDefaultWorkingHours:", error);
+      // Return empty array as fallback
+      return [];
+    }
   }
 
   static async saveWorkingHours(workingHoursData: UserWorkingHour[]) {
@@ -115,7 +215,17 @@ export class AvailabilityService {
   }
 
   // Time slots operations
-  static async loadTimeSlotsForDateRange(userId: string, startDate: string, endDate: string) {
+  static async loadTimeSlotsForDateRange(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ) {
+    console.log("🔍 AvailabilityService.loadTimeSlotsForDateRange called:", {
+      userId,
+      startDate,
+      endDate,
+    });
+
     const { data, error } = await supabase
       .from("user_time_slots")
       .select("*")
@@ -124,7 +234,16 @@ export class AvailabilityService {
       .lte("date", endDate)
       .order("date, start_time");
 
-    if (error) throw error;
+    if (error) {
+      console.error("🔍 Error loading time slots:", error);
+      throw error;
+    }
+
+    console.log("🔍 Time slots loaded from database:", {
+      count: data?.length || 0,
+      sampleSlots: data?.slice(0, 3) || [],
+    });
+
     return data;
   }
 
@@ -141,11 +260,9 @@ export class AvailabilityService {
   }
 
   static async saveTimeSlots(slotsData: UserTimeSlot[]) {
-    const { error } = await supabase
-      .from("user_time_slots")
-      .upsert(slotsData, {
-        onConflict: "user_id,date,start_time,end_time",
-      });
+    const { error } = await supabase.from("user_time_slots").upsert(slotsData, {
+      onConflict: "user_id,date,start_time,end_time",
+    });
 
     if (error) throw error;
   }
@@ -178,7 +295,17 @@ export class AvailabilityService {
   }
 
   // Availability exceptions operations
-  static async loadExceptionsForDateRange(userId: string, startDate: string, endDate: string) {
+  static async loadExceptionsForDateRange(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ) {
+    console.log("🔍 AvailabilityService.loadExceptionsForDateRange called:", {
+      userId,
+      startDate,
+      endDate,
+    });
+
     const { data, error } = await supabase
       .from("user_availability_exceptions")
       .select("*")
@@ -186,7 +313,16 @@ export class AvailabilityService {
       .gte("date", startDate)
       .lte("date", endDate);
 
-    if (error) throw error;
+    if (error) {
+      console.error("🔍 Error loading exceptions:", error);
+      throw error;
+    }
+
+    console.log("🔍 Exceptions loaded from database:", {
+      count: data?.length || 0,
+      sampleExceptions: data?.slice(0, 3) || [],
+    });
+
     return data;
   }
 

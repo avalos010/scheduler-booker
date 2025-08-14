@@ -1,16 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function LogoutButton() {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleLogout = async () => {
     setIsLoading(true);
     try {
-      await supabase.auth.signOut();
-      window.location.href = "/login";
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        // Force a hard refresh to clear any cached state
+        window.location.href = "/login";
+      } else {
+        const errorData = await response.json();
+        console.error("Logout error:", errorData.error);
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
     } finally {
       setIsLoading(false);
     }

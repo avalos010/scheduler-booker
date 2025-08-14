@@ -47,13 +47,21 @@ export default function SignupForm() {
     setMessage(null);
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
       });
 
-      if (error) {
-        setError(error.message);
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Signup failed");
       } else {
         setMessage(
           "Signup successful! Please check your email for verification."
@@ -63,7 +71,6 @@ export default function SignupForm() {
           window.location.href = "/onboarding";
         }, 1000);
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError("An unexpected error occurred");
     } finally {
