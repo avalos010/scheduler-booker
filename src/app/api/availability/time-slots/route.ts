@@ -1,26 +1,11 @@
-import { createServerClient } from "@supabase/ssr";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+    const supabase = await createSupabaseServerClient();
 
     // Get the authenticated user
     const {
@@ -54,14 +39,21 @@ export async function POST(request: Request) {
 
     // Insert new time slots
     if (timeSlots.length > 0) {
-      const slotsToInsert = timeSlots.map((slot: any) => ({
-        user_id: user.id,
-        date,
-        start_time: slot.startTime,
-        end_time: slot.endTime,
-        is_available: slot.isAvailable,
-        is_booked: slot.isBooked || false,
-      }));
+      const slotsToInsert = timeSlots.map(
+        (slot: {
+          startTime: string;
+          endTime: string;
+          isAvailable: boolean;
+          isBooked?: boolean;
+        }) => ({
+          user_id: user.id,
+          date,
+          start_time: slot.startTime,
+          end_time: slot.endTime,
+          is_available: slot.isAvailable,
+          is_booked: slot.isBooked || false,
+        })
+      );
 
       const { error: insertError } = await supabase
         .from("user_time_slots")
@@ -87,22 +79,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+    const supabase = await createSupabaseServerClient();
 
     // Get the authenticated user
     const {
@@ -148,22 +125,7 @@ export async function PUT(request: Request) {
 export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+    const supabase = await createSupabaseServerClient();
 
     // Get the authenticated user
     const {

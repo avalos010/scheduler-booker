@@ -8,7 +8,10 @@ type RequireAuthProps = {
 export default async function RequireAuth({ children }: RequireAuthProps) {
   const supabase = await createSupabaseServerClient();
 
-  const { data: { session }, error } = await supabase.auth.getSession();
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
 
   if (error || !session) {
     redirect("/login");
