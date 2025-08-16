@@ -109,7 +109,7 @@ export default function LoginForm() {
           </div>
           {errors.email && (
             <p className="mt-2 text-sm text-red-600 flex items-center">
-              <div className="w-1 h-1 bg-red-500 rounded-full mr-2"></div>
+              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
               {errors.email.message}
             </p>
           )}
@@ -147,7 +147,7 @@ export default function LoginForm() {
           </div>
           {errors.password && (
             <p className="mt-2 text-sm text-red-600 flex items-center">
-              <div className="w-1 h-1 bg-red-500 rounded-full mr-2"></div>
+              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
               {errors.password.message}
             </p>
           )}

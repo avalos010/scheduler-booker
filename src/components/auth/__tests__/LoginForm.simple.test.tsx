@@ -4,13 +4,10 @@ import userEvent from "@testing-library/user-event";
 import LoginForm from "../LoginForm";
 import { TEST_USER } from "@/lib/test-utils";
 
-import { supabase } from "../../../lib/supabase";
-
-const mockSupabase = supabase;
-
 describe("LoginForm", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (global.fetch as jest.Mock).mockClear();
   });
 
   it("renders login form with all fields", () => {
@@ -22,11 +19,11 @@ describe("LoginForm", () => {
 
   it("handles successful login", async () => {
     const user = userEvent.setup();
-    (
-      mockSupabase as unknown as { auth: { signInWithPassword: jest.Mock } }
-    ).auth.signInWithPassword.mockResolvedValueOnce({
-      data: { user: { id: "123", email: TEST_USER.email } },
-      error: null,
+
+    // Mock successful API response
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true }),
     });
 
     render(<LoginForm />);
@@ -38,13 +35,17 @@ describe("LoginForm", () => {
     await user.type(emailInput, TEST_USER.email);
     await user.type(passwordInput, TEST_USER.password);
     await user.click(submitButton);
+
     await waitFor(() => {
-      expect(
-        (mockSupabase as unknown as { auth: { signInWithPassword: jest.Mock } })
-          .auth.signInWithPassword
-      ).toHaveBeenCalledWith({
-        email: TEST_USER.email,
-        password: TEST_USER.password,
+      expect(global.fetch).toHaveBeenCalledWith("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: TEST_USER.email,
+          password: TEST_USER.password,
+        }),
       });
     });
 
@@ -56,11 +57,11 @@ describe("LoginForm", () => {
   it("handles login error", async () => {
     const user = userEvent.setup();
     const errorMessage = "Invalid email or password";
-    (
-      mockSupabase as unknown as { auth: { signInWithPassword: jest.Mock } }
-    ).auth.signInWithPassword.mockResolvedValueOnce({
-      data: { user: null },
-      error: { message: errorMessage },
+
+    // Mock failed API response
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: errorMessage }),
     });
 
     render(<LoginForm />);
@@ -72,6 +73,7 @@ describe("LoginForm", () => {
     await user.type(emailInput, TEST_USER.email);
     await user.type(passwordInput, TEST_USER.password);
     await user.click(submitButton);
+
     await waitFor(() => {
       expect(screen.getByText(errorMessage)).toBeDefined();
     });

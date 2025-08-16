@@ -1,31 +1,29 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import RequireAuth from "@/components/auth/RequireAuth";
-import { supabase } from "@/lib/supabase";
+import ClientRequireAuth from "@/components/auth/ClientRequireAuth";
 
-// Mock the supabase module completely
-jest.mock("@/lib/supabase", () => ({
-  supabase: {
-    auth: {
-      getUser: jest.fn(),
-      onAuthStateChange: jest.fn(() => ({
-        data: {
-          subscription: {
-            unsubscribe: jest.fn(),
-          },
-        },
-      })),
-    },
-  },
+// Mock Next.js router
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    replace: jest.fn(),
+  }),
 }));
 
-describe("RequireAuth", () => {
+describe("ClientRequireAuth", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (global.fetch as jest.Mock).mockClear();
+  });
+
   it("redirects to /login when no user", async () => {
-    // @ts-expect-error jest mock
-    supabase.auth.getUser.mockResolvedValue({ data: { user: null } });
+    // Mock failed auth check
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+    });
+
     render(
-      <RequireAuth>
+      <ClientRequireAuth>
         <div>Protected</div>
-      </RequireAuth>
+      </ClientRequireAuth>
     );
 
     await waitFor(() => {
@@ -34,15 +32,32 @@ describe("RequireAuth", () => {
   });
 
   it("renders children when user exists", async () => {
-    // @ts-expect-error jest mock
-    supabase.auth.getUser.mockResolvedValue({ data: { user: { id: "1" } } });
+    // Mock successful auth check
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+    });
+
     render(
-      <RequireAuth>
+      <ClientRequireAuth>
         <div>Protected</div>
-      </RequireAuth>
+      </ClientRequireAuth>
     );
+    
     await waitFor(() => {
       expect(screen.getByText("Protected")).not.toBeNull();
     });
+  });
+
+  it("shows loading state initially", () => {
+    // Mock fetch to not resolve immediately
+    (global.fetch as jest.Mock).mockImplementation(() => new Promise(() => {}));
+
+    render(
+      <ClientRequireAuth>
+        <div>Protected</div>
+      </ClientRequireAuth>
+    );
+
+    expect(screen.getByText("Checking authentication...")).toBeDefined();
   });
 });
