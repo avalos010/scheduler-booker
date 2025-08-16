@@ -24,6 +24,11 @@ export default async function AvailabilityPage() {
   }
 
   console.log("🔍 Availability: User authenticated, loading availability data");
+  console.log("🔍 Availability: Loading data for current month:", {
+    currentDate: new Date().toISOString(),
+    currentMonth: new Date().getMonth(),
+    currentYear: new Date().getFullYear(),
+  });
 
   // Load availability data on the server
   const availabilityResult = await AvailabilityManager.loadAvailabilityData(
@@ -62,7 +67,40 @@ export default async function AvailabilityPage() {
     settings: settings,
     availabilityKeys: Object.keys(availability || {}).length,
     userId: session.user.id,
+    sampleWorkingHours: workingHours?.slice(0, 2),
+    sampleAvailability: Object.entries(availability || {}).slice(0, 2),
+    workingHoursData: workingHours,
+    availabilityData: availability,
   });
+
+  // Validate that we have the required data
+  if (!workingHours || workingHours.length === 0) {
+    console.error("🔍 Availability: No working hours data");
+    throw new Error("Working hours data is missing");
+  }
+
+  if (!settings) {
+    console.error("🔍 Availability: No settings data");
+    throw new Error("Settings data is missing");
+  }
+
+  if (!availability || Object.keys(availability).length === 0) {
+    console.warn(
+      "🔍 Availability: No availability data - calendar will be empty initially"
+    );
+  } else {
+    console.log("🔍 Availability: Found availability data:", {
+      totalDays: Object.keys(availability).length,
+      workingDays: Object.values(availability).filter((day) => day.isWorkingDay)
+        .length,
+      daysWithSlots: Object.values(availability).filter(
+        (day) => day.timeSlots.length > 0
+      ).length,
+      sampleDay: Object.values(availability).find(
+        (day) => day.timeSlots.length > 0
+      ),
+    });
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200">
@@ -83,12 +121,7 @@ export default async function AvailabilityPage() {
         <div className="rounded-2xl bg-white/70 p-6 shadow-lg ring-1 ring-gray-200/60 backdrop-blur">
           <h2 className="mb-4 text-xl font-semibold text-gray-900">Calendar</h2>
           <div className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <AvailabilityCalendar
-              initialWorkingHours={workingHours}
-              initialSettings={settings}
-              initialAvailability={availability}
-              userId={session.user.id}
-            />
+            <AvailabilityCalendar />
           </div>
         </div>
       </div>

@@ -16,6 +16,12 @@ export interface UserTimeSlot {
   is_booked?: boolean;
 }
 
+export interface TimeSlotForAPI {
+  start_time: string;
+  end_time: string;
+  is_available: boolean;
+}
+
 export interface UserWorkingHour {
   id?: string;
   user_id: string;
@@ -45,21 +51,59 @@ export class ClientAvailabilityService {
   }
 
   static async createDefaultSettings() {
-    // This will be implemented as an API route later
-    const defaultSettings = {
-      slot_duration_minutes: 60,
-      break_duration_minutes: 60,
-      advance_booking_days: 30,
-    };
-    return defaultSettings;
+    try {
+      const defaultSettings = {
+        slot_duration_minutes: 60,
+        break_duration_minutes: 60,
+        advance_booking_days: 30,
+      };
+
+      const response = await fetch("/api/availability/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          settings: defaultSettings,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save default settings");
+      }
+
+      return defaultSettings;
+    } catch (error) {
+      console.error("Failed to create default settings:", error);
+      throw error;
+    }
   }
 
   static async saveSettings(
     settings: Omit<UserAvailabilitySettings, "user_id">
   ) {
-    // This will be implemented as an API route later
-    console.log("Saving settings:", settings);
-    return settings;
+    try {
+      const response = await fetch("/api/availability/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          settings,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save settings");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+      throw error;
+    }
   }
 
   // Working hours operations
@@ -73,59 +117,88 @@ export class ClientAvailabilityService {
   }
 
   static async createDefaultWorkingHours() {
-    // This will be implemented as an API route later
-    const defaultHours = [
-      {
-        day_of_week: 1,
-        start_time: "09:00",
-        end_time: "17:00",
-        is_working: true,
-      }, // Monday
-      {
-        day_of_week: 2,
-        start_time: "09:00",
-        end_time: "17:00",
-        is_working: true,
-      }, // Tuesday
-      {
-        day_of_week: 3,
-        start_time: "09:00",
-        end_time: "17:00",
-        is_working: true,
-      }, // Wednesday
-      {
-        day_of_week: 4,
-        start_time: "09:00",
-        end_time: "17:00",
-        is_working: true,
-      }, // Thursday
-      {
-        day_of_week: 5,
-        start_time: "09:00",
-        end_time: "17:00",
-        is_working: true,
-      }, // Friday
-      {
-        day_of_week: 6,
-        start_time: "10:00",
-        end_time: "15:00",
-        is_working: false,
-      }, // Saturday
-      {
-        day_of_week: 0,
-        start_time: "10:00",
-        end_time: "15:00",
-        is_working: false,
-      }, // Sunday
-    ];
-    return defaultHours;
+    try {
+      const defaultHours = [
+        {
+          day_of_week: 1,
+          start_time: "09:00",
+          end_time: "17:00",
+          is_working: true,
+        }, // Monday
+        {
+          day_of_week: 2,
+          start_time: "09:00",
+          end_time: "17:00",
+          is_working: true,
+        }, // Tuesday
+        {
+          day_of_week: 3,
+          start_time: "09:00",
+          end_time: "17:00",
+          is_working: true,
+        }, // Wednesday
+        {
+          day_of_week: 4,
+          start_time: "09:00",
+          end_time: "17:00",
+          is_working: true,
+        }, // Thursday
+        {
+          day_of_week: 5,
+          start_time: "09:00",
+          end_time: "17:00",
+          is_working: true,
+        }, // Friday
+        {
+          day_of_week: 6,
+          start_time: "10:00",
+          end_time: "15:00",
+          is_working: false,
+        }, // Saturday
+        {
+          day_of_week: 0,
+          start_time: "10:00",
+          end_time: "15:00",
+          is_working: false,
+        }, // Sunday
+      ];
+
+      // Save each working hour to the database
+      for (const hour of defaultHours) {
+        await this.saveWorkingHours([hour]);
+      }
+
+      return defaultHours;
+    } catch (error) {
+      console.error("Failed to create default working hours:", error);
+      throw error;
+    }
   }
 
   static async saveWorkingHours(
     workingHoursData: Omit<UserWorkingHour, "user_id">[]
   ) {
-    // This will be implemented as an API route later
-    console.log("Saving working hours:", workingHoursData);
+    try {
+      const response = await fetch("/api/availability/working-hours", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          workingHours: workingHoursData,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save working hours");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Failed to save working hours:", error);
+      throw error;
+    }
   }
 
   // Time slots operations
@@ -151,41 +224,92 @@ export class ClientAvailabilityService {
     return data.timeSlots || [];
   }
 
-  static async saveTimeSlots(slotsData: Omit<UserTimeSlot, "user_id">[]) {
-    if (slotsData.length === 0) return;
+  static async saveTimeSlots(date: string, slotsData: TimeSlotForAPI[]) {
+    try {
+      console.log("🔄 saveTimeSlots called with:", { date, slotsData });
 
-    const date = slotsData[0].date;
-    const response = await fetch("/api/availability/time-slots", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        date,
-        timeSlots: slotsData,
-      }),
-    });
+      if (slotsData.length === 0) {
+        console.log("⚠️ No slots to save, returning early");
+        return;
+      }
 
-    if (!response.ok) {
-      throw new Error("Failed to save time slots");
+      console.log("📅 Saving slots for date:", date);
+      console.log("🔍 Debug - slotsData received:", slotsData);
+      console.log("🔍 Debug - First slot received:", slotsData[0]);
+      console.log(
+        "🔍 Debug - First slot start_time:",
+        slotsData[0]?.start_time
+      );
+      console.log("🔍 Debug - First slot end_time:", slotsData[0]?.end_time);
+
+      const response = await fetch("/api/availability/time-slots", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          date,
+          timeSlots: slotsData,
+        }),
+      });
+
+      console.log("📡 API response status:", response.status);
+      console.log(
+        "📡 API request body sent:",
+        JSON.stringify(
+          {
+            date,
+            timeSlots: slotsData,
+          },
+          null,
+          2
+        )
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("❌ API error response:", errorData);
+        throw new Error(
+          errorData.error || `Failed to save time slots: ${response.status}`
+        );
+      }
+
+      const result = await response.json();
+      console.log("✅ saveTimeSlots successful:", result);
+      return result;
+    } catch (error) {
+      console.error("❌ saveTimeSlots failed:", error);
+      throw error;
     }
   }
 
   static async updateTimeSlot(slotData: Omit<UserTimeSlot, "user_id">) {
-    // For now, just save all slots for the date
-    const response = await fetch("/api/availability/time-slots", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        date: slotData.date,
-        timeSlots: [slotData],
-      }),
-    });
+    try {
+      console.log("🔄 updateTimeSlot called with:", slotData);
 
-    if (!response.ok) {
-      throw new Error("Failed to update time slot");
+      const response = await fetch("/api/availability/time-slots", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          date: slotData.date,
+          start_time: slotData.start_time,
+          end_time: slotData.end_time,
+          is_available: slotData.is_available,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update time slot");
+      }
+
+      console.log("✅ updateTimeSlot successful");
+      return await response.json();
+    } catch (error) {
+      console.error("❌ updateTimeSlot failed:", error);
+      throw error;
     }
   }
 

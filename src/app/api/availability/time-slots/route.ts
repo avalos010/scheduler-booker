@@ -39,17 +39,17 @@ export async function POST(request: Request) {
     if (timeSlots.length > 0) {
       const slotsToInsert = timeSlots.map(
         (slot: {
-          startTime: string;
-          endTime: string;
-          isAvailable: boolean;
-          isBooked?: boolean;
+          start_time: string;
+          end_time: string;
+          is_available: boolean;
+          is_booked?: boolean;
         }) => ({
           user_id: user.id,
           date,
-          start_time: slot.startTime,
-          end_time: slot.endTime,
-          is_available: slot.isAvailable,
-          is_booked: slot.isBooked || false,
+          start_time: slot.start_time,
+          end_time: slot.end_time,
+          is_available: slot.is_available,
+          is_booked: slot.is_booked || false,
         })
       );
 

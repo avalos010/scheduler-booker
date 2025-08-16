@@ -29,12 +29,15 @@ export class TimeSlotUtils {
     while (currentTime < endDateTime) {
       const slotEnd = new Date(currentTime.getTime() + slotDuration * 60000);
       if (slotEnd <= endDateTime) {
+        const slotStart = currentTime.toTimeString().slice(0, 5);
+        const slotEndTime = slotEnd.toTimeString().slice(0, 5);
+
         const slot = {
-          id: crypto.randomUUID
-            ? crypto.randomUUID()
-            : `slot_${Date.now()}_${Math.random()}`, // Generate proper UUID or fallback
-          startTime: currentTime.toTimeString().slice(0, 5),
-          endTime: slotEnd.toTimeString().slice(0, 5),
+          id: `${slotStart}-${slotEndTime}-${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}`,
+          startTime: slotStart,
+          endTime: slotEndTime,
           isAvailable: true,
           isBooked: false, // New slots are not booked by default
         };
@@ -84,11 +87,22 @@ export class TimeSlotUtils {
     exceptionsData: { date: string; is_available: boolean; reason?: string }[]
   ): Map<string, { is_available: boolean; reason?: string }> {
     const map = new Map();
+    console.log("🔍 Creating exceptions map from data:", {
+      inputExceptionsCount: exceptionsData?.length || 0,
+      sampleInputExceptions: exceptionsData?.slice(0, 3) || [],
+    });
+
     if (exceptionsData) {
       exceptionsData.forEach((exception) => {
         map.set(exception.date, exception);
       });
     }
+
+    console.log("🔍 Created exceptions map:", {
+      mapSize: map.size,
+      sampleMapEntries: Array.from(map.entries()).slice(0, 2),
+    });
+
     return map;
   }
 
@@ -106,21 +120,35 @@ export class TimeSlotUtils {
     }[]
   ): Map<string, TimeSlot[]> {
     const map = new Map();
+    console.log("🔍 Creating slots map from data:", {
+      inputSlotsCount: slotsData?.length || 0,
+      sampleInputSlots: slotsData?.slice(0, 3) || [],
+    });
+
     if (slotsData) {
       slotsData.forEach((slot) => {
         const dateKey = slot.date;
         if (!map.has(dateKey)) {
           map.set(dateKey, []);
         }
-        map.get(dateKey).push({
+
+        const timeSlot: TimeSlot = {
           id: slot.id,
           startTime: slot.start_time,
           endTime: slot.end_time,
           isAvailable: slot.is_available,
-          isBooked: slot.is_booked,
-        });
+          isBooked: slot.is_booked || false,
+        };
+
+        map.get(dateKey).push(timeSlot);
       });
     }
+
+    console.log("🔍 Created slots map:", {
+      mapSize: map.size,
+      sampleMapEntries: Array.from(map.entries()).slice(0, 2),
+    });
+
     return map;
   }
 
@@ -134,10 +162,20 @@ export class TimeSlotUtils {
     exception?: { is_available: boolean; reason?: string },
     existingSlots: TimeSlot[] = []
   ): DayAvailability {
+    const dateKey = this.formatDateKey(date);
+
+    console.log(`🔍 Processing day ${dateKey}:`, {
+      hasException: !!exception,
+      exceptionIsAvailable: exception?.is_available,
+      existingSlotsCount: existingSlots.length,
+      workingHours: this.getWorkingHoursForDate(date, workingHours),
+    });
+
     if (exception) {
       // Use exception data
       if (exception.is_available) {
         if (existingSlots.length > 0) {
+          console.log(`📅 Day ${dateKey}: Using existing slots from exception`);
           return {
             date,
             timeSlots: existingSlots,
@@ -152,6 +190,9 @@ export class TimeSlotUtils {
               dayHours.endTime,
               settings.slotDuration,
               settings.breakDuration
+            );
+            console.log(
+              `📅 Day ${dateKey}: Generated ${generatedSlots.length} slots for exception`
             );
             return {
               date,
@@ -168,9 +209,10 @@ export class TimeSlotUtils {
         }
       } else {
         // Non-working day exception
+        console.log(`📅 Day ${dateKey}: Non-working day exception`);
         return {
           date,
-          timeSlots: [],
+          timeSlots: existingSlots, // Preserve any existing bookings
           isWorkingDay: false,
         };
       }
@@ -181,6 +223,9 @@ export class TimeSlotUtils {
       if (dayHours && dayHours.isWorking) {
         if (existingSlots.length > 0) {
           // Use existing slots (preserves bookings)
+          console.log(
+            `📅 Day ${dateKey}: Using ${existingSlots.length} existing slots`
+          );
           return {
             date,
             timeSlots: existingSlots,
@@ -194,6 +239,9 @@ export class TimeSlotUtils {
             settings.slotDuration,
             settings.breakDuration
           );
+          console.log(
+            `📅 Day ${dateKey}: Generated ${generatedSlots.length} new slots`
+          );
           return {
             date,
             timeSlots: generatedSlots,
@@ -202,6 +250,7 @@ export class TimeSlotUtils {
         }
       } else {
         // Non-working day
+        console.log(`📅 Day ${dateKey}: Non-working day`);
         return {
           date,
           timeSlots: existingSlots, // Preserve any existing bookings

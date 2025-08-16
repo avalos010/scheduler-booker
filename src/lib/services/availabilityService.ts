@@ -51,11 +51,13 @@ export class AvailabilityService {
     const defaultSettings = {
       user_id: userId,
       slot_duration_minutes: 60,
-      break_duration_minutes: 60,
+      break_duration_minutes: 15,
       advance_booking_days: 30,
     };
 
     try {
+      console.log("📝 Creating default settings for user:", userId);
+
       // Try to insert directly first
       const { data, error } = await supabase
         .from("user_availability_settings")
@@ -85,8 +87,15 @@ export class AvailabilityService {
           console.log("📝 Found existing settings, using them");
           return existingData;
         }
+
+        // If no existing data and insert failed, return default settings as fallback
+        console.log(
+          "📝 Insert failed but no existing data, returning defaults as fallback"
+        );
+        return defaultSettings;
       }
 
+      console.log("📝 Default settings created successfully:", data);
       return data || defaultSettings;
     } catch (error) {
       console.error("📝 Error in createDefaultSettings:", error);
@@ -164,6 +173,8 @@ export class AvailabilityService {
     ];
 
     try {
+      console.log("📝 Creating default working hours for user:", userId);
+
       // Try to insert directly first
       const { data, error } = await supabase
         .from("user_working_hours")
@@ -171,11 +182,12 @@ export class AvailabilityService {
         .select();
 
       if (error) {
-        // If insert fails due to RLS, try to get existing working hours
         console.log(
           "📝 Working hours insert failed, checking for existing:",
           error.message
         );
+
+        // If insert fails due to RLS or other issues, try to get existing working hours
         const { data: existingData, error: selectError } = await supabase
           .from("user_working_hours")
           .select("*")
@@ -187,21 +199,28 @@ export class AvailabilityService {
             "📝 Error checking existing working hours:",
             selectError
           );
-          // Return empty array as fallback
-          return [];
+          // Return default hours as fallback
+          return defaultHours.map((h) => ({ ...h, user_id: userId }));
         }
 
         if (existingData && existingData.length > 0) {
           console.log("📝 Found existing working hours, using them");
           return existingData;
         }
+
+        // If no existing data and insert failed, return default hours as fallback
+        console.log(
+          "📝 Insert failed but no existing data, returning defaults as fallback"
+        );
+        return defaultHours.map((h) => ({ ...h, user_id: userId }));
       }
 
-      return data || [];
+      console.log("📝 Default working hours created successfully:", data);
+      return data || defaultHours.map((h) => ({ ...h, user_id: userId }));
     } catch (error) {
       console.error("📝 Error in createDefaultWorkingHours:", error);
-      // Return empty array as fallback
-      return [];
+      // Return default hours as fallback
+      return defaultHours.map((h) => ({ ...h, user_id: userId }));
     }
   }
 
