@@ -79,70 +79,86 @@ export default function AvailabilitySettings() {
         <h3 className="text-lg font-medium text-gray-900 mb-4">
           Default Working Hours
         </h3>
-        <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+        <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-3">
           {workingHours.map((hours, index) => (
             <div
               key={hours.day}
-              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+              className={`p-3 rounded-lg border transition-all ${
                 hours.isWorking
                   ? "bg-white border-green-200 shadow-sm"
                   : "bg-gray-100 border-gray-200"
               }`}
             >
-              <div className="flex items-center space-x-3">
-                <div className="w-20">
-                  <span
-                    className={`text-sm font-medium ${
-                      hours.isWorking ? "text-gray-900" : "text-gray-500"
+              {/* Mobile: Stacked layout, Desktop: Horizontal layout */}
+              <div className="block sm:flex sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                <div className="flex items-center space-x-4">
+                  <div className="w-20 sm:w-24">
+                    <span
+                      className={`text-sm font-medium ${
+                        hours.isWorking ? "text-gray-900" : "text-gray-500"
+                      }`}
+                    >
+                      {hours.day}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => toggleWorkingDay(index)}
+                    disabled={isLoading}
+                    className={`relative w-10 h-6 rounded-full transition-all duration-300 focus:outline-none  ${
+                      hours.isWorking ? "bg-green-500" : "bg-gray-300"
+                    } ${
+                      isLoading
+                        ? "opacity-50 cursor-not-allowed"
+                        : "cursor-pointer hover:shadow-md"
                     }`}
+                    title={
+                      isLoading
+                        ? "Loading..."
+                        : hours.isWorking
+                        ? "Working day"
+                        : "Non-working day"
+                    }
                   >
-                    {hours.day}
-                  </span>
+                    {/* Toggle indicator */}
+                    <div
+                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 transform ${
+                        hours.isWorking ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
                 </div>
 
-                <button
-                  onClick={() => toggleWorkingDay(index)}
-                  disabled={isLoading}
-                  className={`w-5 h-5 rounded-full border-2 transition-all ${
-                    hours.isWorking
-                      ? "bg-green-500 border-green-500 shadow-sm"
-                      : "bg-gray-300 border-gray-300"
-                  } ${
-                    isLoading
-                      ? "opacity-50 cursor-not-allowed"
-                      : "cursor-pointer"
-                  }`}
-                  title={
-                    isLoading
-                      ? "Loading..."
-                      : hours.isWorking
-                      ? "Working day"
-                      : "Non-working day"
-                  }
-                />
+                {hours.isWorking && (
+                  <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:space-x-2">
+                    <div className="flex items-center space-x-2 w-full sm:w-auto">
+                      <div className="flex-1 sm:flex-none">
+                        <TimePicker
+                          value={hours.startTime}
+                          onChange={(time) =>
+                            updateWorkingHours(index, "startTime", time)
+                          }
+                          placeholder="Start time"
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <span className="text-gray-500 text-sm font-medium flex-shrink-0">
+                        to
+                      </span>
+                    </div>
+                    <div className="flex-1 sm:flex-none">
+                      <TimePicker
+                        value={hours.endTime}
+                        onChange={(time) =>
+                          updateWorkingHours(index, "endTime", time)
+                        }
+                        placeholder="End time"
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {hours.isWorking && (
-                <div className="flex items-center space-x-2">
-                  <TimePicker
-                    value={hours.startTime}
-                    onChange={(time) =>
-                      updateWorkingHours(index, "startTime", time)
-                    }
-                    placeholder="Start time"
-                    disabled={isLoading}
-                  />
-                  <span className="text-gray-500 text-sm font-medium">to</span>
-                  <TimePicker
-                    value={hours.endTime}
-                    onChange={(time) =>
-                      updateWorkingHours(index, "endTime", time)
-                    }
-                    placeholder="End time"
-                    disabled={isLoading}
-                  />
-                </div>
-              )}
             </div>
           ))}
         </div>

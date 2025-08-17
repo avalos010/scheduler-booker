@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 import { HydrationSafeButton } from "../common/HydrationSafeElement";
 
 export default function LogoutButton() {
@@ -35,8 +36,19 @@ export default function LogoutButton() {
       onClick={handleLogout}
       disabled={isLoading}
       className="inline-flex items-center px-3 py-2 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 transition-colors duration-200 cursor-pointer"
+      title="Sign out"
     >
-      {isLoading ? "Signing out..." : "Sign out"}
+      {isLoading ? (
+        <>
+          <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mr-2" />
+          <span className="hidden sm:inline">Signing out...</span>
+        </>
+      ) : (
+        <>
+          <ArrowRightOnRectangleIcon className="w-4 h-4 sm:mr-2" />
+          <span className="hidden sm:inline">Sign out</span>
+        </>
+      )}
     </HydrationSafeButton>
   );
 }

@@ -87,44 +87,44 @@ export default function DayDetailsModal({
     };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/50 transition-opacity"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-3xl h-[85vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white/95 backdrop-blur">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+      {/* Modal - Mobile optimized */}
+      <div className="relative w-full max-w-3xl h-[90vh] sm:h-[85vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        {/* Header - Mobile responsive */}
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-white/95 backdrop-blur">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
               {format(selectedDate, "EEEE, MMMM d, yyyy")}
             </h2>
-            <p className="text-gray-600 mt-1 text-sm">
+            <p className="text-gray-600 mt-1 text-xs sm:text-sm truncate">
               Manage your availability for this day
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 ml-2"
             aria-label="Dismiss"
           >
-            <XMarkIcon className="w-6 h-6" />
+            <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
-        {/* Scrollable content area */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4">
-          <div className="space-y-6">
-            {/* Working Day Toggle */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900">
+        {/* Scrollable content area - Mobile optimized */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-3 sm:py-4">
+          <div className="space-y-4 sm:space-y-6">
+            {/* Working Day Toggle - Mobile responsive */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 rounded-lg space-y-3 sm:space-y-0">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base sm:text-lg font-medium text-gray-900">
                   Working Day
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">
                   {dayAvailability.isWorkingDay
                     ? "This day is marked as a working day"
                     : "This day is marked as non-working"}
@@ -132,7 +132,7 @@ export default function DayDetailsModal({
               </div>
               <button
                 onClick={() => toggleWorkingDay(selectedDate)}
-                className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex-shrink-0 ${
                   dayAvailability.isWorkingDay
                     ? "bg-green-500 border-green-500 shadow-sm"
                     : "bg-gray-300 border-gray-300"
@@ -147,13 +147,13 @@ export default function DayDetailsModal({
 
             {/* Time Slots */}
             {dayAvailability.isWorkingDay ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <h3 className="text-lg font-medium text-gray-800">
+                  <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
+                  <h3 className="text-base sm:text-lg font-medium text-gray-800">
                     Time Slots
                   </h3>
-                  <span className="ml-2 text-sm text-gray-500">
+                  <span className="ml-2 text-xs sm:text-sm text-gray-500">
                     {
                       dayAvailability.timeSlots.filter(
                         (s) => s.isAvailable && !s.isBooked
@@ -163,64 +163,127 @@ export default function DayDetailsModal({
                   </span>
                 </div>
 
-                {/* Custom schedule controls */}
-                <div className="flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 p-3 border border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">From</span>
-                    <TimePicker value={customStart} onChange={setCustomStart} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">to</span>
-                    <TimePicker value={customEnd} onChange={setCustomEnd} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Duration</span>
-                    <select
-                      value={customDuration}
-                      onChange={(e) =>
-                        setCustomDuration(Number(e.target.value))
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                {/* Custom schedule controls - Mobile responsive */}
+                <div className="rounded-lg bg-gray-50 p-3 sm:p-4 border border-gray-200 space-y-3 sm:space-y-0 sm:space-x-0">
+                  {/* Mobile: Stacked layout */}
+                  <div className="block sm:hidden space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <span className="text-xs text-gray-600 font-medium">
+                          From
+                        </span>
+                        <TimePicker
+                          value={customStart}
+                          onChange={setCustomStart}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-gray-600 font-medium">
+                          To
+                        </span>
+                        <TimePicker value={customEnd} onChange={setCustomEnd} />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-600 font-medium">
+                        Duration
+                      </span>
+                      <select
+                        value={customDuration}
+                        onChange={(e) =>
+                          setCustomDuration(Number(e.target.value))
+                        }
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                      >
+                        <option value={15}>15 minutes</option>
+                        <option value={30}>30 minutes</option>
+                        <option value={45}>45 minutes</option>
+                        <option value={60}>60 minutes</option>
+                        <option value={90}>90 minutes</option>
+                        <option value={120}>120 minutes</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setIsRegenerating(true);
+                        await regenerateDaySlots(
+                          selectedDate,
+                          customStart,
+                          customEnd,
+                          customDuration
+                        );
+                        setIsRegenerating(false);
+                      }}
+                      className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60"
+                      disabled={isRegenerating}
                     >
-                      <option value={15}>15m</option>
-                      <option value={30}>30m</option>
-                      <option value={45}>45m</option>
-                      <option value={60}>60m</option>
-                      <option value={90}>90m</option>
-                      <option value={120}>120m</option>
-                    </select>
+                      {isRegenerating ? "Regenerating..." : "Regenerate slots"}
+                    </button>
                   </div>
-                  <button
-                    onClick={async () => {
-                      setIsRegenerating(true);
-                      await regenerateDaySlots(
-                        selectedDate,
-                        customStart,
-                        customEnd,
-                        customDuration
-                      );
-                      setIsRegenerating(false);
-                    }}
-                    className="ml-auto rounded-lg bg-blue-600 px-4 py-2 text-white text-sm hover:bg-blue-700 transition-colors disabled:opacity-60"
-                    disabled={isRegenerating}
-                  >
-                    {isRegenerating ? "Regenerating..." : "Regenerate slots"}
-                  </button>
+
+                  {/* Desktop: Horizontal layout */}
+                  <div className="hidden sm:flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">From</span>
+                      <TimePicker
+                        value={customStart}
+                        onChange={setCustomStart}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">to</span>
+                      <TimePicker value={customEnd} onChange={setCustomEnd} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Duration</span>
+                      <select
+                        value={customDuration}
+                        onChange={(e) =>
+                          setCustomDuration(Number(e.target.value))
+                        }
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                      >
+                        <option value={15}>15m</option>
+                        <option value={30}>30m</option>
+                        <option value={45}>45m</option>
+                        <option value={60}>60m</option>
+                        <option value={90}>90m</option>
+                        <option value={120}>120m</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setIsRegenerating(true);
+                        await regenerateDaySlots(
+                          selectedDate,
+                          customStart,
+                          customEnd,
+                          customDuration
+                        );
+                        setIsRegenerating(false);
+                      }}
+                      className="ml-auto rounded-lg bg-blue-600 px-4 py-2 text-white text-sm hover:bg-blue-700 transition-colors disabled:opacity-60"
+                      disabled={isRegenerating}
+                    >
+                      {isRegenerating ? "Regenerating..." : "Regenerate slots"}
+                    </button>
+                  </div>
                 </div>
 
                 {dayAvailability.timeSlots.length > 0 ? (
-                  <div className="rounded-lg border border-gray-200 p-2 bg-white">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-gray-200 p-2 sm:p-3 bg-white">
+                    {/* Mobile: Single column, Desktop: Two columns */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       {dayAvailability.timeSlots.map((slot) => (
                         <button
                           key={slot.id}
                           onClick={async () =>
                             await toggleTimeSlot(selectedDate, slot.id)
                           }
-                          className={`flex items-center justify-between px-3 py-2 text-sm rounded-md border transition-colors ${
+                          className={`flex items-center justify-between px-3 py-2 sm:py-3 text-sm rounded-md border transition-colors ${
                             slot.isAvailable
-                              ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100"
-                              : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                              ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100 active:bg-green-200"
+                              : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 active:bg-gray-200"
                           }`}
                           title={
                             slot.isAvailable
@@ -228,11 +291,11 @@ export default function DayDetailsModal({
                               : "Mark available"
                           }
                         >
-                          <span className="font-medium">
+                          <span className="font-medium truncate">
                             {slot.startTime} - {slot.endTime}
                           </span>
                           <span
-                            className={`ml-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                            className={`ml-2 sm:ml-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 ${
                               slot.isAvailable
                                 ? "bg-green-100 text-green-800"
                                 : "bg-gray-200 text-gray-700"
@@ -245,16 +308,23 @@ export default function DayDetailsModal({
                                   : "bg-gray-500"
                               }`}
                             />
-                            {slot.isAvailable ? "Available" : "Unavailable"}
+                            <span className="hidden sm:inline">
+                              {slot.isAvailable ? "Available" : "Unavailable"}
+                            </span>
+                            <span className="sm:hidden">
+                              {slot.isAvailable ? "✓" : "✗"}
+                            </span>
                           </span>
                         </button>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No time slots configured for this day.</p>
-                    <p className="text-sm mt-1">
+                  <div className="text-center py-6 sm:py-8 text-gray-500">
+                    <p className="text-sm sm:text-base">
+                      No time slots configured for this day.
+                    </p>
+                    <p className="text-xs sm:text-sm mt-1">
                       Configure your default working hours in settings to
                       generate time slots.
                     </p>
@@ -262,18 +332,20 @@ export default function DayDetailsModal({
                 )}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <p>This day is not marked as a working day.</p>
+              <div className="text-center py-6 sm:py-8 text-gray-500">
+                <p className="text-sm sm:text-base">
+                  This day is not marked as a working day.
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-white/95 backdrop-blur">
+        {/* Footer - Mobile responsive */}
+        <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-white/95 backdrop-blur">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 sm:px-6 sm:py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors"
           >
             Close
           </button>
