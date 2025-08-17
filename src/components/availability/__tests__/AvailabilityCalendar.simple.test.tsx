@@ -205,9 +205,12 @@ describe("AvailabilityCalendar UI", () => {
   it("renders header and shows initial slot count for today", () => {
     render(<AvailabilityCalendar />);
 
-    // Header shows current month
+    // Header shows current month - target the mobile layout specifically
     const monthLabel = format(today, "MMMM yyyy");
-    expect(screen.getByText(monthLabel)).toBeTruthy();
+    const mobileHeader = screen.getByText(monthLabel, {
+      selector: "h3.text-xl.sm\\:text-2xl",
+    });
+    expect(mobileHeader).toBeTruthy();
 
     // Find today's cell and verify it indicates available slots
     const dayNumber = today.getDate().toString();
@@ -237,10 +240,18 @@ describe("AvailabilityCalendar UI", () => {
     const header = await screen.findByText(format(today, "EEEE, MMMM d, yyyy"));
     expect(header).toBeTruthy();
 
-    // Click regenerate (uses defaults from working hours 09:00-17:00 60m => 8 slots)
-    const btn = screen.getByRole("button", { name: /regenerate slots/i });
+    // Click regenerate - target the mobile layout button specifically by finding the full-width button
+    const allRegenButtons = screen.getAllByRole("button", {
+      name: /regenerate slots/i,
+    });
+    const mobileRegenButton = allRegenButtons.find(
+      (btn) =>
+        btn.className.includes("w-full") && btn.className.includes("px-4")
+    );
+    expect(mobileRegenButton).toBeTruthy();
+
     await act(async () => {
-      fireEvent.click(btn);
+      fireEvent.click(mobileRegenButton!);
     });
 
     // Close modal
@@ -262,8 +273,11 @@ describe("AvailabilityCalendar UI", () => {
   it("toggles working day from cell and shows non-working label afterward", () => {
     const { rerender } = render(<AvailabilityCalendar />);
 
-    // First, verify the calendar is rendering with our mock data
-    expect(screen.getByText("August 2025")).toBeTruthy();
+    // First, verify the calendar is rendering with our mock data - target mobile layout
+    const mobileMonthHeader = screen.getByText("August 2025", {
+      selector: "h3.text-xl.sm\\:text-2xl",
+    });
+    expect(mobileMonthHeader).toBeTruthy();
 
     // Find today's cell toggle - the title has changed to be more specific
     const toggles = screen.getAllByTitle(
@@ -271,7 +285,7 @@ describe("AvailabilityCalendar UI", () => {
     );
 
     expect(toggles.length).toBeGreaterThan(0);
-    const toggle = toggles[0];
+    const toggle = toggles[0]; // Use the first one
 
     fireEvent.click(toggle);
     expect(mockState.toggleWorkingDay).toHaveBeenCalled();
@@ -330,14 +344,28 @@ describe("AvailabilityCalendar UI", () => {
 
     await screen.findByText(format(today, "EEEE, MMMM d, yyyy"));
 
-    // Change duration select to 30m
-    const durationSelect = screen.getByRole("combobox");
-    fireEvent.change(durationSelect, { target: { value: "30" } });
+    // Change duration select to 30m - target the mobile layout select specifically by finding the full-width select
+    const allDurationSelects = screen.getAllByRole("combobox");
+    const mobileDurationSelect = allDurationSelects.find(
+      (select) =>
+        select.className.includes("w-full") && select.className.includes("px-3")
+    );
+    expect(mobileDurationSelect).toBeTruthy();
 
-    // Regenerate
-    const regenBtn = screen.getByRole("button", { name: /regenerate slots/i });
+    fireEvent.change(mobileDurationSelect!, { target: { value: "30" } });
+
+    // Regenerate - target the mobile layout button specifically by finding the full-width button
+    const allRegenButtons = screen.getAllByRole("button", {
+      name: /regenerate slots/i,
+    });
+    const mobileRegenButton = allRegenButtons.find(
+      (btn) =>
+        btn.className.includes("w-full") && btn.className.includes("px-4")
+    );
+    expect(mobileRegenButton).toBeTruthy();
+
     await act(async () => {
-      fireEvent.click(regenBtn);
+      fireEvent.click(mobileRegenButton!);
     });
 
     // Close modal and rerender
