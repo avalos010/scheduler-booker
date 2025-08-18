@@ -4,6 +4,9 @@ import "@testing-library/jest-dom";
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
 
+// Mock fetch globally for all tests
+global.fetch = jest.fn();
+
 // Mock Supabase
 jest.mock("./src/lib/supabase", () => ({
   supabase: {
@@ -36,3 +39,9 @@ jest.mock("next/navigation", () => ({
   }),
   useSearchParams: () => new URLSearchParams(),
 }));
+
+// Global test cleanup to ensure isolation
+beforeEach(() => {
+  jest.clearAllMocks();
+  global.fetch.mockClear();
+});

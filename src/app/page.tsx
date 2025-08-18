@@ -4,7 +4,6 @@ import {
   CalendarDaysIcon,
   ClockIcon,
   UserGroupIcon,
-  ShieldCheckIcon,
   ArrowRightIcon,
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";

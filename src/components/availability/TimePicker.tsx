@@ -114,22 +114,24 @@ export default function TimePicker({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`w-32 px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 hover:border-gray-400 transition-colors flex items-center justify-between ${
-          disabled ? "opacity-50 cursor-not-allowed" : ""
+        className={`w-full sm:w-32 px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 hover:border-gray-400 active:border-gray-500 transition-colors flex items-center justify-between ${
+          disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
         }`}
       >
-        <span className={value ? "text-gray-900" : "text-gray-500"}>
+        <span
+          className={`truncate ${value ? "text-gray-900" : "text-gray-500"}`}
+        >
           {value ? formatTimeDisplay(value) : placeholder}
         </span>
         <ChevronDownIcon
-          className={`w-4 h-4 text-gray-400 transition-transform ${
+          className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${
             isOpen ? "rotate-180" : ""
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-64 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden">
+        <div className="absolute z-50 w-full sm:w-64 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden">
           {/* Search input */}
           <div className="p-3 border-b border-gray-100">
             <input
@@ -149,14 +151,16 @@ export default function TimePicker({
                 <button
                   key={time}
                   onClick={() => handleSelect(time)}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 transition-colors ${
+                  className={`w-full px-3 py-2 sm:py-2.5 text-left text-sm hover:bg-blue-50 active:bg-blue-100 transition-colors ${
                     value === time
                       ? "bg-blue-100 text-blue-900"
                       : "text-gray-700"
                   }`}
                 >
                   <span className="font-medium">{formatTimeDisplay(time)}</span>
-                  <span className="ml-2 text-gray-400 text-xs">{time}</span>
+                  <span className="ml-2 text-gray-400 text-xs hidden sm:inline">
+                    {time}
+                  </span>
                 </button>
               ))
             ) : (

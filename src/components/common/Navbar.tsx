@@ -1,40 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import LogoutButton from "@/components/auth/LogoutButton";
 import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 
-export default function Navbar() {
+interface NavbarProps {
+  isAuthed: boolean;
+}
+
+export default function Navbar({ isAuthed }: NavbarProps) {
   const pathname = usePathname();
+
   const isAuthRoute =
     pathname?.startsWith("/login") ||
     pathname?.startsWith("/signup") ||
     pathname?.startsWith("/onboarding");
-
-  const [isAuthed, setIsAuthed] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    async function refreshUser() {
-      const { data } = await supabase.auth.getUser();
-      if (!isMounted) return;
-      const authed = Boolean(data?.user);
-      setIsAuthed(authed);
-      setUserEmail(data?.user?.email ?? null);
-    }
-    refreshUser();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      refreshUser();
-    });
-    return () => {
-      isMounted = false;
-      sub?.subscription.unsubscribe();
-    };
-  }, []);
 
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
@@ -82,11 +63,6 @@ export default function Navbar() {
             {isAuthed ? (
               !isAuthRoute ? (
                 <>
-                  {userEmail && (
-                    <span className="hidden sm:inline text-sm text-gray-700 bg-white/70 px-3 py-2 rounded-lg font-medium ring-1 ring-gray-200">
-                      {userEmail}
-                    </span>
-                  )}
                   <LogoutButton />
                 </>
               ) : null

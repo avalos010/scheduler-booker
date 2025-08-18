@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { supabase } from "@/lib/supabase";
 import {
   EnvelopeIcon,
   LockClosedIcon,
@@ -12,6 +11,10 @@ import {
   EyeSlashIcon,
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
+import {
+  HydrationSafeInput,
+  HydrationSafeButton,
+} from "@/components/common/HydrationSafeElement";
 
 const signupSchema = z
   .object({
@@ -47,13 +50,21 @@ export default function SignupForm() {
     setMessage(null);
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
       });
 
-      if (error) {
-        setError(error.message);
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Signup failed");
       } else {
         setMessage(
           "Signup successful! Please check your email for verification."
@@ -63,8 +74,7 @@ export default function SignupForm() {
           window.location.href = "/onboarding";
         }, 1000);
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setIsLoading(false);
@@ -99,7 +109,7 @@ export default function SignupForm() {
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <EnvelopeIcon className="h-5 w-5 text-gray-400" />
             </div>
-            <input
+            <HydrationSafeInput
               {...register("email")}
               type="email"
               id="email"
@@ -109,7 +119,7 @@ export default function SignupForm() {
           </div>
           {errors.email && (
             <p className="mt-2 text-sm text-red-600 flex items-center">
-              <div className="w-1 h-1 bg-red-500 rounded-full mr-2"></div>
+              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
               {errors.email.message}
             </p>
           )}
@@ -126,7 +136,7 @@ export default function SignupForm() {
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <LockClosedIcon className="h-5 w-5 text-gray-400" />
             </div>
-            <input
+            <HydrationSafeInput
               {...register("password")}
               type={showPassword ? "text" : "password"}
               id="password"
@@ -147,7 +157,7 @@ export default function SignupForm() {
           </div>
           {errors.password && (
             <p className="mt-2 text-sm text-red-600 flex items-center">
-              <div className="w-1 h-1 bg-red-500 rounded-full mr-2"></div>
+              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
               {errors.password.message}
             </p>
           )}
@@ -164,7 +174,7 @@ export default function SignupForm() {
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <LockClosedIcon className="h-5 w-5 text-gray-400" />
             </div>
-            <input
+            <HydrationSafeInput
               {...register("confirmPassword")}
               type={showConfirmPassword ? "text" : "password"}
               id="confirmPassword"
@@ -185,14 +195,14 @@ export default function SignupForm() {
           </div>
           {errors.confirmPassword && (
             <p className="mt-2 text-sm text-red-600 flex items-center">
-              <div className="w-1 h-1 bg-red-500 rounded-full mr-2"></div>
+              <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
               {errors.confirmPassword.message}
             </p>
           )}
         </div>
 
         <div className="flex items-start">
-          <input
+          <HydrationSafeInput
             id="terms"
             name="terms"
             type="checkbox"
@@ -217,7 +227,7 @@ export default function SignupForm() {
           </label>
         </div>
 
-        <button
+        <HydrationSafeButton
           type="submit"
           disabled={isLoading}
           className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:-translate-y-0.5"
@@ -230,7 +240,7 @@ export default function SignupForm() {
           ) : (
             "Create account"
           )}
-        </button>
+        </HydrationSafeButton>
       </form>
     </div>
   );

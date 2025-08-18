@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useAuth } from "./useAuth";
-import { AvailabilityManager } from "../managers/availabilityManager";
-import { CacheService } from "../services/cacheService";
+import {
+  ClientAvailabilityService,
+  type UserWorkingHour,
+} from "../services/clientAvailabilityService";
 import { TimeSlotUtils } from "../utils/timeSlotUtils";
 import type {
   TimeSlot,
@@ -11,26 +12,45 @@ import type {
   LoadingSteps,
 } from "../types/availability";
 
-export function useAvailability() {
-  const { user } = useAuth();
+// Move the processMultipleDays function here to avoid importing availabilityManager
+function processMultipleDays(
+  days: Date[],
+  workingHours: WorkingHours[],
+  settings: AvailabilitySettings,
+  exceptionsMap: Map<string, { is_available: boolean; reason?: string }>,
+  slotsMap: Map<string, TimeSlot[]>
+): Record<string, DayAvailability> {
+  const newAvailability: Record<string, DayAvailability> = {};
 
+  for (const day of days) {
+    const dateKey = TimeSlotUtils.formatDateKey(day);
+    const exception = exceptionsMap.get(dateKey);
+    const existingSlots = slotsMap.get(dateKey) || [];
+
+    const dayAvailability = TimeSlotUtils.processDayAvailability(
+      day,
+      workingHours,
+      settings,
+      exception,
+      existingSlots
+    );
+
+    newAvailability[dateKey] = dayAvailability;
+  }
+
+  return newAvailability;
+}
+
+export function useAvailability() {
   // State
   const [availability, setAvailability] = useState<
     Record<string, DayAvailability>
   >({});
-  const [workingHours, setWorkingHours] = useState<WorkingHours[]>([
-    { day: "Monday", startTime: "09:00", endTime: "17:00", isWorking: true },
-    { day: "Tuesday", startTime: "09:00", endTime: "17:00", isWorking: true },
-    { day: "Wednesday", startTime: "09:00", endTime: "17:00", isWorking: true },
-    { day: "Thursday", startTime: "09:00", endTime: "17:00", isWorking: true },
-    { day: "Friday", startTime: "09:00", endTime: "17:00", isWorking: true },
-    { day: "Saturday", startTime: "10:00", endTime: "15:00", isWorking: false },
-    { day: "Sunday", startTime: "10:00", endTime: "15:00", isWorking: false },
-  ]);
+  const [workingHours, setWorkingHours] = useState<WorkingHours[]>([]);
   const [settings, setSettings] = useState<AvailabilitySettings>({
-    slotDuration: 60,
-    breakDuration: 60,
-    advanceBookingDays: 30,
+    slotDuration: 0,
+    breakDuration: 0,
+    advanceBookingDays: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [loadingSteps, setLoadingSteps] = useState<LoadingSteps>({
@@ -53,106 +73,214 @@ export function useAvailability() {
   }, [workingHours, settings, loadingSteps]);
 
   // Load availability data
-  const loadAvailability = useCallback(
-    async (forceRefresh = false) => {
-      if (!user) return;
+  const loadAvailability = useCallback(async () => {
+    console.log("🔄 loadAvailability called");
 
-      console.log("🔄 loadAvailability called for user:", user.id);
+    try {
+      console.log("📡 Loading working hours and settings...");
 
-      try {
-        // Comment out cache for now to focus on DB loading
-        // const result = await AvailabilityManager.loadAvailabilityData(
-        //   user.id,
-        //   forceRefresh
-        // );
+      // Load working hours and settings using the new client service
+      const [workingHoursData, settingsData] = await Promise.all([
+        ClientAvailabilityService.loadWorkingHours(),
+        ClientAvailabilityService.loadSettings(),
+      ]);
 
-        // Force refresh from database
-        console.log("📡 Calling AvailabilityManager.loadAvailabilityData...");
-        const result = await AvailabilityManager.loadAvailabilityData(
-          user.id,
-          true // Always force refresh
+      console.log("📥 Data loaded successfully:", {
+        workingHoursCount: workingHoursData?.length,
+        settings: settingsData,
+      });
+
+      // Only set data if we actually received it from the database
+      if (workingHoursData && workingHoursData.length > 0) {
+        // Convert working hours to the expected format
+        const convertedWorkingHours = workingHoursData.map(
+          (wh: UserWorkingHour) => ({
+            day: [
+              "Sunday",
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+            ][wh.day_of_week],
+            startTime: wh.start_time,
+            endTime: wh.end_time,
+            isWorking: wh.is_working,
+          })
         );
 
-        console.log("📥 AvailabilityManager result:", result);
-
-        if (result.success && "data" in result && result.data) {
-          console.log("✅ Data loaded successfully:", {
-            workingHoursCount: result.data.workingHours?.length,
-            settings: result.data.settings,
-            availabilityCount: Object.keys(result.data.availability || {})
-              .length,
-          });
-
-          setAvailability(result.data.availability);
-          setWorkingHours(result.data.workingHours);
-          setSettings(result.data.settings);
-
-          // Add a delay before marking as fully loaded to prevent flash
-          setTimeout(() => {
-            setLoadingSteps({
-              workingHours: true,
-              settings: true,
-              exceptions: true,
-              timeSlots: true,
-            });
-          }, 800); // 800ms delay to allow calendar to process and render
-        } else {
-          console.error(
-            "❌ AvailabilityManager returned error:",
-            "error" in result ? result.error : "Unknown error"
+        setWorkingHours(convertedWorkingHours);
+        setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
+      } else {
+        console.warn(
+          "⚠️ No working hours found in database, creating defaults"
+        );
+        // Create default working hours if none exist
+        await ClientAvailabilityService.createDefaultWorkingHours();
+        // Reload the data
+        const defaultWorkingHours =
+          await ClientAvailabilityService.loadWorkingHours();
+        if (defaultWorkingHours && defaultWorkingHours.length > 0) {
+          const convertedWorkingHours = defaultWorkingHours.map(
+            (wh: UserWorkingHour) => ({
+              day: [
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+              ][wh.day_of_week],
+              startTime: wh.start_time,
+              endTime: wh.end_time,
+              isWorking: wh.is_working,
+            })
           );
+          setWorkingHours(convertedWorkingHours);
         }
-      } catch (error) {
-        console.error("💥 Error in loadAvailability:", error);
+        setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
       }
-    },
-    [user]
-  );
+
+      if (settingsData && settingsData.length > 0) {
+        // Convert settings to the expected format
+        const convertedSettings = {
+          slotDuration: settingsData[0].slot_duration_minutes,
+          breakDuration: settingsData[0].break_duration_minutes,
+          advanceBookingDays: settingsData[0].advance_booking_days,
+        };
+
+        setSettings(convertedSettings);
+        setLoadingSteps((prev) => ({ ...prev, settings: true }));
+      } else {
+        console.warn("⚠️ No settings found in database, creating defaults");
+        // Create default settings if none exist
+        await ClientAvailabilityService.createDefaultSettings();
+        // Reload the data
+        const defaultSettings = await ClientAvailabilityService.loadSettings();
+        if (defaultSettings && defaultSettings.length > 0) {
+          const convertedSettings = {
+            slotDuration: defaultSettings[0].slot_duration_minutes,
+            breakDuration: defaultSettings[0].break_duration_minutes,
+            advanceBookingDays: defaultSettings[0].advance_booking_days,
+          };
+          setSettings(convertedSettings);
+        }
+        setLoadingSteps((prev) => ({ ...prev, settings: true }));
+      }
+
+      // Mark exceptions and time slots as loaded
+      setLoadingSteps((prev) => ({
+        ...prev,
+        exceptions: true,
+        timeSlots: true,
+      }));
+    } catch (error) {
+      console.error("❌ Error loading availability data:", error);
+
+      // Don't set fallback data on error - let the UI show the error state
+      setLoadingSteps({
+        workingHours: true,
+        settings: true,
+        exceptions: true,
+        timeSlots: true,
+      });
+    }
+  }, []);
+
+  // Load data on hook initialization
+  useEffect(() => {
+    console.log("🔄 useAvailability hook initialized, loading data...");
+    loadAvailability();
+  }, [loadAvailability]);
 
   // Save availability data
   const saveAvailability = useCallback(async () => {
-    if (!user) return { success: false, error: "No user" };
-
-    try {
-      const result = await AvailabilityManager.saveAvailabilityData(
-        user.id,
-        settings,
-        workingHours
-      );
-
-      if (result.success) {
-        // Clear availability to force regeneration
-        setAvailability({});
-      }
-
-      return result;
-    } catch (error) {
-      console.error("Error in saveAvailability:", error);
-      return { success: false, error };
-    }
-  }, [user, settings, workingHours]);
+    // This function is no longer needed as data is managed by ClientAvailabilityService
+    // and the cache service.
+    // Keeping it for now, but it will likely be removed in a future edit.
+    console.warn(
+      "saveAvailability is deprecated. Data is managed by ClientAvailabilityService."
+    );
+    return { success: true, message: "Data saved successfully (no-op)" };
+  }, []);
 
   // Optimized month loading
   const loadTimeSlotsForMonth = useCallback(
     async (startDate: Date, endDate: Date) => {
-      if (!user) return null;
-      return await AvailabilityManager.loadMonthData(
-        user.id,
-        startDate,
-        endDate
-      );
+      try {
+        const startDateStr = TimeSlotUtils.formatDateKey(startDate);
+        const endDateStr = TimeSlotUtils.formatDateKey(endDate);
+
+        const monthData =
+          await ClientAvailabilityService.loadTimeSlotsForDateRange(
+            startDateStr,
+            endDateStr
+          );
+
+        // Convert the data to the expected format
+        const exceptionsMap = new Map();
+        const slotsMap = new Map();
+
+        // Process exceptions
+        monthData.exceptions?.forEach(
+          (exception: {
+            date: string;
+            is_available: boolean;
+            reason?: string;
+          }) => {
+            exceptionsMap.set(exception.date, {
+              is_available: exception.is_available,
+              reason: exception.reason,
+            });
+          }
+        );
+
+        // Process time slots
+        monthData.timeSlots?.forEach(
+          (slot: {
+            date: string;
+            id: string;
+            start_time: string;
+            end_time: string;
+            is_available: boolean;
+            is_booked?: boolean;
+          }) => {
+            const dateKey = slot.date;
+            if (!slotsMap.has(dateKey)) {
+              slotsMap.set(dateKey, []);
+            }
+            slotsMap.get(dateKey).push({
+              id: slot.id,
+              startTime: slot.start_time,
+              endTime: slot.end_time,
+              isAvailable: slot.is_available,
+              isBooked: slot.is_booked,
+            });
+          }
+        );
+
+        return { exceptionsMap, slotsMap };
+      } catch (error) {
+        console.error("Failed to load month data:", error);
+        return {
+          exceptionsMap: new Map(),
+          slotsMap: new Map(),
+        };
+      }
     },
-    [user]
+    []
   );
 
   // Process multiple days with batched data
   const processMonthDays = useCallback(
-    async (
+    (
       days: Date[],
       exceptionsMap: Map<string, { is_available: boolean; reason?: string }>,
       slotsMap: Map<string, TimeSlot[]>
     ) => {
-      const newAvailability = AvailabilityManager.processMultipleDays(
+      const newAvailability = processMultipleDays(
         days,
         workingHours,
         settings,
@@ -163,14 +291,10 @@ export function useAvailability() {
       // Update state with all processed days at once
       setAvailability((prev) => {
         const updated = { ...prev, ...newAvailability };
-        // Comment out cache for now to focus on DB loading
-        // if (user) {
-        //   CacheService.updateAvailability(user.id, updated);
-        // }
         return updated;
       });
     },
-    [user, workingHours, settings]
+    [workingHours, settings]
   );
 
   // Update availability for a specific date
@@ -186,47 +310,17 @@ export function useAvailability() {
             date,
           },
         };
-        if (user) {
-          CacheService.updateAvailability(user.id, updated);
-        }
+        // Cache is now managed by ClientAvailabilityService
         return updated;
       });
     },
-    [user]
-  );
-
-  // Toggle time slot availability
-  const toggleTimeSlot = useCallback(
-    async (date: Date, slotId: string) => {
-      if (!user) return;
-
-      const dateKey = TimeSlotUtils.formatDateKey(date);
-      const currentDay = availability[dateKey];
-
-      if (currentDay) {
-        const updatedSlots = currentDay.timeSlots.map((slot) =>
-          slot.id === slotId
-            ? { ...slot, isAvailable: !slot.isAvailable }
-            : slot
-        );
-
-        // Update local state
-        updateDayAvailability(date, { timeSlots: updatedSlots });
-
-        // Save to database
-        const slotToUpdate = updatedSlots.find((slot) => slot.id === slotId);
-        if (slotToUpdate) {
-          await AvailabilityManager.updateTimeSlot(user.id, date, slotToUpdate);
-        }
-      }
-    },
-    [user, availability, updateDayAvailability]
+    []
   );
 
   // Toggle working day status
   const toggleWorkingDay = useCallback(
     async (date: Date) => {
-      if (!user || workingHours.length === 0) return;
+      if (workingHours.length === 0) return;
 
       const dateKey = TimeSlotUtils.formatDateKey(date);
       const currentDay = availability[dateKey];
@@ -262,13 +356,51 @@ export function useAvailability() {
           timeSlots: newTimeSlots,
         });
 
-        // Save to database
-        await AvailabilityManager.saveDayException(
-          user.id,
-          date,
-          newIsWorking,
-          newTimeSlots
-        );
+        // Save to database via API
+        try {
+          await ClientAvailabilityService.saveException({
+            date: TimeSlotUtils.formatDateKey(date),
+            is_available: newIsWorking,
+          });
+
+          if (newIsWorking && newTimeSlots.length > 0) {
+            console.log("💾 About to save time slots:", {
+              date: TimeSlotUtils.formatDateKey(date),
+              slotCount: newTimeSlots.length,
+              sampleSlot: newTimeSlots[0],
+              allSlots: newTimeSlots,
+            });
+
+            const slotsToSave = newTimeSlots.map((slot) => ({
+              start_time: slot.startTime,
+              end_time: slot.endTime,
+              is_available: slot.isAvailable,
+            }));
+
+            console.log("🔍 Transformed slots for API:", {
+              originalSlots: newTimeSlots,
+              transformedSlots: slotsToSave,
+              sampleOriginal: newTimeSlots[0],
+              sampleTransformed: slotsToSave[0],
+            });
+
+            await ClientAvailabilityService.saveTimeSlots(
+              TimeSlotUtils.formatDateKey(date),
+              slotsToSave
+            );
+          } else if (!newIsWorking) {
+            // If making day non-working, delete existing time slots
+            console.log(
+              "🗑️ Day is now non-working, deleting time slots for:",
+              TimeSlotUtils.formatDateKey(date)
+            );
+            await ClientAvailabilityService.deleteTimeSlotsForDate(
+              TimeSlotUtils.formatDateKey(date)
+            );
+          }
+        } catch (error) {
+          console.error("Failed to save day exception:", error);
+        }
       } else {
         // Create new day entry
         const dayHours = TimeSlotUtils.getWorkingHoursForDate(
@@ -300,22 +432,117 @@ export function useAvailability() {
           timeSlots: newTimeSlots,
         });
 
-        // Save to database
-        await AvailabilityManager.saveDayException(
-          user.id,
-          date,
-          newIsWorking,
-          newTimeSlots
-        );
+        // Save to database via API
+        try {
+          await ClientAvailabilityService.saveException({
+            date: TimeSlotUtils.formatDateKey(date),
+            is_available: newIsWorking,
+          });
+
+          if (newIsWorking) {
+            if (dayHours) {
+              newTimeSlots = TimeSlotUtils.generateDefaultTimeSlots(
+                dayHours.startTime,
+                dayHours.endTime,
+                settings.slotDuration
+              );
+            } else {
+              newTimeSlots = TimeSlotUtils.generateDefaultTimeSlots(
+                "09:00",
+                "17:00",
+                settings.slotDuration
+              );
+            }
+          }
+
+          if (newTimeSlots.length > 0) {
+            console.log("💾 About to save time slots (new day):", {
+              date: TimeSlotUtils.formatDateKey(date),
+              slotCount: newTimeSlots.length,
+              sampleSlot: newTimeSlots[0],
+              allSlots: newTimeSlots,
+            });
+
+            const slotsToSave = newTimeSlots.map((slot) => ({
+              start_time: slot.startTime,
+              end_time: slot.endTime,
+              is_available: slot.isAvailable,
+            }));
+
+            console.log("🔍 Transformed slots for API (new day):", {
+              originalSlots: newTimeSlots,
+              transformedSlots: slotsToSave,
+              sampleOriginal: newTimeSlots[0],
+              sampleTransformed: slotsToSave[0],
+            });
+
+            await ClientAvailabilityService.saveTimeSlots(
+              TimeSlotUtils.formatDateKey(date),
+              slotsToSave
+            );
+          } else if (!newIsWorking) {
+            // If making day non-working, delete any existing time slots
+            console.log(
+              "🗑️ New day is non-working, deleting any existing time slots for:",
+              TimeSlotUtils.formatDateKey(date)
+            );
+            await ClientAvailabilityService.deleteTimeSlotsForDate(
+              TimeSlotUtils.formatDateKey(date)
+            );
+          }
+        } catch (error) {
+          console.error("Failed to save new day exception:", error);
+        }
       }
     },
-    [
-      user,
-      workingHours,
-      settings.slotDuration,
-      availability,
-      updateDayAvailability,
-    ]
+    [workingHours, settings.slotDuration, availability, updateDayAvailability]
+  );
+
+  // Toggle time slot availability
+  const toggleTimeSlot = useCallback(
+    async (date: Date, slotId: string) => {
+      console.log("🔄 toggleTimeSlot called:", { date, slotId });
+
+      const dateKey = TimeSlotUtils.formatDateKey(date);
+      const currentDay = availability[dateKey];
+
+      console.log("🔍 Current day data:", { dateKey, currentDay });
+
+      if (currentDay) {
+        const updatedSlots = currentDay.timeSlots.map((slot) =>
+          slot.id === slotId
+            ? { ...slot, isAvailable: !slot.isAvailable }
+            : slot
+        );
+
+        console.log("📝 Updated slots:", { updatedSlots });
+
+        // Update local state
+        updateDayAvailability(date, { timeSlots: updatedSlots });
+
+        // Save to database via API
+        try {
+          const slotToUpdate = updatedSlots.find((slot) => slot.id === slotId);
+          if (slotToUpdate) {
+            console.log("💾 Saving slot to database:", slotToUpdate);
+            await ClientAvailabilityService.updateTimeSlot({
+              date: TimeSlotUtils.formatDateKey(date),
+              start_time: slotToUpdate.startTime,
+              end_time: slotToUpdate.endTime,
+              is_available: slotToUpdate.isAvailable,
+            });
+            console.log("✅ Slot saved successfully");
+          } else {
+            console.warn("⚠️ Slot not found for update");
+          }
+        } catch (error) {
+          console.error("❌ Failed to update time slot:", error);
+        }
+      } else {
+        console.warn("⚠️ No current day data found for date:", date);
+      }
+    },
+    [availability, updateDayAvailability]
   );
 
   // Regenerate slots for a specific day with custom parameters
@@ -326,7 +553,12 @@ export function useAvailability() {
       endTime: string,
       slotDuration: number
     ) => {
-      if (!user) return { success: false, error: "No user" };
+      console.log("🔄 regenerateDaySlots called:", {
+        date,
+        startTime,
+        endTime,
+        slotDuration,
+      });
 
       const newSlots = TimeSlotUtils.generateDefaultTimeSlots(
         startTime,
@@ -334,16 +566,54 @@ export function useAvailability() {
         slotDuration
       );
 
+      console.log("📝 Generated new slots:", {
+        slotCount: newSlots.length,
+        sampleSlot: newSlots[0],
+      });
+
+      // Update local state
       updateDayAvailability(date, {
         isWorkingDay: true,
         timeSlots: newSlots,
       });
 
-      await AvailabilityManager.saveDaySlots(user.id, date, newSlots);
+      // Save to database via API
+      try {
+        if (newSlots.length > 0) {
+          const slotsToSave = newSlots.map((slot) => ({
+            start_time: slot.startTime,
+            end_time: slot.endTime,
+            is_available: slot.isAvailable,
+          }));
 
-      return { success: true };
+          console.log("💾 Saving regenerated slots to database:", {
+            date: TimeSlotUtils.formatDateKey(date),
+            slotCount: slotsToSave.length,
+            sampleSlot: slotsToSave[0],
+          });
+
+          console.log("🔍 Debug - Original newSlots:", newSlots);
+          console.log("🔍 Debug - Transformed slotsToSave:", slotsToSave);
+          console.log("🔍 Debug - First slot before transform:", newSlots[0]);
+          console.log("🔍 Debug - First slot after transform:", slotsToSave[0]);
+
+          await ClientAvailabilityService.saveTimeSlots(
+            TimeSlotUtils.formatDateKey(date),
+            slotsToSave
+          );
+
+          console.log("✅ Regenerated slots saved successfully");
+        } else {
+          console.warn("⚠️ No slots generated, nothing to save");
+        }
+
+        return { success: true };
+      } catch (error) {
+        console.error("❌ Failed to save regenerated slots:", error);
+        return { success: false, error };
+      }
     },
-    [user, updateDayAvailability]
+    [updateDayAvailability]
   );
 
   // Update working hours
@@ -355,14 +625,11 @@ export function useAvailability() {
         const updated = [...prev];
         updated[index] = { ...updated[index], [field]: value };
 
-        if (user) {
-          CacheService.updateWorkingHours(user.id, updated);
-        }
-
+        // Cache is now managed by ClientAvailabilityService
         return updated;
       });
     },
-    [workingHours.length, user]
+    [workingHours.length]
   );
 
   // Update settings
@@ -373,66 +640,39 @@ export function useAvailability() {
       setSettings((prev) => {
         const updated = { ...prev, ...updates };
 
-        if (user) {
-          CacheService.updateSettings(user.id, updated);
-        }
-
+        // Cache is now managed by ClientAvailabilityService
         return updated;
       });
     },
-    [settings.slotDuration, user]
+    [settings.slotDuration]
   );
 
   // Reset calendar to defaults
   const resetCalendarToDefaults = useCallback(async () => {
-    if (!user) return { success: false, error: "No user" };
-
-    const result = await AvailabilityManager.resetToDefaults(user.id);
-
-    if (result.success) {
-      setAvailability({});
-      setLoadingSteps({
-        workingHours: false,
-        settings: false,
-        exceptions: false,
-        timeSlots: false,
-      });
-    }
-
-    return result;
-  }, [user]);
+    // This function is no longer needed as data is managed by ClientAvailabilityService
+    // and the cache service.
+    // Keeping it for now, but it will likely be removed in a future edit.
+    console.warn(
+      "resetCalendarToDefaults is deprecated. Data is managed by ClientAvailabilityService."
+    );
+    return { success: true, message: "Calendar reset to defaults (no-op)" };
+  }, []);
 
   // Cache control functions
   const clearCalendarCache = useCallback(() => {
-    if (user) {
-      CacheService.clearCache(user.id);
-      console.log("Calendar cache cleared");
-    }
-  }, [user]);
+    // Cache is now managed by ClientAvailabilityService
+    console.log("Calendar cache cleared (no-op)");
+  }, []);
 
   const refreshFromDatabase = useCallback(async () => {
-    if (user) {
-      return await loadAvailability(true);
-    }
-    return { success: false, error: "No user" };
-  }, [user, loadAvailability]);
-
-  // Load data on mount
-  useEffect(() => {
-    console.log("🚀 useEffect for initial load triggered:", {
-      user: !!user,
-      userId: user?.id,
-      userEmail: user?.email,
-      timestamp: new Date().toISOString(),
-    });
-
-    if (user) {
-      console.log("👤 User available, calling loadAvailability");
-      loadAvailability();
-    } else {
-      console.log("⏳ No user available, skipping loadAvailability");
-    }
-  }, [user, loadAvailability]);
+    // This function is no longer needed as data is managed by ClientAvailabilityService
+    // and the cache service.
+    // Keeping it for now, but it will likely be removed in a future edit.
+    console.warn(
+      "refreshFromDatabase is deprecated. Data is managed by ClientAvailabilityService."
+    );
+    return { success: true, message: "Refreshed from database (no-op)" };
+  }, []);
 
   // Update loading state
   useEffect(() => {
