@@ -82,7 +82,10 @@ export default function BookingForm({ userId }: BookingFormProps) {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/availability/time-slots?date=${format(date, "yyyy-MM-dd")}`
+        `/api/availability/public?date=${format(
+          date,
+          "yyyy-MM-dd"
+        )}&userId=${userId}`
       );
       if (response.ok) {
         const data = await response.json();
