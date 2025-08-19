@@ -24,13 +24,11 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   PauseIcon,
-  Bars3Icon,
 } from "@heroicons/react/24/outline";
 import { useAvailability } from "@/lib/hooks/useAvailabilityNew";
 import type { TimeSlot } from "@/lib/types/availability";
 import DayDetailsModal from "./DayDetailsModal";
 import SettingsModal from "./SettingsModal";
-import { HydrationSafeButton } from "../common/HydrationSafeElement";
 
 interface AvailabilityCalendarProps {
   userId: string;

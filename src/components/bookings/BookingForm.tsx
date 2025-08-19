@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { UserIcon, PhoneIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import { UserIcon } from "@heroicons/react/24/outline";
 import {
   bookingFormSchema,
   type BookingFormData,
@@ -136,14 +136,12 @@ export default function BookingForm({ userId }: BookingFormProps) {
   return (
     <div className="space-y-6">
       <SharedAvailabilityCalendar
-        userId={userId}
         onDateSelect={handleDateSelect}
         onTimeSlotSelect={handleTimeSlotSelect}
         selectedDate={selectedDate}
         selectedTimeSlot={selectedTimeSlot}
         dayAvailability={dayAvailability}
         isLoading={isLoading}
-        fetchDayAvailability={fetchDayAvailability}
         showBookingDetails={true}
       />
 

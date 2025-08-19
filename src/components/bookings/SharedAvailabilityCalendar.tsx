@@ -31,26 +31,22 @@ interface DayAvailability {
 }
 
 interface SharedAvailabilityCalendarProps {
-  userId: string;
   onDateSelect: (date: Date) => void;
   onTimeSlotSelect: (slot: TimeSlot) => void;
   selectedDate: Date | null;
   selectedTimeSlot: TimeSlot | null;
   dayAvailability: DayAvailability | null;
   isLoading: boolean;
-  fetchDayAvailability: (date: Date) => Promise<void>;
   showBookingDetails?: boolean; // Control whether to show booking information
 }
 
 export default function SharedAvailabilityCalendar({
-  userId,
   onDateSelect,
   onTimeSlotSelect,
   selectedDate,
   selectedTimeSlot,
   dayAvailability,
   isLoading,
-  fetchDayAvailability,
   showBookingDetails = false,
 }: SharedAvailabilityCalendarProps) {
   const [availableDates, setAvailableDates] = useState<Date[]>([]);
@@ -200,7 +196,7 @@ export default function SharedAvailabilityCalendar({
                               📝
                             </span>
                             <span className="text-xs text-gray-600 italic leading-tight">
-                              "{slot.bookingDetails.notes}"
+                              &ldquo;{slot.bookingDetails.notes}&rdquo;
                             </span>
                           </div>
                         )}
