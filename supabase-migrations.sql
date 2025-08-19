@@ -51,11 +51,28 @@ CREATE TABLE IF NOT EXISTS user_time_slots (
   UNIQUE(user_id, date, start_time, end_time)
 );
 
+-- Bookings table
+CREATE TABLE IF NOT EXISTS bookings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  client_name TEXT NOT NULL,
+  client_email TEXT NOT NULL,
+  client_phone TEXT,
+  notes TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled', 'completed', 'no-show')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Enable RLS
 ALTER TABLE user_availability_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_working_hours ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_availability_exceptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_time_slots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 DO $$
@@ -123,6 +140,22 @@ BEGIN
     CREATE POLICY "Users can update own time slots" ON user_time_slots
       FOR UPDATE USING (auth.uid() = user_id);
   END IF;
+
+  -- bookings policies
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'bookings' AND policyname = 'Users can view own bookings') THEN
+    CREATE POLICY "Users can view own bookings" ON bookings
+      FOR ALL USING (auth.uid() = user_id);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'bookings' AND policyname = 'Users can insert own bookings') THEN
+    CREATE POLICY "Users can insert own bookings" ON bookings
+      FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'bookings' AND policyname = 'Users can update own bookings') THEN
+    CREATE POLICY "Users can update own bookings" ON bookings
+      FOR UPDATE USING (auth.uid() = user_id);
+  END IF;
 END $$;
 
 -- Indexes for performance
@@ -131,6 +164,9 @@ CREATE INDEX IF NOT EXISTS idx_user_working_hours_user_id ON user_working_hours(
 CREATE INDEX IF NOT EXISTS idx_user_availability_exceptions_user_id_date ON user_availability_exceptions(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_user_time_slots_user_id_date ON user_time_slots(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_user_time_slots_user_id_date_available ON user_time_slots(user_id, date, is_available);
+CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_user_id_date ON bookings(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
 
 -- Function to generate time slots
 CREATE OR REPLACE FUNCTION generate_time_slots(

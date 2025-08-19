@@ -70,6 +70,19 @@ export class AvailabilityManager {
           advanceBookingDays: defaultSettings.advance_booking_days,
         };
         console.log("✅ Default settings created:", settings);
+        
+        // Save the default settings to the database so public API can access them
+        try {
+          await AvailabilityService.saveSettings({
+            user_id: userId,
+            slot_duration_minutes: defaultSettings.slot_duration_minutes,
+            break_duration_minutes: defaultSettings.break_duration_minutes,
+            advance_booking_days: defaultSettings.advance_booking_days,
+          });
+          console.log("✅ Default settings saved to database");
+        } catch (error) {
+          console.warn("⚠️ Could not save default settings to database:", error);
+        }
       }
 
       // Load working hours
@@ -90,6 +103,16 @@ export class AvailabilityManager {
           defaultHours || []
         );
         console.log("✅ Default working hours created:", workingHours);
+        
+        // Save the default working hours to the database so public API can access them
+        try {
+          if (defaultHours && defaultHours.length > 0) {
+            await AvailabilityService.saveWorkingHours(defaultHours);
+            console.log("✅ Default working hours saved to database");
+          }
+        } catch (error) {
+          console.warn("⚠️ Could not save default working hours to database:", error);
+        }
       }
 
       // Load time slots and exceptions for the current month

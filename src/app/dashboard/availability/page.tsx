@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import AvailabilityCalendar from "@/components/availability/AvailabilityCalendar";
 import { AvailabilityManager } from "@/lib/managers/availabilityManager";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 
 export default async function AvailabilityPage() {
   const supabase = await createSupabaseServerClient();
@@ -105,6 +106,12 @@ export default async function AvailabilityPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200">
       <div className="mx-auto max-w-7xl py-10 px-6 lg:px-8">
+        <Breadcrumbs
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Availability" },
+          ]}
+        />
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>

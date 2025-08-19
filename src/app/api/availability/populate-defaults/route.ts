@@ -1,22 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServerClient();
+    const { userId } = await request.json();
 
-    // Get the current user
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId) {
+      return NextResponse.json(
+        { message: "Missing userId parameter" },
+        { status: 400 }
+      );
     }
 
-    const userId = session.user.id;
-    console.log("🔍 Populating defaults for user:", userId);
+    const supabase = await createSupabaseServerClient();
 
-    // Create default settings
+    // Create default availability settings
     const defaultSettings = {
       user_id: userId,
       slot_duration_minutes: 60,
@@ -24,18 +22,49 @@ export async function POST() {
       advance_booking_days: 30,
     };
 
-    const { data: settingsData, error: settingsError } = await supabase
-      .from("user_availability_settings")
-      .upsert(defaultSettings, { onConflict: "user_id" })
-      .select()
-      .single();
+    console.log("📝 Creating default settings for user:", userId);
 
-    if (settingsError) {
-      console.error("Settings error:", settingsError);
-      return NextResponse.json(
-        { error: "Failed to create settings" },
-        { status: 500 }
-      );
+    // First check if settings already exist
+    const { data: existingSettings } = await supabase
+      .from("user_availability_settings")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    let settingsData;
+    if (existingSettings) {
+      console.log("📝 Settings already exist, updating them");
+      const { data, error } = await supabase
+        .from("user_availability_settings")
+        .update(defaultSettings)
+        .eq("user_id", userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("📝 Error updating settings:", error);
+        return NextResponse.json(
+          { message: "Error updating settings", error: error.message },
+          { status: 500 }
+        );
+      }
+      settingsData = data;
+    } else {
+      console.log("📝 Creating new settings");
+      const { data, error } = await supabase
+        .from("user_availability_settings")
+        .insert(defaultSettings)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("📝 Error creating settings:", error);
+        return NextResponse.json(
+          { message: "Error creating settings", error: error.message },
+          { status: 500 }
+        );
+      }
+      settingsData = data;
     }
 
     // Create default working hours
@@ -91,131 +120,35 @@ export async function POST() {
       }, // Sunday
     ];
 
-    const { error: hoursError } = await supabase
+    console.log("📝 Creating default working hours for user:", userId);
+    const { data: workingHoursData, error: workingHoursError } = await supabase
       .from("user_working_hours")
-      .upsert(defaultWorkingHours, { onConflict: "user_id,day_of_week" });
+      .upsert(defaultWorkingHours, { onConflict: "user_id,day_of_week" })
+      .select();
 
-    if (hoursError) {
-      console.error("Working hours error:", hoursError);
+    if (workingHoursError) {
+      console.error("📝 Error creating working hours:", workingHoursError);
       return NextResponse.json(
-        { error: "Failed to create working hours" },
+        {
+          message: "Error creating working hours",
+          error: workingHoursError.message,
+        },
         { status: 500 }
       );
     }
 
-    // Generate time slots for the current month
-    const currentDate = new Date();
-    const monthStart = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      1
-    );
-    const monthEnd = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + 1,
-      0
-    );
-
-    const timeSlots = [];
-    const exceptions = [];
-
-    for (
-      let d = new Date(monthStart);
-      d <= monthEnd;
-      d.setDate(d.getDate() + 1)
-    ) {
-      const dateKey = d.toISOString().split("T")[0];
-      const dayOfWeek = d.getDay();
-      const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      const dayHours = defaultWorkingHours[dayIndex];
-
-      if (dayHours.is_working) {
-        // Generate time slots for working days
-        let currentTime = new Date(`2000-01-01T${dayHours.start_time}`);
-        const endTime = new Date(`2000-01-01T${dayHours.end_time}`);
-
-        while (currentTime < endTime) {
-          const slotStart = currentTime.toTimeString().slice(0, 5);
-          const slotEnd = new Date(currentTime.getTime() + 60 * 60000); // 60 minute slots
-
-          if (slotEnd <= endTime) {
-            timeSlots.push({
-              user_id: userId,
-              date: dateKey,
-              start_time: slotStart,
-              end_time: slotEnd.toTimeString().slice(0, 5),
-              is_available: true,
-              is_booked: false,
-            });
-          }
-
-          // Move to next slot (including 15 minute break)
-          currentTime = new Date(slotEnd.getTime() + 15 * 60000);
-        }
-
-        // Mark as working day
-        exceptions.push({
-          user_id: userId,
-          date: dateKey,
-          is_available: true,
-          reason: "Default working day",
-        });
-      } else {
-        // Mark as non-working day
-        exceptions.push({
-          user_id: userId,
-          date: dateKey,
-          is_available: false,
-          reason: "Default non-working day",
-        });
-      }
-    }
-
-    // Insert time slots
-    if (timeSlots.length > 0) {
-      const { error: slotsError } = await supabase
-        .from("user_time_slots")
-        .upsert(timeSlots, { onConflict: "user_id,date,start_time,end_time" });
-
-      if (slotsError) {
-        console.error("Time slots error:", slotsError);
-        return NextResponse.json(
-          { error: "Failed to create time slots" },
-          { status: 500 }
-        );
-      }
-    }
-
-    // Insert exceptions
-    if (exceptions.length > 0) {
-      const { error: exceptionsError } = await supabase
-        .from("user_availability_exceptions")
-        .upsert(exceptions, { onConflict: "user_id,date" });
-
-      if (exceptionsError) {
-        console.error("Exceptions error:", exceptionsError);
-        return NextResponse.json(
-          { error: "Failed to create exceptions" },
-          { status: 500 }
-        );
-      }
-    }
+    console.log("✅ Successfully created defaults for user:", userId);
 
     return NextResponse.json({
-      success: true,
-      message: "Database populated with default data",
-      data: {
-        settings: settingsData,
-        workingHours: defaultWorkingHours.length,
-        timeSlots: timeSlots.length,
-        exceptions: exceptions.length,
-      },
-      timestamp: new Date().toISOString(),
+      message: "Default availability settings created successfully",
+      userId,
+      settings: settingsData,
+      workingHours: workingHoursData,
     });
   } catch (error) {
-    console.error("Populate defaults error:", error);
+    console.error("Error in populate defaults:", error);
     return NextResponse.json(
-      { error: "Failed to populate defaults", details: error },
+      { message: "Internal server error" },
       { status: 500 }
     );
   }
