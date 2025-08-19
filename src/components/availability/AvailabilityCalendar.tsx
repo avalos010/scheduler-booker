@@ -32,7 +32,13 @@ import DayDetailsModal from "./DayDetailsModal";
 import SettingsModal from "./SettingsModal";
 import { HydrationSafeButton } from "../common/HydrationSafeElement";
 
-export default function AvailabilityCalendar() {
+interface AvailabilityCalendarProps {
+  userId: string;
+}
+
+export default function AvailabilityCalendar({
+  userId,
+}: AvailabilityCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showDayModal, setShowDayModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -569,6 +575,21 @@ export default function AvailabilityCalendar() {
                                 slots available
                               </div>
                             </div>
+                            {dayAvailability.timeSlots.some(
+                              (slot: TimeSlot) => slot.isBooked
+                            ) && (
+                              <div className="flex items-center space-x-2">
+                                <ClockIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                                <div className="text-sm text-gray-600 font-medium">
+                                  {
+                                    dayAvailability.timeSlots.filter(
+                                      (slot: TimeSlot) => slot.isBooked
+                                    ).length
+                                  }{" "}
+                                  slots booked
+                                </div>
+                              </div>
+                            )}
                             <div className="flex flex-wrap gap-1">
                               {dayAvailability.timeSlots
                                 .slice(0, 6)
@@ -577,7 +598,7 @@ export default function AvailabilityCalendar() {
                                     key={slot.id}
                                     className={`w-2 h-2 rounded-full transition-all duration-200 ${
                                       slot.isBooked
-                                        ? "bg-blue-400 shadow-sm"
+                                        ? "bg-blue-500 shadow-sm"
                                         : slot.isAvailable
                                         ? "bg-green-400 shadow-sm"
                                         : "bg-gray-300"
@@ -892,6 +913,7 @@ export default function AvailabilityCalendar() {
         selectedDate={selectedDate}
         availability={availability}
         workingHours={workingHours}
+        userId={userId}
         toggleTimeSlot={toggleTimeSlot}
         toggleWorkingDay={toggleWorkingDay}
         regenerateDaySlots={regenerateDaySlots}

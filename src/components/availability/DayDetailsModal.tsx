@@ -12,6 +12,7 @@ interface DayDetailsModalProps {
   selectedDate: Date | null;
   availability: Record<string, DayAvailability>;
   workingHours: WorkingHours[];
+  userId: string;
   toggleTimeSlot: (date: Date, slotId: string) => Promise<void> | void;
   toggleWorkingDay: (date: Date) => Promise<void> | void;
   regenerateDaySlots: (
@@ -28,6 +29,7 @@ export default function DayDetailsModal({
   selectedDate,
   availability,
   workingHours,
+  userId,
   toggleTimeSlot,
   toggleWorkingDay,
   regenerateDaySlots,
@@ -36,6 +38,17 @@ export default function DayDetailsModal({
   const [customEnd, setCustomEnd] = useState<string>("17:00");
   const [customDuration, setCustomDuration] = useState<number>(60);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
+  const [bookingDetails, setBookingDetails] = useState<
+    Record<
+      string,
+      {
+        clientName: string;
+        clientEmail: string;
+        notes?: string;
+        status: string;
+      }
+    >
+  >({});
 
   // Close modal on escape key
   useEffect(() => {
@@ -67,6 +80,61 @@ export default function DayDetailsModal({
       setCustomEnd(dayHours.endTime || "17:00");
     }
   }, [selectedDate, workingHours]);
+
+  // Fetch booking details when modal opens or date changes
+  useEffect(() => {
+    if (!isOpen || !selectedDate || !userId) {
+      return;
+    }
+
+    const fetchBookingDetails = async () => {
+      try {
+        const dateKey = format(selectedDate, "yyyy-MM-dd");
+
+        // Fetch booking details for this date
+        const response = await fetch(
+          `/api/availability/public?date=${dateKey}&userId=${userId}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          if (data.timeSlots) {
+            const details: Record<
+              string,
+              {
+                clientName: string;
+                clientEmail: string;
+                notes?: string;
+                status: string;
+              }
+            > = {};
+
+            data.timeSlots.forEach(
+              (slot: {
+                id: string;
+                isBooked: boolean;
+                bookingDetails?: {
+                  clientName: string;
+                  clientEmail: string;
+                  notes?: string;
+                  status: string;
+                };
+              }) => {
+                if (slot.isBooked && slot.bookingDetails) {
+                  details[slot.id] = slot.bookingDetails;
+                }
+              }
+            );
+
+            setBookingDetails(details);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching booking details:", error);
+      }
+    };
+
+    fetchBookingDetails();
+  }, [isOpen, selectedDate, userId]);
 
   if (!isOpen || !selectedDate) return null;
 
@@ -163,44 +231,36 @@ export default function DayDetailsModal({
                   </span>
                 </div>
 
-                {/* Custom schedule controls - Mobile responsive */}
-                <div className="rounded-lg bg-gray-50 p-3 sm:p-4 border border-gray-200 space-y-3 sm:space-y-0 sm:space-x-0">
-                  {/* Mobile: Stacked layout */}
-                  <div className="block sm:hidden space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <span className="text-xs text-gray-600 font-medium">
-                          From
-                        </span>
-                        <TimePicker
-                          value={customStart}
-                          onChange={setCustomStart}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-gray-600 font-medium">
-                          To
-                        </span>
-                        <TimePicker value={customEnd} onChange={setCustomEnd} />
-                      </div>
+                {/* Custom Time Slot Controls - Mobile responsive */}
+                <div className="space-y-3 sm:space-y-4">
+                  {/* Mobile: Vertical layout */}
+                  <div className="sm:hidden space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">From</span>
+                      <TimePicker
+                        value={customStart}
+                        onChange={setCustomStart}
+                      />
                     </div>
-                    <div className="space-y-1">
-                      <span className="text-xs text-gray-600 font-medium">
-                        Duration
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">to</span>
+                      <TimePicker value={customEnd} onChange={setCustomEnd} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Duration</span>
                       <select
                         value={customDuration}
                         onChange={(e) =>
                           setCustomDuration(Number(e.target.value))
                         }
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                       >
-                        <option value={15}>15 minutes</option>
-                        <option value={30}>30 minutes</option>
-                        <option value={45}>45 minutes</option>
-                        <option value={60}>60 minutes</option>
-                        <option value={90}>90 minutes</option>
-                        <option value={120}>120 minutes</option>
+                        <option value={15}>15m</option>
+                        <option value={30}>30m</option>
+                        <option value={45}>45m</option>
+                        <option value={60}>60m</option>
+                        <option value={90}>90m</option>
+                        <option value={120}>120m</option>
                       </select>
                     </div>
                     <button
@@ -272,50 +332,184 @@ export default function DayDetailsModal({
 
                 {dayAvailability.timeSlots.length > 0 ? (
                   <div className="rounded-lg border border-gray-200 p-2 sm:p-3 bg-white">
-                    {/* Mobile: Single column, Desktop: Two columns */}
+                    {/* Two columns with expanded rows for booking details */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       {dayAvailability.timeSlots.map((slot) => (
-                        <button
-                          key={slot.id}
-                          onClick={async () =>
-                            await toggleTimeSlot(selectedDate, slot.id)
-                          }
-                          className={`flex items-center justify-between px-3 py-2 sm:py-3 text-sm rounded-md border transition-colors ${
-                            slot.isAvailable
-                              ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100 active:bg-green-200"
-                              : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 active:bg-gray-200"
-                          }`}
-                          title={
-                            slot.isAvailable
-                              ? "Mark unavailable"
-                              : "Mark available"
-                          }
-                        >
-                          <span className="font-medium truncate">
-                            {slot.startTime} - {slot.endTime}
-                          </span>
-                          <span
-                            className={`ml-2 sm:ml-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 ${
-                              slot.isAvailable
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-200 text-gray-700"
-                            }`}
-                          >
-                            <span
-                              className={`inline-block h-1.5 w-1.5 rounded-full ${
-                                slot.isAvailable
-                                  ? "bg-green-600"
-                                  : "bg-gray-500"
+                        <div key={slot.id} className="space-y-2">
+                          <div className="space-y-2">
+                            <button
+                              onClick={async () =>
+                                slot.isBooked
+                                  ? undefined // Disable clicking for booked slots
+                                  : await toggleTimeSlot(selectedDate, slot.id)
+                              }
+                              className={`w-full px-3 py-2 sm:py-3 text-sm rounded-md border transition-colors ${
+                                slot.isBooked
+                                  ? "bg-blue-50 border-blue-200 text-blue-800 cursor-not-allowed"
+                                  : slot.isAvailable
+                                  ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100 active:bg-green-200"
+                                  : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 active:bg-gray-200"
                               }`}
-                            />
-                            <span className="hidden sm:inline">
-                              {slot.isAvailable ? "Available" : "Unavailable"}
-                            </span>
-                            <span className="sm:hidden">
-                              {slot.isAvailable ? "✓" : "✗"}
-                            </span>
-                          </span>
-                        </button>
+                              title={
+                                slot.isBooked
+                                  ? "Booked - cannot modify"
+                                  : slot.isAvailable
+                                  ? "Mark unavailable"
+                                  : "Mark available"
+                              }
+                              disabled={slot.isBooked}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium truncate">
+                                  {slot.startTime} - {slot.endTime}
+                                </span>
+                                <span
+                                  className={`ml-2 sm:ml-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 ${
+                                    slot.isBooked
+                                      ? "bg-blue-100 text-blue-800"
+                                      : slot.isAvailable
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-gray-200 text-gray-700"
+                                  }`}
+                                >
+                                  <span
+                                    className={`inline-block h-1.5 w-1.5 rounded-full ${
+                                      slot.isBooked
+                                        ? "bg-blue-500"
+                                        : slot.isAvailable
+                                        ? "bg-green-600"
+                                        : "bg-gray-500"
+                                    }`}
+                                  />
+                                  <span className="hidden sm:inline">
+                                    {slot.isBooked
+                                      ? "Booked"
+                                      : slot.isAvailable
+                                      ? "Available"
+                                      : "Unavailable"}
+                                  </span>
+                                  <span className="sm:hidden">
+                                    {slot.isBooked
+                                      ? "📅"
+                                      : slot.isAvailable
+                                      ? "✓"
+                                      : "✗"}
+                                  </span>
+                                </span>
+                              </div>
+
+                              {/* Show booking details inline within the same button */}
+                              {slot.isBooked &&
+                                Object.keys(bookingDetails).length > 0 && (
+                                  <div className="text-left space-y-1.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-blue-600 text-xs">
+                                        👤
+                                      </span>
+                                      <span className="text-xs font-medium text-blue-800">
+                                        {Object.values(bookingDetails)[0]
+                                          ?.clientName || "Unknown Client"}
+                                      </span>
+                                      <span
+                                        className={`ml-auto px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                                          Object.values(bookingDetails)[0]
+                                            ?.status === "confirmed"
+                                            ? "bg-green-100 text-green-800 border border-green-200"
+                                            : "bg-yellow-100 text-yellow-800 border border-green-200"
+                                        }`}
+                                      >
+                                        {Object.values(bookingDetails)[0]
+                                          ?.status === "confirmed"
+                                          ? "✓ Confirmed"
+                                          : "⏳ Pending"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-blue-600 text-xs">
+                                        📧
+                                      </span>
+                                      <span className="text-xs text-blue-700">
+                                        {Object.values(bookingDetails)[0]
+                                          ?.clientEmail || "No email"}
+                                      </span>
+                                    </div>
+                                    {Object.values(bookingDetails)[0]
+                                      ?.notes && (
+                                      <div className="flex items-start gap-2">
+                                        <span className="text-blue-600 text-xs mt-0.5">
+                                          📝
+                                        </span>
+                                        <span className="text-xs text-blue-700 italic leading-tight">
+                                          &ldquo;
+                                          {
+                                            Object.values(bookingDetails)[0]
+                                              ?.notes
+                                          }
+                                          &rdquo;
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                            </button>
+
+                            {/* Booking details now shown inline within the button */}
+                            {/* {slot.isBooked &&
+                              Object.keys(bookingDetails).length > 0 && (
+                                <div className="ml-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-blue-600 text-sm">
+                                      👤
+                                    </span>
+                                    <span className="text-sm font-medium text-blue-900">
+                                      {Object.values(bookingDetails)[0]
+                                        ?.clientName || "Unknown Client"}
+                                    </span>
+                                    <span
+                                      className={`ml-auto px-2 py-1 rounded-full text-xs font-medium ${
+                                        Object.values(bookingDetails)[0]
+                                          ?.status === "confirmed"
+                                          ? "bg-green-100 text-green-800 border border-green-200"
+                                          : "bg-yellow-100 text-yellow-800 border border-green-200"
+                                      }`}
+                                    >
+                                      {Object.values(bookingDetails)[0]
+                                        ?.status === "confirmed"
+                                        ? "✓ Confirmed"
+                                        : "⏳ Pending"}
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-blue-600 text-xs">
+                                        📧
+                                      </span>
+                                      <span className="text-xs text-blue-800">
+                                        {Object.values(bookingDetails)[0]
+                                          ?.clientEmail || "No email"}
+                                      </span>
+                                    </div>
+                                    {Object.values(bookingDetails)[0]
+                                      ?.notes && (
+                                      <div className="flex items-start gap-2">
+                                        <span className="text-blue-600 text-xs mt-0.5">
+                                          📝
+                                        </span>
+                                        <span className="text-xs text-blue-700 italic leading-tight">
+                                          &ldquo;
+                                          {
+                                            Object.values(bookingDetails)[0]
+                                              ?.notes
+                                          }
+                                          &rdquo;
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )} */}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -335,6 +529,9 @@ export default function DayDetailsModal({
               <div className="text-center py-6 sm:py-8 text-gray-500">
                 <p className="text-sm sm:text-base">
                   This day is not marked as a working day.
+                </p>
+                <p className="text-xs sm:text-sm mt-1">
+                  Toggle the switch above to make it a working day.
                 </p>
               </div>
             )}

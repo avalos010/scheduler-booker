@@ -69,7 +69,20 @@ export async function GET(request: NextRequest) {
     if (customTimeSlots && customTimeSlots.length > 0) {
       console.log(`🔍 Using custom time slots for ${date}`);
 
-      const timeSlots = customTimeSlots.map((slot) => ({
+      const timeSlots: Array<{
+        id: string;
+        startTime: string;
+        endTime: string;
+        isAvailable: boolean;
+        isBooked: boolean;
+        bookingStatus?: string;
+        bookingDetails?: {
+          clientName: string;
+          clientEmail: string;
+          notes?: string;
+          status: string;
+        };
+      }> = customTimeSlots.map((slot) => ({
         id: `${userId}-${date}-${slot.start_time}-${slot.end_time}`,
         startTime: slot.start_time,
         endTime: slot.end_time,
@@ -80,21 +93,30 @@ export async function GET(request: NextRequest) {
       // Check for existing bookings and mark slots as unavailable
       const { data: existingBookings } = await supabase
         .from("bookings")
-        .select("start_time, end_time")
+        .select(
+          "start_time, end_time, status, client_name, client_email, notes"
+        )
         .eq("user_id", userId)
         .eq("date", date)
         .in("status", ["confirmed", "pending"]);
 
       if (existingBookings) {
         timeSlots.forEach((slot) => {
-          const isBooked = existingBookings.some(
+          const booking = existingBookings.find(
             (booking) =>
               booking.start_time === slot.startTime &&
               booking.end_time === slot.endTime
           );
-          if (isBooked) {
+          if (booking) {
             slot.isAvailable = false;
             slot.isBooked = true;
+            slot.bookingStatus = booking.status;
+            slot.bookingDetails = {
+              clientName: booking.client_name,
+              clientEmail: booking.client_email,
+              notes: booking.notes,
+              status: booking.status,
+            };
           }
         });
       }
@@ -133,7 +155,20 @@ export async function GET(request: NextRequest) {
     const slotDuration = settings?.slot_duration_minutes || 60;
 
     // Generate time slots
-    const timeSlots = [];
+    const timeSlots: Array<{
+      id: string;
+      startTime: string;
+      endTime: string;
+      isAvailable: boolean;
+      isBooked: boolean;
+      bookingStatus?: string;
+      bookingDetails?: {
+        clientName: string;
+        clientEmail: string;
+        notes?: string;
+        status: string;
+      };
+    }> = [];
     let currentTime = new Date(`2000-01-01T${workingHours.start_time}`);
     const endTime = new Date(`2000-01-01T${workingHours.end_time}`);
 
@@ -159,21 +194,28 @@ export async function GET(request: NextRequest) {
     // Check for existing bookings and mark slots as unavailable
     const { data: existingBookings } = await supabase
       .from("bookings")
-      .select("start_time, end_time")
+      .select("start_time, end_time, status, client_name, client_email, notes")
       .eq("user_id", userId)
       .eq("date", date)
       .in("status", ["confirmed", "pending"]);
 
     if (existingBookings) {
       timeSlots.forEach((slot) => {
-        const isBooked = existingBookings.some(
+        const booking = existingBookings.find(
           (booking) =>
             booking.start_time === slot.startTime &&
             booking.end_time === slot.endTime
         );
-        if (isBooked) {
+        if (booking) {
           slot.isAvailable = false;
           slot.isBooked = true;
+          slot.bookingStatus = booking.status;
+          slot.bookingDetails = {
+            clientName: booking.client_name,
+            clientEmail: booking.client_email,
+            notes: booking.notes,
+            status: booking.status,
+          };
         }
       });
     }

@@ -144,6 +144,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
         dayAvailability={dayAvailability}
         isLoading={isLoading}
         fetchDayAvailability={fetchDayAvailability}
+        showBookingDetails={false}
       />
 
       {/* Booking Form */}

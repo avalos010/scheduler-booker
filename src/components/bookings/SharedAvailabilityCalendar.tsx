@@ -10,6 +10,18 @@ interface TimeSlot {
   endTime: string;
   isAvailable: boolean;
   isBooked?: boolean;
+  bookingStatus?:
+    | "pending"
+    | "confirmed"
+    | "cancelled"
+    | "completed"
+    | "no-show";
+  bookingDetails?: {
+    clientName: string;
+    clientEmail: string;
+    notes?: string;
+    status: string;
+  };
 }
 
 interface DayAvailability {
@@ -27,6 +39,7 @@ interface SharedAvailabilityCalendarProps {
   dayAvailability: DayAvailability | null;
   isLoading: boolean;
   fetchDayAvailability: (date: Date) => Promise<void>;
+  showBookingDetails?: boolean; // Control whether to show booking information
 }
 
 export default function SharedAvailabilityCalendar({
@@ -38,6 +51,7 @@ export default function SharedAvailabilityCalendar({
   dayAvailability,
   isLoading,
   fetchDayAvailability,
+  showBookingDetails = false,
 }: SharedAvailabilityCalendarProps) {
   const [availableDates, setAvailableDates] = useState<Date[]>([]);
 
@@ -66,13 +80,6 @@ export default function SharedAvailabilityCalendar({
 
   const isDateDisabled = (date: Date) => {
     return isBefore(date, startOfDay(new Date()));
-  };
-
-  const getAvailableSlots = () => {
-    if (!dayAvailability) return [];
-    return dayAvailability.timeSlots.filter(
-      (slot) => slot.isAvailable && !slot.isBooked
-    );
   };
 
   return (
@@ -127,21 +134,79 @@ export default function SharedAvailabilityCalendar({
             </div>
           ) : dayAvailability && dayAvailability.isWorkingDay ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {getAvailableSlots().map((slot) => (
+              {dayAvailability.timeSlots.map((slot) => (
                 <button
                   key={slot.id}
-                  onClick={() => handleTimeSlotSelect(slot)}
+                  onClick={() =>
+                    slot.isAvailable && !slot.isBooked
+                      ? handleTimeSlotSelect(slot)
+                      : undefined
+                  }
+                  disabled={!slot.isAvailable || slot.isBooked}
                   className={`
                     p-3 text-sm font-medium rounded-lg border transition-all
                     ${
-                      selectedTimeSlot?.id === slot.id
+                      slot.isBooked
+                        ? "bg-blue-50 text-blue-800 border-blue-300 cursor-not-allowed"
+                        : selectedTimeSlot?.id === slot.id
                         ? "bg-green-600 text-white border-green-600 shadow-lg"
-                        : "bg-white text-gray-700 border-gray-200 hover:bg-green-50 hover:border-green-200"
+                        : slot.isAvailable
+                        ? "bg-white text-gray-700 border-gray-200 hover:bg-green-50 hover:border-green-200"
+                        : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                     }
                   `}
+                  title={
+                    slot.isBooked
+                      ? showBookingDetails
+                        ? `Booked: ${
+                            slot.bookingDetails?.clientName || "Unknown"
+                          } - ${
+                            slot.bookingDetails?.status || "Unknown status"
+                          }`
+                        : "This time slot is not available"
+                      : slot.isAvailable
+                      ? "Available for booking"
+                      : "Not available"
+                  }
                 >
                   <div className="font-semibold">{slot.startTime}</div>
-                  <div className="text-xs text-gray-500">to {slot.endTime}</div>
+                  <div className="text-xs text-gray-500">
+                    to {slot.endTime}
+                    {slot.isBooked && showBookingDetails && (
+                      <div className="mt-2 space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-blue-600 text-xs">👤</span>
+                          <span className="text-xs font-medium text-blue-800">
+                            {slot.bookingDetails?.clientName ||
+                              "Unknown Client"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                              slot.bookingDetails?.status === "confirmed"
+                                ? "bg-green-100 text-green-800 border border-green-200"
+                                : "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                            }`}
+                          >
+                            {slot.bookingDetails?.status === "confirmed"
+                              ? "✓ Confirmed"
+                              : "⏳ Pending"}
+                          </span>
+                        </div>
+                        {slot.bookingDetails?.notes && (
+                          <div className="flex items-start gap-1.5">
+                            <span className="text-blue-600 text-xs mt-0.5">
+                              📝
+                            </span>
+                            <span className="text-xs text-gray-600 italic leading-tight">
+                              "{slot.bookingDetails.notes}"
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>

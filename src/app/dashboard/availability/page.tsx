@@ -128,7 +128,7 @@ export default async function AvailabilityPage() {
         <div className="rounded-2xl bg-white/70 p-6 shadow-lg ring-1 ring-gray-200/60 backdrop-blur">
           <h2 className="mb-4 text-xl font-semibold text-gray-900">Calendar</h2>
           <div className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <AvailabilityCalendar />
+            <AvailabilityCalendar userId={session.user.id} />
           </div>
         </div>
       </div>
