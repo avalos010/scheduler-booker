@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+
+# Disallow private/dashboard pages
+Disallow: /dashboard/
+Disallow: /onboarding
+Disallow: /login
+Disallow: /signup
+
+# Allow public pages
+Allow: /
+Allow: /api/availability/days
+Allow: /api/availability/working-hours
+
+# Sitemap
+Sitemap: https://scheduler-booker.vercel.app/sitemap.xml
+
+# Crawl delay (optional)
+Crawl-delay: 1
