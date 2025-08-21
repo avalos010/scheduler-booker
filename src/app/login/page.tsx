@@ -1,4 +1,32 @@
+import { Metadata } from "next";
 import LoginForm from "@/components/auth/LoginForm";
+
+export const metadata: Metadata = {
+  title: "Sign In - Access Your Scheduling Dashboard",
+  description:
+    "Sign in to your Scheduler Booker account to manage your appointments, availability, and client bookings. Secure authentication for professionals.",
+  keywords: [
+    "login",
+    "sign in",
+    "scheduling dashboard",
+    "appointment management",
+    "professional login",
+    "booking system access",
+  ],
+  robots: {
+    index: false,
+    follow: false,
+  },
+  openGraph: {
+    title: "Sign In - Scheduler Booker",
+    description:
+      "Sign in to your Scheduler Booker account to manage your appointments, availability, and client bookings.",
+    url: "https://scheduler-booker.vercel.app/login",
+  },
+  alternates: {
+    canonical: "/login",
+  },
+};
 
 export default function LoginPage() {
   return (

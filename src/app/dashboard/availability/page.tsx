@@ -1,7 +1,36 @@
+import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import AvailabilityCalendar from "@/components/availability/AvailabilityCalendar";
 import { AvailabilityManager } from "@/lib/managers/availabilityManager";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+
+export const metadata: Metadata = {
+  title: "Manage Availability - Set Your Working Hours & Time Slots",
+  description:
+    "Configure your working hours, set availability, and manage time slots for client bookings. Customize your schedule to match your business needs.",
+  keywords: [
+    "availability management",
+    "working hours",
+    "time slots",
+    "schedule configuration",
+    "business hours",
+    "appointment availability",
+    "calendar settings",
+  ],
+  robots: {
+    index: false,
+    follow: false,
+  },
+  openGraph: {
+    title: "Manage Availability - Scheduler Booker",
+    description:
+      "Configure your working hours, set availability, and manage time slots for client bookings. Customize your schedule to match your business needs.",
+    url: "https://scheduler-booker.vercel.app/dashboard/availability",
+  },
+  alternates: {
+    canonical: "/dashboard/availability",
+  },
+};
 
 export default async function AvailabilityPage() {
   const supabase = await createSupabaseServerClient();

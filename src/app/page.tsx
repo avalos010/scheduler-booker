@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Metadata } from "next";
 import RedirectIfAuthed from "@/components/auth/RedirectIfAuthed";
 import {
   CalendarDaysIcon,
@@ -7,6 +8,52 @@ import {
   ArrowRightIcon,
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
+
+export const metadata: Metadata = {
+  title: "Intelligent Appointment Scheduling & Booking Platform",
+  description:
+    "Streamline your appointment booking with our intelligent scheduling platform. Manage availability, automate bookings, and focus on what matters most. Perfect for professionals, consultants, and service providers.",
+  keywords: [
+    "appointment scheduling",
+    "online booking",
+    "calendar management",
+    "availability management",
+    "time slot booking",
+    "professional scheduling",
+    "consultant calendar",
+    "service provider booking",
+    "automated scheduling",
+    "client booking system",
+    "business scheduling",
+    "meeting scheduler",
+  ],
+  openGraph: {
+    title:
+      "Scheduler Booker - Intelligent Appointment Scheduling & Booking Platform",
+    description:
+      "Streamline your appointment booking with our intelligent scheduling platform. Manage availability, automate bookings, and focus on what matters most.",
+    url: "https://scheduler-booker.vercel.app",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Scheduler Booker - Professional Appointment Scheduling Platform",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title:
+      "Scheduler Booker - Intelligent Appointment Scheduling & Booking Platform",
+    description:
+      "Streamline your appointment booking with our intelligent scheduling platform. Manage availability, automate bookings, and focus on what matters most.",
+    images: ["/og-image.png"],
+  },
+  alternates: {
+    canonical: "/",
+  },
+};
 
 export default function Home() {
   return (

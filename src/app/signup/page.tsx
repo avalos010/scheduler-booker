@@ -1,5 +1,30 @@
+import { Metadata } from "next";
 import SignupForm from "@/components/auth/SignupForm";
 import { UserPlusIcon } from "@heroicons/react/24/outline";
+
+export const metadata: Metadata = {
+  title: "Create Account - Start Your Professional Scheduling Journey",
+  description:
+    "Join thousands of professionals using Scheduler Booker to streamline their appointment scheduling. Create your account and start managing availability in minutes.",
+  keywords: [
+    "sign up",
+    "create account",
+    "professional scheduling",
+    "appointment booking system",
+    "consultant calendar",
+    "service provider registration",
+    "business scheduling tool",
+  ],
+  openGraph: {
+    title: "Create Account - Scheduler Booker",
+    description:
+      "Join thousands of professionals using Scheduler Booker to streamline their appointment scheduling. Create your account and start managing availability in minutes.",
+    url: "https://scheduler-booker.vercel.app/signup",
+  },
+  alternates: {
+    canonical: "/signup",
+  },
+};
 
 export default function SignupPage() {
   return (

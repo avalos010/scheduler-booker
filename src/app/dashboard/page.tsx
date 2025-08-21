@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -9,6 +10,34 @@ import {
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+
+export const metadata: Metadata = {
+  title: "Dashboard - Manage Your Appointments & Availability",
+  description:
+    "Access your Scheduler Booker dashboard to manage appointments, set availability, and streamline your professional scheduling. Everything you need in one place.",
+  keywords: [
+    "scheduling dashboard",
+    "appointment management",
+    "availability settings",
+    "professional calendar",
+    "booking management",
+    "client appointments",
+    "schedule overview",
+  ],
+  robots: {
+    index: false,
+    follow: false,
+  },
+  openGraph: {
+    title: "Dashboard - Scheduler Booker",
+    description:
+      "Access your Scheduler Booker dashboard to manage appointments, set availability, and streamline your professional scheduling.",
+    url: "https://scheduler-booker.vercel.app/dashboard",
+  },
+  alternates: {
+    canonical: "/dashboard",
+  },
+};
 
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();

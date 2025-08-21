@@ -1,6 +1,34 @@
+import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import OnboardingForm from "@/components/onboarding/OnboardingForm";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+
+export const metadata: Metadata = {
+  title: "Complete Your Profile - Set Up Your Scheduling Business",
+  description:
+    "Finish setting up your Scheduler Booker account. Configure your business details, working hours, and preferences to start accepting client bookings.",
+  keywords: [
+    "onboarding",
+    "profile setup",
+    "business configuration",
+    "scheduling setup",
+    "account completion",
+    "business preferences",
+  ],
+  robots: {
+    index: false,
+    follow: false,
+  },
+  openGraph: {
+    title: "Complete Your Profile - Scheduler Booker",
+    description:
+      "Finish setting up your Scheduler Booker account. Configure your business details, working hours, and preferences to start accepting client bookings.",
+    url: "https://scheduler-booker.vercel.app/onboarding",
+  },
+  alternates: {
+    canonical: "/onboarding",
+  },
+};
 
 export default async function OnboardingPage() {
   const supabase = await createSupabaseServerClient();
