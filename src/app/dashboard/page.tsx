@@ -16,6 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
+import DashboardStats from "@/components/dashboard/DashboardStats";
 
 export const metadata: Metadata = {
   title: "Dashboard - Manage Your Appointments & Availability",
@@ -117,108 +118,10 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Stats Overview - TODO: Replace hardcoded values with real data */}
-        <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {/* TODO: Fetch from /api/bookings?date=today */}
-          <div className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600">
-                  Today&apos;s Bookings
-                </p>
-                {/* TODO: Replace with real count */}
-                <p className="text-3xl font-bold text-slate-900">12</p>
-                <div className="mt-2 flex items-center gap-1 text-sm text-green-600">
-                  <ArrowUpIcon className="h-4 w-4" />
-                  {/* TODO: Calculate real trend from yesterday's data */}
-                  <span>+2 from yesterday</span>
-                </div>
-              </div>
-              <div className="rounded-xl bg-green-100 p-3">
-                <CalendarDaysIcon className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-            {/* Progress bar - TODO: Calculate real percentage based on daily capacity */}
-            <div className="mt-4 h-2 w-full rounded-full bg-slate-200">
-              <div className="h-2 w-3/4 rounded-full bg-green-500 transition-all duration-300 group-hover:w-full" />
-            </div>
-          </div>
+        {/* Stats Overview - Now using real data! */}
+        <DashboardStats />
 
-          {/* TODO: Fetch from /api/availability/time-slots?week=current */}
-          <div className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600">
-                  Available Slots
-                </p>
-                {/* TODO: Replace with real count from availability API */}
-                <p className="text-3xl font-bold text-slate-900">47</p>
-                <div className="mt-2 flex items-center gap-1 text-sm text-blue-600">
-                  <span>This week</span>
-                </div>
-              </div>
-              <div className="rounded-xl bg-blue-100 p-3">
-                <ClockIcon className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-            {/* Progress bar - TODO: Calculate real percentage of available vs total slots */}
-            <div className="mt-4 h-2 w-full rounded-full bg-slate-200">
-              <div className="h-2 w-2/3 rounded-full bg-blue-500 transition-all duration-300 group-hover:w-full" />
-            </div>
-          </div>
-
-          {/* TODO: Fetch from /api/bookings/clients or create new endpoint */}
-          <div className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600">
-                  Total Clients
-                </p>
-                {/* TODO: Replace with real count from clients API */}
-                <p className="text-3xl font-bold text-slate-900">89</p>
-                <div className="mt-2 flex items-center gap-1 text-sm text-purple-600">
-                  <ArrowUpIcon className="h-4 w-4" />
-                  {/* TODO: Calculate real monthly growth */}
-                  <span>+5 this month</span>
-                </div>
-              </div>
-              <div className="rounded-xl bg-purple-100 p-3">
-                <UsersIcon className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-            {/* Progress bar - TODO: Calculate real percentage based on target goals */}
-            <div className="mt-4 h-2 w-full rounded-full bg-slate-200">
-              <div className="h-2 w-4/5 rounded-full bg-purple-500 transition-all duration-300 group-hover:w-full" />
-            </div>
-          </div>
-
-          {/* TODO: Calculate from bookings vs available slots data */}
-          <div className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600">
-                  Booking Rate
-                </p>
-                {/* TODO: Calculate real percentage: (booked slots / total slots) * 100 */}
-                <p className="text-3xl font-bold text-slate-900">94%</p>
-                <div className="mt-2 flex items-center gap-1 text-sm text-amber-600">
-                  <ArrowUpIcon className="h-4 w-4" />
-                  {/* TODO: Compare with previous month's booking rate */}
-                  <span>+3% vs last month</span>
-                </div>
-              </div>
-              <div className="rounded-xl bg-amber-100 p-3">
-                <ChartBarIcon className="h-6 w-6 text-amber-600" />
-              </div>
-            </div>
-            {/* Progress bar - TODO: Use real calculated percentage */}
-            <div className="mt-4 h-2 w-full rounded-full bg-slate-200">
-              <div className="h-2 w-[94%] rounded-full bg-amber-500 transition-all duration-300 group-hover:w-full" />
-            </div>
-          </div>
-        </div>
-
-        {/* Charts Component - Client-side rendered */}
+        {/* Charts Component - Client-side rendered with real data */}
         <DashboardCharts />
 
         {/* Quick Actions Grid */}
