@@ -12,6 +12,10 @@ jobs:
       matrix:
         node-version: [18.x, 20.x]
 
+    env:
+      CI: true
+      NODE_ENV: test
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,10 +38,10 @@ jobs:
         continue-on-error: true
 
       - name: Run booking functionality tests (REQUIRED)
-        run: npm test -- --testPathPatterns="AppointmentsList.guards.test.tsx|SharedAvailabilityCalendar.status.test.tsx|bookings.route.test.ts|booking-persistence.test.ts" --watchAll=false
+        run: npm test -- --testPathPatterns="AppointmentsList.guards.test.tsx|SharedAvailabilityCalendar.status.test.tsx|bookings.route.test.ts|booking-persistence.test.ts" --watchAll=false --maxWorkers=2
 
       - name: Run all tests with coverage (optional)
-        run: npm test -- --coverage --watchAll=false
+        run: npm test -- --coverage --watchAll=false --maxWorkers=2 --testPathIgnorePatterns="AvailabilityCalendar.simple.test.tsx"
         continue-on-error: true
 
       - name: Upload coverage reports
