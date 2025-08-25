@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAvailability } from "@/lib/hooks/useAvailabilityNew";
+import { useAvailability } from "@/lib/hooks/useAvailability";
 import TimePicker from "./TimePicker";
 
 export default function AvailabilitySettings() {

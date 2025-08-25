@@ -25,7 +25,7 @@ import {
   XCircleIcon,
   PauseIcon,
 } from "@heroicons/react/24/outline";
-import { useAvailability } from "@/lib/hooks/useAvailabilityNew";
+import { useAvailability } from "@/lib/hooks/useAvailability";
 import type { TimeSlot } from "@/lib/types/availability";
 import DayDetailsModal from "./DayDetailsModal";
 import SettingsModal from "./SettingsModal";
@@ -1008,7 +1008,6 @@ export default function AvailabilityCalendar({
         userId={userId}
         toggleTimeSlot={toggleTimeSlot}
         toggleWorkingDay={toggleWorkingDay}
-        regenerateDaySlots={regenerateDaySlots}
       />
 
       {/* Settings Modal */}
