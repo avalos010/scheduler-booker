@@ -13,7 +13,9 @@ export class TimeSlotUtils {
     startTime: string,
     endTime: string,
     slotDuration: number,
-    breakDuration: number = 0
+    breakDuration: number = 0,
+    userId?: string,
+    date?: string
   ): TimeSlot[] {
     const slots: TimeSlot[] = [];
 
@@ -32,10 +34,12 @@ export class TimeSlotUtils {
         const slotStart = currentTime.toTimeString().slice(0, 5);
         const slotEndTime = slotEnd.toTimeString().slice(0, 5);
 
+        // Generate consistent IDs that match the public API format
         const slot = {
-          id: `${slotStart}-${slotEndTime}-${Date.now()}-${Math.random()
-            .toString(36)
-            .substr(2, 9)}`,
+          id:
+            userId && date
+              ? `${userId}-${date}-${slotStart}-${slotEndTime}`
+              : `slot-${slotStart}-${slotEndTime}`,
           startTime: slotStart,
           endTime: slotEndTime,
           isAvailable: true,
@@ -160,7 +164,8 @@ export class TimeSlotUtils {
     workingHours: WorkingHours[],
     settings: AvailabilitySettings,
     exception?: { is_available: boolean; reason?: string },
-    existingSlots: TimeSlot[] = []
+    existingSlots: TimeSlot[] = [],
+    userId?: string
   ): DayAvailability {
     const dateKey = this.formatDateKey(date);
 
@@ -189,7 +194,9 @@ export class TimeSlotUtils {
               dayHours.startTime,
               dayHours.endTime,
               settings.slotDuration,
-              settings.breakDuration
+              settings.breakDuration,
+              userId,
+              dateKey
             );
             console.log(
               `📅 Day ${dateKey}: Generated ${generatedSlots.length} slots for exception`
@@ -237,7 +244,9 @@ export class TimeSlotUtils {
             dayHours.startTime,
             dayHours.endTime,
             settings.slotDuration,
-            settings.breakDuration
+            settings.breakDuration,
+            userId,
+            dateKey
           );
           console.log(
             `📅 Day ${dateKey}: Generated ${generatedSlots.length} new slots`

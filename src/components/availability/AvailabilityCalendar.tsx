@@ -43,6 +43,7 @@ export default function AvailabilityCalendar({
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const {
     availability,
+    bookings,
     workingHours,
     settings,
     isFullyLoaded,
@@ -50,9 +51,9 @@ export default function AvailabilityCalendar({
     toggleTimeSlot,
     regenerateDaySlots,
     setAvailability,
-    resetCalendarToDefaults,
     loadAvailability,
     loadTimeSlotsForMonth,
+    loadBookingsForMonth,
     processMonthDays,
     markTimeSlotsLoaded,
   } = useAvailability();
@@ -70,6 +71,30 @@ export default function AvailabilityCalendar({
   // Track if we've already processed the current month
   const processedMonthRef = useRef<string>("");
   const timeSlotsMarkedRef = useRef<boolean>(false);
+
+  // Helper function to get booking information for a specific day
+  const getDayBookings = useCallback(
+    (day: Date) => {
+      const dateKey = format(day, "yyyy-MM-dd");
+      return bookings[dateKey] || [];
+    },
+    [bookings]
+  );
+
+  // Helper function to get booking status counts for a day
+  const getDayBookingStats = useCallback(
+    (day: Date) => {
+      const dayBookings = getDayBookings(day);
+      return {
+        total: dayBookings.length,
+        confirmed: dayBookings.filter((b) => b.status === "confirmed").length,
+        pending: dayBookings.filter((b) => b.status === "pending").length,
+        cancelled: dayBookings.filter((b) => b.status === "cancelled").length,
+        completed: dayBookings.filter((b) => b.status === "completed").length,
+      };
+    },
+    [getDayBookings]
+  );
 
   // Main calendar processing effect - handles month changes and working hours updates
   useEffect(() => {
@@ -120,11 +145,13 @@ export default function AvailabilityCalendar({
       const processMonthStart = startOfMonth(currentMonth);
       const processMonthEnd = endOfMonth(currentMonth);
 
-      // Load all month data in 2 queries instead of N queries per day
-      const monthData = await loadTimeSlotsForMonth(
-        processMonthStart,
-        processMonthEnd
-      );
+      // Load all month data in parallel - time slots and bookings
+      const [monthData, bookingsData] = await Promise.all([
+        loadTimeSlotsForMonth(processMonthStart, processMonthEnd),
+        loadBookingsForMonth(processMonthStart, processMonthEnd),
+      ]);
+
+      console.log("📅 Loaded month data:", { monthData, bookingsData });
 
       if (monthData) {
         // Process all days with the batched data (no more database calls)
@@ -148,7 +175,10 @@ export default function AvailabilityCalendar({
   }, [
     currentMonth,
     workingHours,
+    isFullyLoaded,
+    availability,
     loadTimeSlotsForMonth,
+    loadBookingsForMonth,
     processMonthDays,
     markTimeSlotsLoaded,
   ]);
@@ -175,7 +205,7 @@ export default function AvailabilityCalendar({
     await loadAvailability();
 
     console.log("🔄 refreshCalendar completed, flags reset");
-  }, [loadAvailability]);
+  }, [loadAvailability, setAvailability]);
 
   const navigateMonth = (direction: "prev" | "next") => {
     setCurrentMonth(
@@ -183,15 +213,6 @@ export default function AvailabilityCalendar({
         ? subMonths(currentMonth, 1)
         : addMonths(currentMonth, 1)
     );
-  };
-
-  // Function to jump to a specific month
-  const jumpToMonth = (targetMonth: Date) => {
-    console.log("📅 Jumping to month:", {
-      fromMonth: currentMonth.toISOString(),
-      toMonth: targetMonth.toISOString(),
-    });
-    setCurrentMonth(targetMonth);
   };
 
   return (
@@ -397,6 +418,31 @@ export default function AvailabilityCalendar({
         </div>
       </div>
 
+      {/* Calendar Legend */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+        <h4 className="text-sm font-semibold text-gray-900 mb-3">
+          Calendar Legend
+        </h4>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-green-400"></div>
+            <span className="text-gray-600">Available Slots</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+            <span className="text-gray-600">Booked Slots</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+            <span className="text-gray-600">Confirmed Meetings</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-orange-400"></div>
+            <span className="text-gray-600">Pending Meetings</span>
+          </div>
+        </div>
+      </div>
+
       {/* Mobile-Optimized Calendar Grid */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden relative">
         {/* Day headers - Hidden on mobile, shown on tablet+ */}
@@ -588,17 +634,16 @@ export default function AvailabilityCalendar({
                                 </div>
                               </div>
                             )}
-                            <div className="flex flex-wrap gap-1">
-                              {dayAvailability.timeSlots
-                                .slice(0, 6)
-                                .map((slot: TimeSlot) => (
+                            <div className="flex flex-wrap gap-1.5 justify-center items-center p-2">
+                              {dayAvailability.timeSlots.map(
+                                (slot: TimeSlot) => (
                                   <div
                                     key={slot.id}
-                                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                                    className={`w-2.5 h-2.5 rounded-full transition-all duration-200 shadow-sm ${
                                       slot.isBooked
-                                        ? "bg-blue-500 shadow-sm"
+                                        ? "bg-blue-500"
                                         : slot.isAvailable
-                                        ? "bg-green-400 shadow-sm"
+                                        ? "bg-green-400"
                                         : "bg-gray-300"
                                     }`}
                                     title={`${slot.startTime} - ${
@@ -611,13 +656,36 @@ export default function AvailabilityCalendar({
                                         : "(Unavailable)"
                                     }`}
                                   />
-                                ))}
-                              {dayAvailability.timeSlots.length > 6 && (
-                                <div className="text-xs text-gray-400 font-medium">
-                                  +{dayAvailability.timeSlots.length - 6}
-                                </div>
+                                )
                               )}
                             </div>
+                            {/* Booking legends */}
+                            {(() => {
+                              const dayBookingStats = getDayBookingStats(day);
+                              if (dayBookingStats.total > 0) {
+                                return (
+                                  <div className="flex items-center space-x-2 mt-2">
+                                    <div className="flex items-center space-x-1">
+                                      <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                                      <span className="text-xs text-gray-600">
+                                        {dayBookingStats.confirmed +
+                                          dayBookingStats.completed}{" "}
+                                        meetings
+                                      </span>
+                                    </div>
+                                    {dayBookingStats.pending > 0 && (
+                                      <div className="flex items-center space-x-1">
+                                        <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+                                        <span className="text-xs text-gray-600">
+                                          {dayBookingStats.pending} pending
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                         ) : !isPastDay && dayAvailability.isWorkingDay ? (
                           <div className="flex items-center space-x-2 text-sm text-gray-400">
@@ -850,17 +918,16 @@ export default function AvailabilityCalendar({
                                 slots available
                               </div>
                             </div>
-                            <div className="flex flex-wrap gap-1">
-                              {dayAvailability.timeSlots
-                                .slice(0, 3)
-                                .map((slot: TimeSlot) => (
+                            <div className="flex flex-wrap gap-1 justify-center items-center p-1">
+                              {dayAvailability.timeSlots.map(
+                                (slot: TimeSlot) => (
                                   <div
                                     key={slot.id}
-                                    className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-200 ${
+                                    className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-200 shadow-sm ${
                                       slot.isBooked
-                                        ? "bg-blue-400 shadow-sm"
+                                        ? "bg-blue-500"
                                         : slot.isAvailable
-                                        ? "bg-green-400 shadow-sm"
+                                        ? "bg-green-400"
                                         : "bg-gray-300"
                                     }`}
                                     title={`${slot.startTime} - ${
@@ -873,13 +940,40 @@ export default function AvailabilityCalendar({
                                         : "(Unavailable)"
                                     }`}
                                   />
-                                ))}
-                              {dayAvailability.timeSlots.length > 3 && (
-                                <div className="text-xs text-gray-400 font-medium">
-                                  +{dayAvailability.timeSlots.length - 3}
-                                </div>
+                                )
                               )}
                             </div>
+                            {/* Booking legends for desktop */}
+                            {(() => {
+                              const dayBookingStats = getDayBookingStats(day);
+                              if (dayBookingStats.total > 0) {
+                                return (
+                                  <div className="space-y-1">
+                                    {dayBookingStats.confirmed +
+                                      dayBookingStats.completed >
+                                      0 && (
+                                      <div className="flex items-center space-x-1">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-600 flex-shrink-0"></div>
+                                        <span className="text-xs text-gray-600 truncate">
+                                          {dayBookingStats.confirmed +
+                                            dayBookingStats.completed}{" "}
+                                          meetings
+                                        </span>
+                                      </div>
+                                    )}
+                                    {dayBookingStats.pending > 0 && (
+                                      <div className="flex items-center space-x-1">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0"></div>
+                                        <span className="text-xs text-gray-600 truncate">
+                                          {dayBookingStats.pending} pending
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                         ) : !isPastDay && dayAvailability.isWorkingDay ? (
                           <div className="flex items-center space-x-1 sm:space-x-2 text-xs text-gray-400">

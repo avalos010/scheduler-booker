@@ -4,9 +4,14 @@ import { cookies } from "next/headers";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Server-side Supabase instance (for server components)
-export async function createSupabaseServerClient() {
-  const cookieStore = await cookies();
+// Helper function to get cookies
+async function getCookieStore() {
+  return await cookies();
+}
+
+// Shared server-side Supabase instance
+export async function getSupabaseServerClient() {
+  const cookieStore = await getCookieStore();
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
@@ -27,6 +32,9 @@ export async function createSupabaseServerClient() {
     },
   });
 }
+
+// Backward compatibility - keep the old function name
+export const createSupabaseServerClient = getSupabaseServerClient;
 
 // Middleware Supabase instance (for middleware)
 export function createSupabaseMiddlewareClient(requestCookies: {

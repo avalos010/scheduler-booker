@@ -111,6 +111,8 @@ export default function DayDetailsModal({
             data.timeSlots.forEach(
               (slot: {
                 id: string;
+                startTime: string;
+                endTime: string;
                 isBooked: boolean;
                 bookingDetails?: {
                   clientName: string;
@@ -125,6 +127,27 @@ export default function DayDetailsModal({
               }
             );
 
+            console.log("🔍 DayDetailsModal: Booking details fetched:", {
+              apiSlots: data.timeSlots,
+              mappedDetails: details,
+              // Debug: Show ID comparison
+              slotIdComparison: data.timeSlots.map(
+                (slot: {
+                  id: string;
+                  isBooked: boolean;
+                  bookingDetails?: {
+                    clientName: string;
+                    clientEmail: string;
+                    notes?: string;
+                    status: string;
+                  };
+                }) => ({
+                  apiSlotId: slot.id,
+                  isBooked: slot.isBooked,
+                  hasBookingDetails: !!slot.bookingDetails,
+                })
+              ),
+            });
             setBookingDetails(details);
           }
         }
@@ -400,26 +423,41 @@ export default function DayDetailsModal({
 
                               {/* Show booking details inline within the same button */}
                               {slot.isBooked &&
-                                Object.keys(bookingDetails).length > 0 && (
+                                (() => {
+                                  console.log(
+                                    `🔍 UI: Checking slot ${slot.id}:`,
+                                    {
+                                      slotId: slot.id,
+                                      isBooked: slot.isBooked,
+                                      hasBookingDetails:
+                                        !!bookingDetails[slot.id],
+                                      bookingDetailsKeys:
+                                        Object.keys(bookingDetails),
+                                      slotStartTime: slot.startTime,
+                                      slotEndTime: slot.endTime,
+                                    }
+                                  );
+                                  return !!bookingDetails[slot.id];
+                                })() && (
                                   <div className="text-left space-y-1.5">
                                     <div className="flex items-center gap-2">
                                       <span className="text-blue-600 text-xs">
                                         👤
                                       </span>
                                       <span className="text-xs font-medium text-blue-800">
-                                        {Object.values(bookingDetails)[0]
-                                          ?.clientName || "Unknown Client"}
+                                        {bookingDetails[slot.id]?.clientName ||
+                                          "Unknown Client"}
                                       </span>
                                       <span
                                         className={`ml-auto px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                                          Object.values(bookingDetails)[0]
-                                            ?.status === "confirmed"
+                                          bookingDetails[slot.id]?.status ===
+                                          "confirmed"
                                             ? "bg-green-100 text-green-800 border border-green-200"
                                             : "bg-yellow-100 text-yellow-800 border border-green-200"
                                         }`}
                                       >
-                                        {Object.values(bookingDetails)[0]
-                                          ?.status === "confirmed"
+                                        {bookingDetails[slot.id]?.status ===
+                                        "confirmed"
                                           ? "✓ Confirmed"
                                           : "⏳ Pending"}
                                       </span>
@@ -429,22 +467,18 @@ export default function DayDetailsModal({
                                         📧
                                       </span>
                                       <span className="text-xs text-blue-700">
-                                        {Object.values(bookingDetails)[0]
-                                          ?.clientEmail || "No email"}
+                                        {bookingDetails[slot.id]?.clientEmail ||
+                                          "No email"}
                                       </span>
                                     </div>
-                                    {Object.values(bookingDetails)[0]
-                                      ?.notes && (
+                                    {bookingDetails[slot.id]?.notes && (
                                       <div className="flex items-start gap-2">
                                         <span className="text-blue-600 text-xs mt-0.5">
                                           📝
                                         </span>
                                         <span className="text-xs text-blue-700 italic leading-tight">
                                           &ldquo;
-                                          {
-                                            Object.values(bookingDetails)[0]
-                                              ?.notes
-                                          }
+                                          {bookingDetails[slot.id]?.notes}
                                           &rdquo;
                                         </span>
                                       </div>

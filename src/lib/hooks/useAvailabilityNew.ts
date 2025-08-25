@@ -18,7 +18,8 @@ function processMultipleDays(
   workingHours: WorkingHours[],
   settings: AvailabilitySettings,
   exceptionsMap: Map<string, { is_available: boolean; reason?: string }>,
-  slotsMap: Map<string, TimeSlot[]>
+  slotsMap: Map<string, TimeSlot[]>,
+  userId?: string
 ): Record<string, DayAvailability> {
   const newAvailability: Record<string, DayAvailability> = {};
 
@@ -32,7 +33,8 @@ function processMultipleDays(
       workingHours,
       settings,
       exception,
-      existingSlots
+      existingSlots,
+      userId
     );
 
     newAvailability[dateKey] = dayAvailability;
@@ -46,6 +48,22 @@ export function useAvailability() {
   const [availability, setAvailability] = useState<
     Record<string, DayAvailability>
   >({});
+  interface Booking {
+    id: string;
+    user_id: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+    client_name: string;
+    client_email: string;
+    client_phone?: string;
+    notes?: string;
+    status: "pending" | "confirmed" | "cancelled" | "completed" | "no-show";
+    created_at: string;
+    updated_at: string;
+  }
+
+  const [bookings] = useState<Record<string, Booking[]>>({});
   const [workingHours, setWorkingHours] = useState<WorkingHours[]>([]);
   const [settings, setSettings] = useState<AvailabilitySettings>({
     slotDuration: 0,
@@ -206,6 +224,42 @@ export function useAvailability() {
     return { success: true, message: "Data saved successfully (no-op)" };
   }, []);
 
+  // Load bookings for a date range
+  const loadBookingsForMonth = useCallback(
+    async (startDate: Date, endDate: Date) => {
+      try {
+        const startDateStr = TimeSlotUtils.formatDateKey(startDate);
+        const endDateStr = TimeSlotUtils.formatDateKey(endDate);
+
+        console.log("📅 Loading bookings for month:", {
+          startDateStr,
+          endDateStr,
+        });
+
+        // Use server-side API that handles user authentication
+        const response = await fetch(
+          `/api/availability/bookings-for-month?startDate=${encodeURIComponent(
+            startDateStr
+          )}&endDate=${encodeURIComponent(endDateStr)}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch bookings: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("📅 Bookings loaded:", data);
+
+        // The API already returns bookings grouped by date
+        return data.bookings || {};
+      } catch (error) {
+        console.error("Failed to load bookings:", error);
+        return {};
+      }
+    },
+    []
+  );
+
   // Optimized month loading
   const loadTimeSlotsForMonth = useCallback(
     async (startDate: Date, endDate: Date) => {
@@ -275,17 +329,30 @@ export function useAvailability() {
 
   // Process multiple days with batched data
   const processMonthDays = useCallback(
-    (
+    async (
       days: Date[],
       exceptionsMap: Map<string, { is_available: boolean; reason?: string }>,
       slotsMap: Map<string, TimeSlot[]>
     ) => {
+      // Get userId for consistent slot ID generation from server
+      let userId: string | undefined;
+      try {
+        const response = await fetch("/api/auth/user-id");
+        if (response.ok) {
+          const data = await response.json();
+          userId = data.userId;
+        }
+      } catch (error) {
+        console.warn("Could not get user ID for slot generation:", error);
+      }
+
       const newAvailability = processMultipleDays(
         days,
         workingHours,
         settings,
         exceptionsMap,
-        slotsMap
+        slotsMap,
+        userId
       );
 
       // Update state with all processed days at once
@@ -321,6 +388,18 @@ export function useAvailability() {
   const toggleWorkingDay = useCallback(
     async (date: Date) => {
       if (workingHours.length === 0) return;
+
+      // Get userId for consistent slot ID generation from server
+      let userId: string | undefined;
+      try {
+        const response = await fetch("/api/auth/user-id");
+        if (response.ok) {
+          const data = await response.json();
+          userId = data.userId;
+        }
+      } catch (error) {
+        console.warn("Could not get user ID for slot generation:", error);
+      }
 
       const dateKey = TimeSlotUtils.formatDateKey(date);
       const currentDay = availability[dateKey];
@@ -684,6 +763,7 @@ export function useAvailability() {
   return {
     // State
     availability,
+    bookings,
     workingHours,
     settings,
     isLoading,
@@ -703,6 +783,7 @@ export function useAvailability() {
 
     // Optimized batch functions
     loadTimeSlotsForMonth,
+    loadBookingsForMonth,
     processMonthDays,
 
     // Cache control
