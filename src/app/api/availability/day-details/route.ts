@@ -71,8 +71,13 @@ export async function GET(request: NextRequest) {
               b.start_time === slot.startTime && b.end_time === slot.endTime
           );
           if (booking) {
-            slot.isAvailable = false;
-            slot.isBooked = true;
+            // Only block the slot if booking is pending or confirmed
+            const blocksSlot =
+              booking.status === "pending" || booking.status === "confirmed";
+            if (blocksSlot) {
+              slot.isAvailable = false;
+              slot.isBooked = true;
+            }
             (slot as any).bookingDetails = {
               clientName: booking.client_name,
               clientEmail: booking.client_email,
