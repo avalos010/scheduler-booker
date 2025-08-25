@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
-  UserIcon,
   EnvelopeIcon,
   PhoneIcon,
   ChatBubbleLeftIcon,
+  TrashIcon,
+  CalendarIcon,
 } from "@heroicons/react/24/outline";
 
 interface Booking {
@@ -29,44 +30,20 @@ interface AppointmentsListProps {
   userId: string;
 }
 
-const statusConfig = {
-  pending: {
-    label: "Pending",
-    color: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    icon: ClockIcon,
-  },
-  confirmed: {
-    label: "Confirmed",
-    color: "bg-green-100 text-green-800 border-green-200",
-    icon: CheckCircleIcon,
-  },
-  cancelled: {
-    label: "Cancelled",
-    color: "bg-red-100 text-red-800 border-red-200",
-    icon: XCircleIcon,
-  },
-  completed: {
-    label: "Completed",
-    color: "bg-blue-100 text-blue-800 border-blue-200",
-    icon: CheckCircleIcon,
-  },
-  "no-show": {
-    label: "No Show",
-    color: "bg-gray-100 text-gray-800 border-gray-200",
-    icon: XCircleIcon,
-  },
-};
+// Local config inside BookingCard handles display styling
 
 export default function AppointmentsList({ userId }: AppointmentsListProps) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [showDidShowModal, setShowDidShowModal] = useState(false);
+  const [modalBooking, setModalBooking] = useState<Booking | null>(null);
+  const navigateToRebook = (date: string, start: string, end: string) => {
+    const params = new URLSearchParams({ date, start, end });
+    window.location.href = `/dashboard/bookings?${params.toString()}`;
+  };
 
-  useEffect(() => {
-    fetchBookings();
-  }, [userId]);
-
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       const response = await fetch(`/api/bookings?userId=${userId}`);
       if (response.ok) {
@@ -78,7 +55,11 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
 
   const updateBookingStatus = async (bookingId: string, newStatus: string) => {
     setUpdatingStatus(bookingId);
@@ -115,6 +96,27 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
     }
   };
 
+  const deleteBooking = async (bookingId: string) => {
+    if (!window.confirm("Delete this booking? This cannot be undone.")) return;
+    setUpdatingStatus(bookingId);
+    try {
+      const response = await fetch(`/api/bookings?bookingId=${bookingId}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setBookings((prev) => prev.filter((b) => b.id !== bookingId));
+      } else {
+        const error = await response.json();
+        alert(`Error deleting booking: ${error.message}`);
+      }
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+      alert("Error deleting booking. Please try again.");
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
   const getStatusActions = (booking: Booking) => {
     switch (booking.status) {
       case "pending":
@@ -136,31 +138,133 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
               <XCircleIcon className="h-4 w-4" />
               Decline
             </button>
+            <button
+              onClick={() =>
+                navigateToRebook(
+                  booking.date,
+                  booking.start_time,
+                  booking.end_time
+                )
+              }
+              className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
+              title="Rebook this appointment"
+            >
+              <CalendarIcon className="h-4 w-4" />
+              Rebook
+            </button>
+            <button
+              onClick={() => deleteBooking(booking.id)}
+              disabled={updatingStatus === booking.id}
+              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              title="Delete booking"
+            >
+              <TrashIcon className="h-4 w-4" />
+              Delete
+            </button>
           </div>
         );
-      case "confirmed":
+      case "confirmed": {
+        const startDateTime = new Date(`${booking.date}T${booking.start_time}`);
+        const fifteenMinutesMs = 15 * 60 * 1000;
+        const startWithGrace = new Date(
+          startDateTime.getTime() + fifteenMinutesMs
+        );
+        const now = new Date();
+        const isBeforeGrace = now < startWithGrace;
+        const isBeforeStart = now < startDateTime;
+
+        return (
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => updateBookingStatus(booking.id, "completed")}
+                disabled={updatingStatus === booking.id || isBeforeStart}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                <CheckCircleIcon className="h-4 w-4" />
+                Mark Complete
+              </button>
+              <button
+                onClick={() => updateBookingStatus(booking.id, "no-show")}
+                disabled={updatingStatus === booking.id || isBeforeGrace}
+                title={
+                  isBeforeGrace
+                    ? "You can only mark no-show 15 minutes after start time"
+                    : undefined
+                }
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+              >
+                <XCircleIcon className="h-4 w-4" />
+                No Show
+              </button>
+              <button
+                onClick={() =>
+                  navigateToRebook(
+                    booking.date,
+                    booking.start_time,
+                    booking.end_time
+                  )
+                }
+                className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                title="Rebook this appointment"
+              >
+                <CalendarIcon className="h-4 w-4" />
+                Rebook
+              </button>
+              <button
+                onClick={() => deleteBooking(booking.id)}
+                disabled={updatingStatus === booking.id}
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                title="Delete booking"
+              >
+                <TrashIcon className="h-4 w-4" />
+                Delete
+              </button>
+            </div>
+            {!isBeforeGrace && (
+              <button
+                onClick={() => {
+                  setModalBooking(booking);
+                  setShowDidShowModal(true);
+                }}
+                className="inline-flex w-fit items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 hover:bg-gray-50"
+                title="Quick action: confirm whether the client arrived"
+              >
+                Did they show up?
+              </button>
+            )}
+          </div>
+        );
+      }
+      default: {
         return (
           <div className="flex gap-2">
             <button
-              onClick={() => updateBookingStatus(booking.id, "completed")}
-              disabled={updatingStatus === booking.id}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              onClick={() =>
+                navigateToRebook(
+                  booking.date,
+                  booking.start_time,
+                  booking.end_time
+                )
+              }
+              className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
+              title="Rebook this appointment"
             >
-              <CheckCircleIcon className="h-4 w-4" />
-              Mark Complete
+              <CalendarIcon className="h-4 w-4" />
+              Rebook
             </button>
             <button
-              onClick={() => updateBookingStatus(booking.id, "no-show")}
+              onClick={() => deleteBooking(booking.id)}
               disabled={updatingStatus === booking.id}
-              className="inline-flex items-center gap-2 rounded-lg bg-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              title="Delete booking"
             >
-              <XCircleIcon className="h-4 w-4" />
-              No Show
+              <TrashIcon className="h-4 w-4" />
+              Delete
             </button>
           </div>
         );
-      default:
-        return null;
+      }
     }
   };
 
@@ -257,6 +361,64 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
                 updatingStatus={updatingStatus === booking.id}
               />
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Did they show up? Modal */}
+      {showDidShowModal && modalBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowDidShowModal(false)}
+          />
+          <div className="relative z-10 w-full max-w-md rounded-lg bg-white shadow-xl border border-gray-200">
+            <div className="p-5 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Did they show up?
+              </h3>
+              <p className="mt-1 text-sm text-gray-600">
+                {format(new Date(modalBooking.date), "EEEE, MMMM d, yyyy")} ·{" "}
+                {modalBooking.start_time} - {modalBooking.end_time}
+              </p>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-gray-700">
+                Confirm whether the client attended this appointment.
+              </p>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setShowDidShowModal(false)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!modalBooking) return;
+                    await updateBookingStatus(modalBooking.id, "no-show");
+                    setShowDidShowModal(false);
+                    setModalBooking(null);
+                  }}
+                  disabled={updatingStatus === modalBooking.id}
+                  className="inline-flex items-center gap-2 rounded-lg bg-gray-700 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+                >
+                  No, mark No Show
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!modalBooking) return;
+                    await updateBookingStatus(modalBooking.id, "completed");
+                    setShowDidShowModal(false);
+                    setModalBooking(null);
+                  }}
+                  disabled={updatingStatus === modalBooking.id}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Yes, mark Completed
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

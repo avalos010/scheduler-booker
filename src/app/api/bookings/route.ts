@@ -41,19 +41,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if the time slot is still available
-    const { data: timeSlot, error: timeSlotError } = await supabase
+    // Ensure the time slot exists and is free; if missing, create it on-the-fly
+    const { data: fetchedTimeSlot, error: timeSlotFetchError } = await supabase
       .from("user_time_slots")
       .select("*")
       .eq("user_id", userId)
       .eq("date", date)
       .eq("start_time", startTime)
       .eq("end_time", endTime)
-      .eq("is_available", true)
-      .eq("is_booked", false)
       .single();
 
-    if (timeSlotError || !timeSlot) {
+    let timeSlot = fetchedTimeSlot;
+
+    if (timeSlotFetchError && timeSlotFetchError.code !== "PGRST116") {
+      // Unexpected fetch error
+      return NextResponse.json(
+        { message: "Error checking time slot availability" },
+        { status: 500 }
+      );
+    }
+
+    if (!timeSlot) {
+      // Create the missing slot as available and unbooked
+      const { data: createdSlot, error: createSlotError } = await supabase
+        .from("user_time_slots")
+        .insert({
+          user_id: userId,
+          date,
+          start_time: startTime,
+          end_time: endTime,
+          is_available: true,
+          is_booked: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (createSlotError) {
+        // If unique violation, try to fetch again; otherwise fail
+        const { data: refetchedSlot } = await supabase
+          .from("user_time_slots")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("date", date)
+          .eq("start_time", startTime)
+          .eq("end_time", endTime)
+          .single();
+        timeSlot = refetchedSlot || null;
+      } else {
+        timeSlot = createdSlot;
+      }
+    }
+
+    if (!timeSlot || timeSlot.is_booked || timeSlot.is_available === false) {
       return NextResponse.json(
         { message: "Time slot is no longer available" },
         { status: 409 }
@@ -185,7 +226,7 @@ export async function PATCH(request: NextRequest) {
     // Verify the user owns this booking
     const { data: existingBooking, error: fetchError } = await supabase
       .from("bookings")
-      .select("user_id, status")
+      .select("user_id, status, date, start_time, end_time")
       .eq("id", bookingId)
       .single();
 
@@ -201,6 +242,70 @@ export async function PATCH(request: NextRequest) {
         { message: "Unauthorized to modify this booking" },
         { status: 403 }
       );
+    }
+
+    // Prevent marking as no-show before the appointment start time + 15 minutes
+    if (status === "no-show") {
+      try {
+        const startDateTime = new Date(
+          `${existingBooking.date}T${existingBooking.start_time}`
+        );
+        const now = new Date();
+        if (isNaN(startDateTime.getTime())) {
+          return NextResponse.json(
+            { message: "Invalid booking start time; cannot set no-show." },
+            { status: 400 }
+          );
+        }
+        const fifteenMinutesMs = 15 * 60 * 1000;
+        const startWithGrace = new Date(
+          startDateTime.getTime() + fifteenMinutesMs
+        );
+        if (now < startWithGrace) {
+          return NextResponse.json(
+            {
+              message:
+                "Cannot mark as no-show until 15 minutes after the start time.",
+            },
+            { status: 400 }
+          );
+        }
+      } catch {
+        return NextResponse.json(
+          { message: "Error validating appointment time for no-show." },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Prevent marking as completed before the appointment start time
+    if (status === "completed") {
+      try {
+        const startDateTime = new Date(
+          `${existingBooking.date}T${existingBooking.start_time}`
+        );
+        const now = new Date();
+        if (isNaN(startDateTime.getTime())) {
+          return NextResponse.json(
+            { message: "Invalid booking start time; cannot mark completed." },
+            { status: 400 }
+          );
+        }
+        if (now < startDateTime) {
+          return NextResponse.json(
+            {
+              message:
+                "Cannot mark as completed before the appointment start time.",
+            },
+            { status: 400 }
+          );
+        }
+      } catch {
+        return NextResponse.json(
+          { message: "Error validating appointment time for completion." },
+          { status: 400 }
+        );
+      }
     }
 
     // Update the booking status
@@ -266,6 +371,87 @@ export async function PATCH(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in updating booking:", error);
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createSupabaseServerClient();
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const bookingId = searchParams.get("bookingId");
+
+    if (!bookingId) {
+      return NextResponse.json(
+        { message: "Missing bookingId" },
+        { status: 400 }
+      );
+    }
+
+    // Fetch the booking to verify ownership and get slot info
+    const { data: booking, error: fetchError } = await supabase
+      .from("bookings")
+      .select("id, user_id, date, start_time, end_time")
+      .eq("id", bookingId)
+      .single();
+
+    if (fetchError || !booking) {
+      return NextResponse.json(
+        { message: "Booking not found" },
+        { status: 404 }
+      );
+    }
+
+    if (booking.user_id !== session.user.id) {
+      return NextResponse.json(
+        { message: "Unauthorized to delete this booking" },
+        { status: 403 }
+      );
+    }
+
+    // Delete the booking
+    const { error: deleteError } = await supabase
+      .from("bookings")
+      .delete()
+      .eq("id", bookingId);
+
+    if (deleteError) {
+      console.error("Error deleting booking:", deleteError);
+      return NextResponse.json(
+        { message: "Error deleting booking" },
+        { status: 500 }
+      );
+    }
+
+    // Free the time slot
+    const { error: slotUpdateError } = await supabase
+      .from("user_time_slots")
+      .update({ is_booked: false, updated_at: new Date().toISOString() })
+      .eq("user_id", session.user.id)
+      .eq("date", booking.date)
+      .eq("start_time", booking.start_time)
+      .eq("end_time", booking.end_time);
+
+    if (slotUpdateError) {
+      console.error("Error updating time slot after delete:", slotUpdateError);
+      // Do not fail the request; just log
+    }
+
+    return NextResponse.json({ message: "Booking deleted" });
+  } catch (error) {
+    console.error("Error in deleting booking:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

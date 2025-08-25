@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -37,6 +38,7 @@ export default function BookingForm({ userId }: BookingFormProps) {
   const [dayAvailability, setDayAvailability] =
     useState<DayAvailability | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const searchParams = useSearchParams();
   const {
     register,
     handleSubmit,
@@ -52,32 +54,73 @@ export default function BookingForm({ userId }: BookingFormProps) {
     },
   });
 
+  // Prefill date from query string for rebooking (guard against same-date updates)
+  useEffect(() => {
+    const date = searchParams.get("date");
+    if (date) {
+      const parsed = new Date(date);
+      if (!isNaN(parsed.getTime())) {
+        const current = format(selectedDate, "yyyy-MM-dd");
+        const incoming = format(parsed, "yyyy-MM-dd");
+        if (current !== incoming) {
+          setSelectedDate(parsed);
+        }
+      }
+    }
+    // Do not prefill client details for privacy
+  }, [searchParams, selectedDate]);
+
+  // Preselect a slot after availability loads using start/end from query
+  useEffect(() => {
+    const start = searchParams.get("start");
+    const end = searchParams.get("end");
+    if (start && end && dayAvailability?.timeSlots) {
+      const slot = dayAvailability.timeSlots.find(
+        (s) =>
+          s.startTime === start &&
+          s.endTime === end &&
+          s.isAvailable &&
+          !s.isBooked
+      );
+      if (
+        slot &&
+        (selectedTimeSlot?.startTime !== slot.startTime ||
+          selectedTimeSlot?.endTime !== slot.endTime)
+      ) {
+        setSelectedTimeSlot(slot);
+      }
+    }
+  }, [searchParams, dayAvailability, selectedTimeSlot]);
+
+  const fetchDayAvailability = useCallback(
+    async (date: Date) => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          `/api/availability/public?date=${format(
+            date,
+            "yyyy-MM-dd"
+          )}&userId=${userId}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setDayAvailability(data);
+        }
+      } catch (error) {
+        console.error("Error fetching availability:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [userId]
+  );
+
   // Fetch availability for selected date
   useEffect(() => {
     if (selectedDate) {
       fetchDayAvailability(selectedDate);
     }
-  }, [selectedDate, userId]);
-
-  const fetchDayAvailability = async (date: Date) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `/api/availability/public?date=${format(
-          date,
-          "yyyy-MM-dd"
-        )}&userId=${userId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setDayAvailability(data);
-      }
-    } catch (error) {
-      console.error("Error fetching availability:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [selectedDate, fetchDayAvailability]);
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
