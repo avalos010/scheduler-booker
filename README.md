@@ -128,7 +128,8 @@ npm test -- --testPathPatterns="AppointmentsList.guards.test.tsx|SharedAvailabil
 
 ```bash
 npm test                    # All tests
-npm run test:watch         # Watch mode
+npm run test:watch         # Watch mode (all tests)
+npm run test:watch:critical # Watch mode (critical tests only)
 npm run test:coverage      # With coverage report
 npm run type-check         # TypeScript validation
 ```
@@ -247,7 +248,6 @@ npm run test:coverage   # Run tests with coverage
 ✅ Booking Persistence Tests: 6/6 passing
 ✅ Appointment Guards: 2/2 passing
 ✅ Calendar Status Tests: 2/2 passing
-✅ Build Verification: ✓ Successful
 ✅ Multi-Node Testing: Node 18.x & 20.x ✓
 ```
 
@@ -266,8 +266,7 @@ Every push triggers:
 
 1. **Linting** and **Type Checking** (warnings allowed)
 2. **Core Functionality Tests** (must pass)
-3. **Build Verification** (must succeed)
-4. **Multi-Node Validation** (18.x and 20.x)
+3. **Multi-Node Validation** (18.x and 20.x)
 
 ### Vercel Integration
 
@@ -280,7 +279,7 @@ Every push triggers:
 
 1. Go to Repository Settings → Branches
 2. Add protection rule for `main` branch
-3. Require status checks: `test (18.x)`, `test (20.x)`, `build`
+3. Require status checks: `test (18.x)`, `test (20.x)`
 4. Require pull request reviews
 
 ## 📊 Performance & Optimization
