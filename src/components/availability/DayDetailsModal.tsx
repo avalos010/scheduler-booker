@@ -87,9 +87,9 @@ export default function DayDetailsModal({
       try {
         const dateKey = format(selectedDate, "yyyy-MM-dd");
 
-        // Fetch booking details for this date
+        // Fetch booking details for this date using the secure, authenticated endpoint
         const response = await fetch(
-          `/api/availability/public?date=${dateKey}&userId=${userId}`
+          `/api/availability/day-details?date=${dateKey}`
         );
         if (response.ok) {
           const data = await response.json();

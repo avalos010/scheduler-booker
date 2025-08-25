@@ -110,13 +110,14 @@ export async function GET(request: NextRequest) {
           if (booking) {
             slot.isAvailable = false;
             slot.isBooked = true;
-            slot.bookingStatus = booking.status;
-            slot.bookingDetails = {
-              clientName: booking.client_name,
-              clientEmail: booking.client_email,
-              notes: booking.notes,
-              status: booking.status,
-            };
+            // DO NOT include booking details in the public response
+            // slot.bookingStatus = booking.status;
+            // slot.bookingDetails = {
+            //   clientName: booking.client_name,
+            //   clientEmail: booking.client_email,
+            //   notes: booking.notes,
+            //   status: booking.status,
+            // };
           }
         });
       }
@@ -209,13 +210,14 @@ export async function GET(request: NextRequest) {
         if (booking) {
           slot.isAvailable = false;
           slot.isBooked = true;
-          slot.bookingStatus = booking.status;
-          slot.bookingDetails = {
-            clientName: booking.client_name,
-            clientEmail: booking.client_email,
-            notes: booking.notes,
-            status: booking.status,
-          };
+          // DO NOT include booking details in the public response
+          // slot.bookingStatus = booking.status;
+          // slot.bookingDetails = {
+          //   clientName: booking.client_name,
+          //   clientEmail: booking.client_email,
+          //   notes: booking.notes,
+          //   status: booking.status,
+          // };
         }
       });
     }

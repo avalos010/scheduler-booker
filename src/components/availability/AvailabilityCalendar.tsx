@@ -53,7 +53,7 @@ export default function AvailabilityCalendar({
     setAvailability,
     loadAvailability,
     loadTimeSlotsForMonth,
-    loadBookingsForMonth,
+    loadAndSetBookings,
     processMonthDays,
     markTimeSlotsLoaded,
   } = useAvailability();
@@ -146,12 +146,12 @@ export default function AvailabilityCalendar({
       const processMonthEnd = endOfMonth(currentMonth);
 
       // Load all month data in parallel - time slots and bookings
-      const [monthData, bookingsData] = await Promise.all([
+      const [monthData] = await Promise.all([
         loadTimeSlotsForMonth(processMonthStart, processMonthEnd),
-        loadBookingsForMonth(processMonthStart, processMonthEnd),
+        loadAndSetBookings(processMonthStart, processMonthEnd), // This now updates the state
       ]);
 
-      console.log("📅 Loaded month data:", { monthData, bookingsData });
+      console.log("📅 Loaded month data:", { monthData });
 
       if (monthData) {
         // Process all days with the batched data (no more database calls)
@@ -178,7 +178,7 @@ export default function AvailabilityCalendar({
     isFullyLoaded,
     availability,
     loadTimeSlotsForMonth,
-    loadBookingsForMonth,
+    loadAndSetBookings,
     processMonthDays,
     markTimeSlotsLoaded,
   ]);
@@ -1004,6 +1004,7 @@ export default function AvailabilityCalendar({
         onClose={() => setShowDayModal(false)}
         selectedDate={selectedDate}
         availability={availability}
+        regenerateDaySlots={regenerateDaySlots}
         workingHours={workingHours}
         userId={userId}
         toggleTimeSlot={toggleTimeSlot}

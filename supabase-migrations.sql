@@ -156,6 +156,32 @@ BEGIN
     CREATE POLICY "Users can update own bookings" ON bookings
       FOR UPDATE USING (auth.uid() = user_id);
   END IF;
+
+  -- Add public read access policies for availability
+  -- user_availability_settings
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_availability_settings' AND policyname = 'Public can view availability settings') THEN
+    CREATE POLICY "Public can view availability settings" ON user_availability_settings
+      FOR SELECT USING (true);
+  END IF;
+
+  -- user_working_hours
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_working_hours' AND policyname = 'Public can view working hours') THEN
+    CREATE POLICY "Public can view working hours" ON user_working_hours
+      FOR SELECT USING (true);
+  END IF;
+
+  -- user_availability_exceptions
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_availability_exceptions' AND policyname = 'Public can view availability exceptions') THEN
+    CREATE POLICY "Public can view availability exceptions" ON user_availability_exceptions
+      FOR SELECT USING (true);
+  END IF;
+
+  -- user_time_slots
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_time_slots' AND policyname = 'Public can view time slots') THEN
+    CREATE POLICY "Public can view time slots" ON user_time_slots
+      FOR SELECT USING (true);
+  END IF;
+  
 END $$;
 
 -- Indexes for performance

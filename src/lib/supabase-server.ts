@@ -52,3 +52,27 @@ export function createSupabaseMiddlewareClient(requestCookies: {
     },
   });
 }
+
+// Service Role Supabase instance (for bypassing RLS)
+// IMPORTANT: This should ONLY be used in server-side routes where you need to bypass RLS.
+// Never expose this client or its key to the client-side.
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+export function createSupabaseServiceClient() {
+  return createServerClient(supabaseUrl, supabaseServiceKey, {
+    cookies: {
+      // No need for cookie handling with service role
+      getAll() {
+        return [];
+      },
+      setAll() {
+        // No need to set cookies
+      },
+    },
+    auth: {
+      // Bypasses RLS by acting as a service role
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}

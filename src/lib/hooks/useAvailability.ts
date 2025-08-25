@@ -30,7 +30,7 @@ export function useAvailability() {
   const [availability, setAvailability] = useState<
     Record<string, DayAvailability>
   >({});
-  const [bookings] = useState<Record<string, Booking[]>>({});
+  const [bookings, setBookings] = useState<Record<string, Booking[]>>({});
   const [workingHours, setWorkingHours] = useState<WorkingHours[]>([]);
   const [settings, setSettings] = useState<AvailabilitySettings>({
     slotDuration: 0,
@@ -71,6 +71,16 @@ export function useAvailability() {
     workingHours,
     settings,
   });
+
+  // Function to load bookings and update state
+  const loadAndSetBookings = useCallback(
+    async (startDate: Date, endDate: Date) => {
+      const fetchedBookings = await loadBookingsForMonth(startDate, endDate);
+      // Merge with existing bookings to avoid losing data from other months
+      setBookings((prev) => ({ ...prev, ...fetchedBookings }));
+    },
+    [loadBookingsForMonth]
+  );
 
   // Update availability for a specific date
   const updateDayAvailability = useCallback(
@@ -189,7 +199,8 @@ export function useAvailability() {
 
     // Optimized batch functions
     loadTimeSlotsForMonth,
-    loadBookingsForMonth,
+    loadBookingsForMonth, // Keep this for direct access if needed
+    loadAndSetBookings, // Expose the new function
     processMonthDays,
 
     // Cache control

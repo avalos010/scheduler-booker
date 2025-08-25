@@ -97,7 +97,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
     }
 
     try {
-      const response = await fetch("/api/bookings", {
+      const response = await fetch("/api/bookings/public-create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
