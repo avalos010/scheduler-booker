@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
+type BookingDetails = {
+  clientName: string;
+  clientEmail: string;
+  notes: string | null;
+  status: string;
+};
+
+type ApiTimeSlot = {
+  id: string;
+  startTime: string;
+  endTime: string;
+  isAvailable: boolean;
+  isBooked: boolean;
+  bookingDetails?: BookingDetails;
+};
+
 // This endpoint is for authenticated users to fetch their own availability
 // details, including private booking information.
 export async function GET(request: NextRequest) {
@@ -38,7 +54,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     // Check for custom time slots for this specific date
-    const { data: customTimeSlots, error: timeSlotsError } = await supabase
+    const { data: customTimeSlots, error: _timeSlotsError } = await supabase
       .from("user_time_slots")
       .select("*")
       .eq("user_id", userId)
@@ -47,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     // This logic is similar to the public one, but crucially, it WILL return booking details.
     if (customTimeSlots && customTimeSlots.length > 0) {
-      const timeSlots = customTimeSlots.map((slot) => ({
+      const timeSlots: ApiTimeSlot[] = customTimeSlots.map((slot) => ({
         id: `${userId}-${date}-${slot.start_time}-${slot.end_time}`,
         startTime: slot.start_time,
         endTime: slot.end_time,
@@ -78,7 +94,7 @@ export async function GET(request: NextRequest) {
               slot.isAvailable = false;
               slot.isBooked = true;
             }
-            (slot as any).bookingDetails = {
+            slot.bookingDetails = {
               clientName: booking.client_name,
               clientEmail: booking.client_email,
               notes: booking.notes,
@@ -111,7 +127,7 @@ export async function GET(request: NextRequest) {
       .single();
     const slotDuration = settings?.slot_duration_minutes || 60;
 
-    const timeSlots: any[] = [];
+    const timeSlots: ApiTimeSlot[] = [];
     let currentTime = new Date(`2000-01-01T${workingHours.start_time}`);
     const endTime = new Date(`2000-01-01T${workingHours.end_time}`);
 
