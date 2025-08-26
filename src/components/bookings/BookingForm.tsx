@@ -16,6 +16,8 @@ interface TimeSlot {
   id: string;
   startTime: string;
   endTime: string;
+  startTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
+  endTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
   isAvailable: boolean;
   isBooked?: boolean;
 }
@@ -309,7 +311,12 @@ export default function BookingForm({ userId }: BookingFormProps) {
                     Creating Booking...
                   </div>
                 ) : (
-                  `Book ${selectedTimeSlot.startTime} - ${selectedTimeSlot.endTime}`
+                  `Book ${
+                    selectedTimeSlot.startTimeDisplay ||
+                    selectedTimeSlot.startTime
+                  } - ${
+                    selectedTimeSlot.endTimeDisplay || selectedTimeSlot.endTime
+                  }`
                 )}
               </button>
             </div>

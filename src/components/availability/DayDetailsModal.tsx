@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useTimeFormatPreference } from "@/lib/utils/clientTimeFormat";
 import TimePicker from "./TimePicker";
 import type { DayAvailability, WorkingHours } from "@/lib/types/availability";
 
@@ -45,6 +46,8 @@ export default function DayDetailsModal({
       }
     >
   >({});
+  const [apiTimeSlots, setApiTimeSlots] = useState<any[]>([]);
+  const { is24Hour } = useTimeFormatPreference();
 
   // Close modal on escape key
   useEffect(() => {
@@ -93,6 +96,14 @@ export default function DayDetailsModal({
         );
         if (response.ok) {
           const data = await response.json();
+          console.log("🔍 DayDetailsModal: API response:", {
+            timeSlots: data.timeSlots?.slice(0, 2), // Show first 2 slots for debugging
+            hasDisplayFields: data.timeSlots?.some(
+              (slot: { startTimeDisplay?: string }) =>
+                slot.startTimeDisplay !== undefined
+            ),
+            userPreference: { is24Hour },
+          });
           if (data.timeSlots) {
             const details: Record<
               string,
@@ -109,6 +120,8 @@ export default function DayDetailsModal({
                 id: string;
                 startTime: string;
                 endTime: string;
+                startTimeDisplay?: string;
+                endTimeDisplay?: string;
                 isBooked: boolean;
                 bookingDetails?: {
                   clientName: string;
@@ -123,31 +136,17 @@ export default function DayDetailsModal({
               }
             );
 
-            console.log("🔍 DayDetailsModal: Booking details fetched:", {
+            console.log("🔍 DayDetailsModal: API data fetched:", {
               apiSlots: data.timeSlots,
+              hasDisplayFields: data.timeSlots?.some(
+                (slot: any) => slot.startTimeDisplay
+              ),
               mappedDetails: details,
               detailsCount: Object.keys(details).length,
               availabilitySlots: dayAvailability?.timeSlots || [],
-              // Debug: Show ID comparison
-              slotIdComparison: data.timeSlots.map(
-                (slot: {
-                  id: string;
-                  isBooked: boolean;
-                  bookingDetails?: {
-                    clientName: string;
-                    clientEmail: string;
-                    notes?: string;
-                    status: string;
-                  };
-                }) => ({
-                  apiSlotId: slot.id,
-                  isBooked: slot.isBooked,
-                  hasBookingDetails: !!slot.bookingDetails,
-                  bookingDetails: slot.bookingDetails,
-                })
-              ),
             });
             setBookingDetails(details);
+            setApiTimeSlots(data.timeSlots || []);
           }
         }
       } catch (error) {
@@ -175,6 +174,10 @@ export default function DayDetailsModal({
       timeSlots: [],
       isWorkingDay: defaultIsWorking,
     };
+
+  // Use API time slots if available (they have formatting), otherwise fall back to prop data
+  const displayTimeSlots =
+    apiTimeSlots.length > 0 ? apiTimeSlots : dayAvailability.timeSlots;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6">
@@ -245,19 +248,19 @@ export default function DayDetailsModal({
                   </h3>
                   <span className="ml-2 text-xs sm:text-sm text-gray-500">
                     {
-                      dayAvailability.timeSlots.filter(
+                      displayTimeSlots.filter(
                         (s) => s.isAvailable && !s.isBooked
                       ).length
                     }
-                    /{dayAvailability.timeSlots.length} available
+                    /{displayTimeSlots.length} available
                   </span>
                 </div>
 
-                {dayAvailability.timeSlots.length > 0 ? (
+                {displayTimeSlots.length > 0 ? (
                   <div className="rounded-lg border border-gray-200 p-2 sm:p-3 bg-white">
                     {/* Two columns with expanded rows for booking details */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                      {dayAvailability.timeSlots.map((slot) => (
+                      {displayTimeSlots.map((slot) => (
                         <div key={slot.id} className="space-y-2">
                           <div className="space-y-2">
                             <button
@@ -284,7 +287,8 @@ export default function DayDetailsModal({
                             >
                               <div className="flex items-center justify-between mb-2">
                                 <span className="font-medium truncate">
-                                  {slot.startTime} - {slot.endTime}
+                                  {slot.startTimeDisplay || slot.startTime} -{" "}
+                                  {slot.endTimeDisplay || slot.endTime}
                                 </span>
                                 <span
                                   className={`ml-2 sm:ml-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 ${

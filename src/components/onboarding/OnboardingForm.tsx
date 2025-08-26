@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { HydrationSafeInput } from "@/components/common/HydrationSafeElement";
+import TimePicker from "../availability/TimePicker";
 
 const userTypeSchema = z.object({
   userType: z.enum(["business", "individual"]),
@@ -312,11 +313,16 @@ export default function OnboardingForm() {
             >
               Start Time
             </label>
-            <HydrationSafeInput
-              {...availabilityForm.register("startTime")}
-              type="time"
-              id="startTime"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+            <Controller
+              name="startTime"
+              control={availabilityForm.control}
+              render={({ field }) => (
+                <TimePicker
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  placeholder="Select start time"
+                />
+              )}
             />
             {availabilityForm.formState.errors.startTime && (
               <p className="mt-1 text-sm text-red-600">
@@ -332,11 +338,16 @@ export default function OnboardingForm() {
             >
               End Time
             </label>
-            <HydrationSafeInput
-              {...availabilityForm.register("endTime")}
-              type="time"
-              id="endTime"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+            <Controller
+              name="endTime"
+              control={availabilityForm.control}
+              render={({ field }) => (
+                <TimePicker
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  placeholder="Select end time"
+                />
+              )}
             />
             {availabilityForm.formState.errors.endTime && (
               <p className="mt-1 text-sm text-red-600">

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS user_availability_settings (
   slot_duration_minutes INTEGER DEFAULT 60,
   break_duration_minutes INTEGER DEFAULT 60,
   advance_booking_days INTEGER DEFAULT 30,
+  time_format_12h BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(user_id)
@@ -233,3 +234,40 @@ BEGIN
   END IF;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Add time_format_12h column if it doesn't exist (for existing tables)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_availability_settings' 
+    AND column_name = 'time_format_12h'
+  ) THEN
+    ALTER TABLE user_availability_settings 
+    ADD COLUMN time_format_12h BOOLEAN DEFAULT false;
+    
+    -- Update existing records to use 24-hour format by default
+    UPDATE user_availability_settings 
+    SET time_format_12h = false 
+    WHERE time_format_12h IS NULL;
+  END IF;
+  
+  -- Remove duplicate records first, keeping the most recent one
+  DELETE FROM user_availability_settings 
+  WHERE id NOT IN (
+    SELECT DISTINCT ON (user_id) id 
+    FROM user_availability_settings 
+    ORDER BY user_id, updated_at DESC
+  );
+  
+  -- Add unique constraint on user_id if it doesn't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = 'user_availability_settings' 
+    AND constraint_type = 'UNIQUE'
+    AND constraint_name = 'user_availability_settings_user_id_key'
+  ) THEN
+    ALTER TABLE user_availability_settings 
+    ADD CONSTRAINT user_availability_settings_user_id_key UNIQUE (user_id);
+  END IF;
+END $$;

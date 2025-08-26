@@ -27,6 +27,10 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAvailability } from "@/lib/hooks/useAvailability";
 import type { TimeSlot } from "@/lib/types/availability";
+import {
+  useTimeFormatPreference,
+  formatTime,
+} from "@/lib/utils/clientTimeFormat";
 import DayDetailsModal from "./DayDetailsModal";
 import SettingsModal from "./SettingsModal";
 
@@ -41,6 +45,7 @@ export default function AvailabilityCalendar({
   const [showDayModal, setShowDayModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const { is24Hour } = useTimeFormatPreference();
   const {
     availability,
     bookings,
@@ -71,6 +76,19 @@ export default function AvailabilityCalendar({
   // Track if we've already processed the current month
   const processedMonthRef = useRef<string>("");
   const timeSlotsMarkedRef = useRef<boolean>(false);
+
+  // Helper function to check if a date is within allowed booking range
+  // (current month + first 15 days of next month)
+  const isDateInAllowedRange = useCallback((date: Date) => {
+    const today = new Date();
+    const currentMonthStart = startOfMonth(today);
+    const nextMonth = addMonths(today, 1);
+    const nextMonthStart = startOfMonth(nextMonth);
+    const cutoffDate = new Date(nextMonthStart);
+    cutoffDate.setDate(15); // 15th day of next month
+
+    return date >= currentMonthStart && date <= cutoffDate;
+  }, []);
 
   // Helper function to get booking information for a specific day
   const getDayBookings = useCallback(
@@ -605,7 +623,8 @@ export default function AvailabilityCalendar({
                           )
                         ) : !isPastDay &&
                           dayAvailability.isWorkingDay &&
-                          dayAvailability.timeSlots.length > 0 ? (
+                          dayAvailability.timeSlots.length > 0 &&
+                          isDateInAllowedRange(day) ? (
                           <div className="space-y-2">
                             <div className="flex items-center space-x-2">
                               <ClockIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
@@ -686,6 +705,15 @@ export default function AvailabilityCalendar({
                               }
                               return null;
                             })()}
+                          </div>
+                        ) : !isPastDay &&
+                          dayAvailability.isWorkingDay &&
+                          dayAvailability.timeSlots.length > 0 &&
+                          !isDateInAllowedRange(day) ? (
+                          // Working day but outside allowed booking range
+                          <div className="flex items-center space-x-2 text-sm text-orange-500 opacity-75">
+                            <ClockIcon className="w-4 h-4 flex-shrink-0" />
+                            <span>Beyond booking limit</span>
                           </div>
                         ) : !isPastDay && dayAvailability.isWorkingDay ? (
                           <div className="flex items-center space-x-2 text-sm text-gray-400">
@@ -878,7 +906,13 @@ export default function AvailabilityCalendar({
                                     <div
                                       key={slot.id}
                                       className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-400 shadow-sm"
-                                      title={`${slot.startTime} - ${slot.endTime} (Past meeting)`}
+                                      title={`${
+                                        slot.startTimeDisplay ||
+                                        formatTime(slot.startTime, is24Hour)
+                                      } - ${
+                                        slot.endTimeDisplay ||
+                                        formatTime(slot.endTime, is24Hour)
+                                      } (Past meeting)`}
                                     />
                                   ))}
                                 {dayAvailability.timeSlots.filter(
@@ -903,8 +937,9 @@ export default function AvailabilityCalendar({
                           )
                         ) : !isPastDay &&
                           dayAvailability.isWorkingDay &&
-                          dayAvailability.timeSlots.length > 0 ? (
-                          // Future/current day with available slots
+                          dayAvailability.timeSlots.length > 0 &&
+                          isDateInAllowedRange(day) ? (
+                          // Future/current day with available slots (within allowed range)
                           <div className="space-y-1.5 sm:space-y-2 lg:space-y-3">
                             <div className="flex items-center space-x-1 sm:space-x-2">
                               <ClockIcon className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
@@ -980,6 +1015,17 @@ export default function AvailabilityCalendar({
                             <XCircleIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                             <span className="truncate">
                               No slots configured
+                            </span>
+                          </div>
+                        ) : !isPastDay &&
+                          dayAvailability.isWorkingDay &&
+                          dayAvailability.timeSlots.length > 0 &&
+                          !isDateInAllowedRange(day) ? (
+                          // Working day but outside allowed booking range
+                          <div className="flex items-center space-x-1 sm:space-x-2 text-xs text-orange-500 opacity-75">
+                            <ClockIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="truncate">
+                              Beyond booking limit
                             </span>
                           </div>
                         ) : !isPastDay ? (

@@ -3,6 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import {
+  useTimeFormatPreference,
+  formatTime,
+} from "@/lib/utils/clientTimeFormat";
+import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
@@ -47,6 +51,7 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
   );
   const [upcomingOnly, setUpcomingOnly] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const { is24Hour } = useTimeFormatPreference();
   const navigateToRebook = (date: string, start: string, end: string) => {
     const params = new URLSearchParams({ date, start, end });
     window.location.href = `/dashboard/bookings?${params.toString()}`;
@@ -436,6 +441,7 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
                 booking={booking}
                 actions={getStatusActions(booking)}
                 updatingStatus={updatingStatus === booking.id}
+                is24Hour={is24Hour}
               />
             ))}
           </div>
@@ -456,6 +462,7 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
                 booking={booking}
                 actions={getStatusActions(booking)}
                 updatingStatus={updatingStatus === booking.id}
+                is24Hour={is24Hour}
               />
             ))}
           </div>
@@ -476,6 +483,7 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
                 booking={booking}
                 actions={getStatusActions(booking)}
                 updatingStatus={updatingStatus === booking.id}
+                is24Hour={is24Hour}
               />
             ))}
           </div>
@@ -496,7 +504,8 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
               </h3>
               <p className="mt-1 text-sm text-gray-600">
                 {format(new Date(modalBooking.date), "EEEE, MMMM d, yyyy")} ·{" "}
-                {modalBooking.start_time} - {modalBooking.end_time}
+                {formatTime(modalBooking.start_time, is24Hour)} -{" "}
+                {formatTime(modalBooking.end_time, is24Hour)}
               </p>
             </div>
             <div className="p-5 space-y-4">
@@ -547,9 +556,15 @@ interface BookingCardProps {
   booking: Booking;
   actions: React.ReactNode;
   updatingStatus: boolean;
+  is24Hour: boolean;
 }
 
-function BookingCard({ booking, actions, updatingStatus }: BookingCardProps) {
+function BookingCard({
+  booking,
+  actions,
+  updatingStatus,
+  is24Hour,
+}: BookingCardProps) {
   const statusConfig = {
     pending: {
       label: "Pending",
@@ -606,7 +621,8 @@ function BookingCard({ booking, actions, updatingStatus }: BookingCardProps) {
           {/* Time */}
           <div className="mb-4">
             <p className="text-lg font-medium text-gray-900">
-              {booking.start_time} - {booking.end_time}
+              {formatTime(booking.start_time, is24Hour)} -{" "}
+              {formatTime(booking.end_time, is24Hour)}
             </p>
           </div>
 

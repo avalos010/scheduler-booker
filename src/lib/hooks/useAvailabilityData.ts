@@ -72,6 +72,8 @@ export function useAvailabilityData({
             ][wh.day_of_week],
             startTime: wh.start_time,
             endTime: wh.end_time,
+            startTimeDisplay: wh.start_time_display,
+            endTimeDisplay: wh.end_time_display,
             isWorking: wh.is_working,
           })
         );
@@ -101,6 +103,8 @@ export function useAvailabilityData({
               ][wh.day_of_week],
               startTime: wh.start_time,
               endTime: wh.end_time,
+              startTimeDisplay: wh.start_time_display,
+              endTimeDisplay: wh.end_time_display,
               isWorking: wh.is_working,
             })
           );

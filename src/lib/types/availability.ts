@@ -2,6 +2,8 @@ export interface TimeSlot {
   id: string;
   startTime: string;
   endTime: string;
+  startTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
+  endTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
   isAvailable: boolean;
   isBooked?: boolean; // Optional for backward compatibility
   bookingStatus?:
@@ -28,6 +30,8 @@ export interface WorkingHours {
   day: string;
   startTime: string;
   endTime: string;
+  startTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
+  endTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
   isWorking: boolean;
 }
 

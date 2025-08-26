@@ -17,7 +17,18 @@ const customJestConfig = {
     "src/**/*.{js,jsx,ts,tsx}",
     "!src/**/*.d.ts",
     "!src/**/*.stories.{js,jsx,ts,tsx}",
+    "!src/app/**/*.tsx", // Exclude Next.js pages and layouts
+    "!src/middleware.ts", // Exclude middleware
   ],
+  coverageThreshold: {
+    global: {
+      branches: 15,
+      functions: 12,
+      lines: 15,
+      statements: 15,
+    },
+  },
+  coverageReporters: ["text", "lcov", "html"],
   moduleDirectories: ["node_modules", "<rootDir>/"],
 };
 

@@ -2,6 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import {
+  useTimeFormatPreference,
+  formatTime,
+} from "@/lib/utils/clientTimeFormat";
 
 interface TimePickerProps {
   value: string;
@@ -19,6 +23,7 @@ export default function TimePicker({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { is24Hour } = useTimeFormatPreference();
 
   // Generate time options (24-hour format, 30-minute intervals)
   const timeOptions = [
@@ -77,15 +82,6 @@ export default function TimePicker({
     time.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Format time for display (convert 24h to 12h format)
-  const formatTimeDisplay = (time: string) => {
-    const [hours, minutes] = time.split(":");
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
-
   // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -121,7 +117,7 @@ export default function TimePicker({
         <span
           className={`truncate ${value ? "text-gray-900" : "text-gray-500"}`}
         >
-          {value ? formatTimeDisplay(value) : placeholder}
+          {value ? formatTime(value, is24Hour) : placeholder}
         </span>
         <ChevronDownIcon
           className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${
@@ -157,9 +153,11 @@ export default function TimePicker({
                       : "text-gray-700"
                   }`}
                 >
-                  <span className="font-medium">{formatTimeDisplay(time)}</span>
+                  <span className="font-medium">
+                    {formatTime(time, is24Hour)}
+                  </span>
                   <span className="ml-2 text-gray-400 text-xs hidden sm:inline">
-                    {time}
+                    {is24Hour ? time : formatTime(time, true)}
                   </span>
                 </button>
               ))

@@ -8,6 +8,8 @@ interface TimeSlot {
   id: string;
   startTime: string;
   endTime: string;
+  startTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
+  endTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
   isAvailable: boolean;
   isBooked?: boolean;
   bookingStatus?:
@@ -165,9 +167,11 @@ export default function SharedAvailabilityCalendar({
                       : "Not available"
                   }
                 >
-                  <div className="font-semibold">{slot.startTime}</div>
+                  <div className="font-semibold">
+                    {slot.startTimeDisplay || slot.startTime}
+                  </div>
                   <div className="text-xs text-gray-500">
-                    to {slot.endTime}
+                    to {slot.endTimeDisplay || slot.endTime}
                     {slot.isBooked && showBookingDetails && (
                       <div className="mt-2 space-y-1.5">
                         <div className="flex items-center gap-1.5">

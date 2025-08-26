@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { addMonths, startOfMonth } from "date-fns";
+import { formatTime } from "@/lib/utils/serverTimeFormat";
 
 type BookingDetails = {
   clientName: string;
@@ -12,6 +14,8 @@ type ApiTimeSlot = {
   id: string;
   startTime: string;
   endTime: string;
+  startTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
+  endTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
   isAvailable: boolean;
   isBooked: boolean;
   bookingDetails?: BookingDetails;
@@ -20,6 +24,9 @@ type ApiTimeSlot = {
 // This endpoint is for authenticated users to fetch their own availability
 // details, including private booking information.
 export async function GET(request: NextRequest) {
+  console.log("🔥🔥🔥 DAY DETAILS API CALLED AT:", new Date().toISOString());
+  console.log("🔥🔥🔥 REQUEST URL:", request.url);
+
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
 
@@ -41,6 +48,44 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = user.id;
+    console.log("🔥 USER ID:", userId);
+
+    // Fetch user's time format preference from database
+    console.log("🔥 FETCHING USER SETTINGS...");
+    const { data: userSettings } = await supabase
+      .from("user_availability_settings")
+      .select("time_format_12h")
+      .eq("user_id", userId)
+      .single();
+
+    console.log("🔥 USER SETTINGS:", userSettings);
+    const shouldUse12HourFormat = userSettings?.time_format_12h || false;
+    console.log("🔥 SHOULD USE 12H FORMAT:", shouldUse12HourFormat);
+
+    console.log("🔥 ABOUT TO VALIDATE DATE:", date);
+
+    // Validate that the requested date is within the allowed booking range
+    // (current month + first 15 days of next month)
+    const requestedDate = new Date(date);
+    const today = new Date();
+    const currentMonthStart = startOfMonth(today);
+    const nextMonth = addMonths(today, 1);
+    const nextMonthStart = startOfMonth(nextMonth);
+    const cutoffDate = new Date(nextMonthStart);
+    cutoffDate.setDate(15); // 15th day of next month
+
+    if (requestedDate < currentMonthStart || requestedDate > cutoffDate) {
+      console.log("🔥 DATE VALIDATION FAILED - RETURNING 400");
+      return NextResponse.json(
+        {
+          message:
+            "Date is outside the allowed booking range. You can only view availability for the current month and the first 15 days of next month.",
+        },
+        { status: 400 }
+      );
+    }
+
+    console.log("🔥 DATE VALIDATION PASSED, FETCHING WORKING HOURS...");
 
     // Get working hours for the day
     const jsDayOfWeek = new Date(date).getDay();
@@ -53,6 +98,13 @@ export async function GET(request: NextRequest) {
       .eq("day_of_week", dayOfWeek)
       .single();
 
+    console.log(
+      "🔥 WORKING HOURS FETCHED:",
+      workingHours,
+      "ERROR:",
+      workingHoursError
+    );
+
     // Check for custom time slots for this specific date
     const { data: customTimeSlots, error: _timeSlotsError } = await supabase
       .from("user_time_slots")
@@ -61,8 +113,15 @@ export async function GET(request: NextRequest) {
       .eq("date", date)
       .order("start_time");
 
+    console.log(
+      "🔥 CUSTOM TIME SLOTS FETCHED:",
+      customTimeSlots?.length || 0,
+      "slots"
+    );
+
     // This logic is similar to the public one, but crucially, it WILL return booking details.
     if (customTimeSlots && customTimeSlots.length > 0) {
+      console.log("🔥 USING CUSTOM TIME SLOTS PATH");
       const timeSlots: ApiTimeSlot[] = customTimeSlots.map((slot) => ({
         id: `${userId}-${date}-${slot.start_time}-${slot.end_time}`,
         startTime: slot.start_time,
@@ -104,6 +163,30 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // Apply time formatting for custom slots too
+      console.log("🔥 Should format times?", shouldUse12HourFormat);
+      if (shouldUse12HourFormat) {
+        console.log(
+          "🔥 Formatting times for",
+          timeSlots.length,
+          "custom slots"
+        );
+        timeSlots.forEach((slot) => {
+          slot.startTimeDisplay = formatTime(slot.startTime, false); // false = 12-hour format
+          slot.endTimeDisplay = formatTime(slot.endTime, false);
+        });
+        console.log(
+          "🔥 Sample formatted custom slot:",
+          timeSlots[0]
+            ? {
+                startTime: timeSlots[0].startTime,
+                startTimeDisplay: timeSlots[0].startTimeDisplay,
+              }
+            : "No slots"
+        );
+      }
+
+      console.log("🔥 RETURNING CUSTOM SLOTS RESPONSE WITH FORMATTING!");
       return NextResponse.json({
         date: new Date(date),
         timeSlots,
@@ -112,6 +195,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Default path if no custom slots (similar logic)
+    console.log("🔥 USING WORKING HOURS PATH");
     if (workingHoursError || !workingHours || !workingHours.is_working) {
       return NextResponse.json({
         date: new Date(date),
@@ -172,6 +256,33 @@ export async function GET(request: NextRequest) {
         }
       });
     }
+
+    console.log(
+      "🔥 REACHED FORMATTING SECTION, timeSlots.length:",
+      timeSlots.length
+    );
+
+    // Format display times if user prefers 12-hour format
+    console.log("🔥 Should format times?", shouldUse12HourFormat);
+    if (shouldUse12HourFormat) {
+      console.log("🔥 Formatting times for", timeSlots.length, "slots");
+      timeSlots.forEach((slot) => {
+        slot.startTimeDisplay = formatTime(slot.startTime, false); // false = 12-hour format
+        slot.endTimeDisplay = formatTime(slot.endTime, false);
+      });
+      console.log(
+        "🔥 Sample formatted slot:",
+        timeSlots[0]
+          ? {
+              startTime: timeSlots[0].startTime,
+              startTimeDisplay: timeSlots[0].startTimeDisplay,
+            }
+          : "No slots"
+      );
+    }
+
+    console.log("🔥 RETURNING RESPONSE WITH", timeSlots.length, "SLOTS");
+    console.log("🔥 SAMPLE RESPONSE SLOT:", timeSlots[0]);
 
     return NextResponse.json({
       date: new Date(date),

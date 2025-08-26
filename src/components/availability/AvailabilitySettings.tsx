@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAvailability } from "@/lib/hooks/useAvailability";
 import TimePicker from "./TimePicker";
+import TimeFormatToggle from "../settings/TimeFormatToggle";
 
 export default function AvailabilitySettings() {
   const {
@@ -215,6 +216,14 @@ export default function AvailabilitySettings() {
             </select>
           </div>
         </div>
+      </div>
+
+      {/* Display Settings */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          Display Settings
+        </h3>
+        <TimeFormatToggle />
       </div>
 
       {/* Booking Settings */}
