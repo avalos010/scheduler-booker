@@ -4,6 +4,18 @@ export interface TimeSlot {
   endTime: string;
   isAvailable: boolean;
   isBooked?: boolean; // Optional for backward compatibility
+  bookingStatus?:
+    | "pending"
+    | "confirmed"
+    | "cancelled"
+    | "completed"
+    | "no-show"; // Optional for backward compatibility
+  bookingDetails?: {
+    clientName: string;
+    clientEmail: string;
+    notes?: string;
+    status: string;
+  }; // Optional for backward compatibility
 }
 
 export interface DayAvailability {

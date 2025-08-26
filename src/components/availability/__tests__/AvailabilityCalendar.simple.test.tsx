@@ -41,7 +41,7 @@ interface MockUseAvailabilityState {
 
 let mockState: MockUseAvailabilityState;
 
-jest.mock("@/lib/hooks/useAvailabilityNew", () => {
+jest.mock("@/lib/hooks/useAvailability", () => {
   return {
     useAvailability: () => mockState,
   };
@@ -203,7 +203,7 @@ describe("AvailabilityCalendar UI", () => {
   });
 
   it("renders header and shows initial slot count for today", () => {
-    render(<AvailabilityCalendar />);
+    render(<AvailabilityCalendar userId="test-user-123" />);
 
     // Header shows current month - target the mobile layout specifically
     const monthLabel = format(today, "MMMM yyyy");
@@ -225,7 +225,7 @@ describe("AvailabilityCalendar UI", () => {
   });
 
   it("allows per-day custom regeneration via modal and reflects updated slot count after close", async () => {
-    const { rerender } = render(<AvailabilityCalendar />);
+            const { rerender } = render(<AvailabilityCalendar userId="test-user-123" />);
 
     // Click today's cell to open the modal
     const dayNumber = today.getDate().toString();
@@ -258,7 +258,7 @@ describe("AvailabilityCalendar UI", () => {
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
 
     // Rerender to let the mocked hook return updated availability
-    rerender(<AvailabilityCalendar />);
+            rerender(<AvailabilityCalendar userId="test-user-123" />);
 
     // Expect updated slots count to appear (should be 5 available based on Sunday working hours 10:00-15:00)
     const availableIndicators = screen.getAllByText(/slots available/i);
@@ -271,7 +271,7 @@ describe("AvailabilityCalendar UI", () => {
   });
 
   it("toggles working day from cell and shows non-working label afterward", () => {
-    const { rerender } = render(<AvailabilityCalendar />);
+            const { rerender } = render(<AvailabilityCalendar userId="test-user-123" />);
 
     // First, verify the calendar is rendering with our mock data - target mobile layout
     const mobileMonthHeader = screen.getByText("August 2025", {
@@ -291,7 +291,7 @@ describe("AvailabilityCalendar UI", () => {
     expect(mockState.toggleWorkingDay).toHaveBeenCalled();
 
     // Rerender and expect non-working label for today
-    rerender(<AvailabilityCalendar />);
+            rerender(<AvailabilityCalendar userId="test-user-123" />);
     // The component shows "Past day" for non-working days, not "Non-working day"
     expect(
       screen.getAllByText(/Past day|slots available/i).length
@@ -299,7 +299,7 @@ describe("AvailabilityCalendar UI", () => {
   });
 
   it("updates slot count instantly when toggling a slot inside modal", async () => {
-    const { rerender } = render(<AvailabilityCalendar />);
+            const { rerender } = render(<AvailabilityCalendar userId="test-user-123" />);
 
     // Open modal
     const dayNumber = today.getDate().toString();
@@ -323,7 +323,7 @@ describe("AvailabilityCalendar UI", () => {
 
     // Close modal, rerender, and verify available count decreased from 3 to 2
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
-    rerender(<AvailabilityCalendar />);
+            rerender(<AvailabilityCalendar userId="test-user-123" />);
 
     const indicators = screen.getAllByText(/slots available/i);
     expect(
@@ -332,7 +332,7 @@ describe("AvailabilityCalendar UI", () => {
   });
 
   it("reflects settings change (slot duration) when regenerating to 30m", async () => {
-    const { rerender } = render(<AvailabilityCalendar />);
+            const { rerender } = render(<AvailabilityCalendar userId="test-user-123" />);
 
     // Open modal
     const dayNumber = today.getDate().toString();
@@ -370,7 +370,7 @@ describe("AvailabilityCalendar UI", () => {
 
     // Close modal and rerender
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
-    rerender(<AvailabilityCalendar />);
+            rerender(<AvailabilityCalendar userId="test-user-123" />);
 
     // 10:00-15:00 with 30m => 10 slots (based on Sunday working hours in mock)
     const availableIndicators2 = screen.getAllByText(/slots available/i);

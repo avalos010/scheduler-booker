@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import AvailabilityCalendar from "@/components/availability/AvailabilityCalendar";
 import { AvailabilityManager } from "@/lib/managers/availabilityManager";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 
 export const metadata: Metadata = {
   title: "Manage Availability - Set Your Working Hours & Time Slots",
@@ -134,6 +135,12 @@ export default async function AvailabilityPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200">
       <div className="mx-auto max-w-7xl py-10 px-6 lg:px-8">
+        <Breadcrumbs
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Availability" },
+          ]}
+        />
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -150,7 +157,7 @@ export default async function AvailabilityPage() {
         <div className="rounded-2xl bg-white/70 p-6 shadow-lg ring-1 ring-gray-200/60 backdrop-blur">
           <h2 className="mb-4 text-xl font-semibold text-gray-900">Calendar</h2>
           <div className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <AvailabilityCalendar />
+            <AvailabilityCalendar userId={session.user.id} />
           </div>
         </div>
       </div>

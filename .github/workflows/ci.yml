@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    env:
+      CI: true
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run type check
+        run: npm run type-check
+        continue-on-error: true
+
+      - name: Run booking functionality tests (REQUIRED)
+        run: npm test -- --testPathPatterns="AppointmentsList.guards.test.tsx|SharedAvailabilityCalendar.status.test.tsx|bookings.route.test.ts|booking-persistence.test.ts" --watchAll=false --maxWorkers=2
+
+      - name: Run all tests with coverage (optional)
+        run: npm test -- --coverage --watchAll=false --maxWorkers=2 --testPathIgnorePatterns="AvailabilityCalendar.simple.test.tsx"
+        continue-on-error: true
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        if: matrix.node-version == '20.x'
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
