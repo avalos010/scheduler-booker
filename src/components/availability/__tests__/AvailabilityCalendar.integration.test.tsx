@@ -5,7 +5,7 @@
 
 import React from "react";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
-import { format, addDays, subDays, addMonths, startOfMonth } from "date-fns";
+import { format, addDays, addMonths, startOfMonth } from "date-fns";
 import AvailabilityCalendar from "../AvailabilityCalendar";
 import type { TimeSlot, DayAvailability, WorkingHours } from "@/lib/types/availability";
 
@@ -114,7 +114,26 @@ const createMonthAvailability = (baseDate: Date) => {
 };
 
 // Integration test setup
-const setupIntegrationTest = (overrides: any = {}) => {
+interface TestOverrides {
+  mockAvailability?: {
+    availability: Record<string, DayAvailability>;
+    workingHours: WorkingHours[];
+    settings: {
+      slotDuration: number;
+      breakDuration: number;
+      advanceBookingDays: number;
+    };
+    exceptions: Record<string, { isWorkingDay: boolean; reason?: string }>;
+  };
+  mockWorkingHours?: WorkingHours[];
+  mockSettings?: {
+    slotDuration: number;
+    breakDuration: number;
+    advanceBookingDays: number;
+  };
+}
+
+const setupIntegrationTest = (overrides: TestOverrides = {}) => {
   const mockAvailability = {
     availability: createMonthAvailability(new Date()),
     bookings: [],
@@ -156,7 +175,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
   describe("Real-world Usage Scenarios", () => {
     it("handles a typical busy professional's calendar", async () => {
-      const mockAvailability = setupIntegrationTest();
+      setupIntegrationTest();
       
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -204,7 +223,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
       const tomorrow = addDays(new Date(), 1);
       const complexSlots = createRealisticTimeSlots(tomorrow, "mixed");
       
-      const mockAvailability = setupIntegrationTest({
+      setupIntegrationTest({
         availability: {
           [format(tomorrow, "yyyy-MM-dd")]: {
             date: tomorrow,
@@ -236,7 +255,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
   describe("Cross-component Integration", () => {
     it("integrates with settings modal for working hours", async () => {
-      const mockAvailability = setupIntegrationTest();
+      setupIntegrationTest();
       
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -277,7 +296,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
         ),
       }));
 
-      const mockAvailability = setupIntegrationTest();
+      setupIntegrationTest();
       
       render(<AvailabilityCalendar userId={userId} />);
 

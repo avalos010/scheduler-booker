@@ -24,9 +24,6 @@ type ApiTimeSlot = {
 // This endpoint is for authenticated users to fetch their own availability
 // details, including private booking information.
 export async function GET(request: NextRequest) {
-  console.log("🔥🔥🔥 DAY DETAILS API CALLED AT:", new Date().toISOString());
-  console.log("🔥🔥🔥 REQUEST URL:", request.url);
-
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
 
@@ -48,21 +45,15 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = user.id;
-    console.log("🔥 USER ID:", userId);
 
     // Fetch user's time format preference from database
-    console.log("🔥 FETCHING USER SETTINGS...");
     const { data: userSettings } = await supabase
       .from("user_availability_settings")
       .select("time_format_12h")
       .eq("user_id", userId)
       .single();
 
-    console.log("🔥 USER SETTINGS:", userSettings);
     const shouldUse12HourFormat = userSettings?.time_format_12h || false;
-    console.log("🔥 SHOULD USE 12H FORMAT:", shouldUse12HourFormat);
-
-    console.log("🔥 ABOUT TO VALIDATE DATE:", date);
 
     // Validate that the requested date is within the allowed booking range
     // (current month + first 15 days of next month)
@@ -75,7 +66,6 @@ export async function GET(request: NextRequest) {
     cutoffDate.setDate(15); // 15th day of next month
 
     if (requestedDate < currentMonthStart || requestedDate > cutoffDate) {
-      console.log("🔥 DATE VALIDATION FAILED - RETURNING 400");
       return NextResponse.json(
         {
           message:
@@ -84,8 +74,6 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    console.log("🔥 DATE VALIDATION PASSED, FETCHING WORKING HOURS...");
 
     // Get working hours for the day
     const jsDayOfWeek = new Date(date).getDay();
@@ -98,15 +86,8 @@ export async function GET(request: NextRequest) {
       .eq("day_of_week", dayOfWeek)
       .single();
 
-    console.log(
-      "🔥 WORKING HOURS FETCHED:",
-      workingHours,
-      "ERROR:",
-      workingHoursError
-    );
-
     // Check for custom time slots for this specific date
-    const { data: customTimeSlots, error: _timeSlotsError } = await supabase
+    const { data: customTimeSlots } = await supabase
       .from("user_time_slots")
       .select("*")
       .eq("user_id", userId)

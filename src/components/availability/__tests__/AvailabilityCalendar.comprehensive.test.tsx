@@ -5,7 +5,7 @@
 
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { format, addDays, startOfMonth, addMonths } from "date-fns";
+import { format, addDays } from "date-fns";
 import AvailabilityCalendar from "../AvailabilityCalendar";
 import type { TimeSlot, DayAvailability } from "@/lib/types/availability";
 
@@ -345,8 +345,8 @@ describe("AvailabilityCalendar", () => {
       fireEvent.click(nextButton);
 
       // Check for restriction message on dates beyond the 15th
-      const restrictedMessage = screen.queryByText("Beyond booking limit");
       // This might not always be present depending on the current date
+      screen.queryByText("Beyond booking limit");
     });
   });
 

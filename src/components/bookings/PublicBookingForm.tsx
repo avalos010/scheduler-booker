@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -59,9 +59,9 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
     if (selectedDate) {
       fetchDayAvailability(selectedDate);
     }
-  }, [selectedDate, userId]);
+  }, [fetchDayAvailability, selectedDate, userId]);
 
-  const fetchDayAvailability = async (date: Date) => {
+  const fetchDayAvailability = useCallback(async (date: Date) => {
     setIsLoading(true);
     try {
       const response = await fetch(
@@ -79,7 +79,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId]);
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);

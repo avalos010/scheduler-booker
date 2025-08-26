@@ -54,7 +54,6 @@ export default function AvailabilityCalendar({
     isFullyLoaded,
     toggleWorkingDay,
     toggleTimeSlot,
-    regenerateDaySlots,
     setAvailability,
     loadAvailability,
     loadTimeSlotsForMonth,
@@ -1050,7 +1049,7 @@ export default function AvailabilityCalendar({
         onClose={() => setShowDayModal(false)}
         selectedDate={selectedDate}
         availability={availability}
-        regenerateDaySlots={regenerateDaySlots}
+
         workingHours={workingHours}
         userId={userId}
         toggleTimeSlot={toggleTimeSlot}

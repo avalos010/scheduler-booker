@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useTimeFormatPreference } from "@/lib/utils/clientTimeFormat";
-import TimePicker from "./TimePicker";
+
 import type { DayAvailability, WorkingHours } from "@/lib/types/availability";
 
 interface DayDetailsModalProps {
@@ -16,12 +16,7 @@ interface DayDetailsModalProps {
   userId: string;
   toggleTimeSlot: (date: Date, slotId: string) => Promise<void> | void;
   toggleWorkingDay: (date: Date) => Promise<void> | void;
-  regenerateDaySlots: (
-    date: Date,
-    startTime: string,
-    endTime: string,
-    slotDuration: number
-  ) => Promise<{ success: boolean; error?: unknown }> | { success: boolean };
+
 }
 
 export default function DayDetailsModal({
@@ -33,7 +28,6 @@ export default function DayDetailsModal({
   userId,
   toggleTimeSlot,
   toggleWorkingDay,
-  regenerateDaySlots,
 }: DayDetailsModalProps) {
   const [bookingDetails, setBookingDetails] = useState<
     Record<
@@ -46,7 +40,7 @@ export default function DayDetailsModal({
       }
     >
   >({});
-  const [apiTimeSlots, setApiTimeSlots] = useState<any[]>([]);
+  const [apiTimeSlots, setApiTimeSlots] = useState<TimeSlot[]>([]);
   const { is24Hour } = useTimeFormatPreference();
 
   // Close modal on escape key
@@ -139,7 +133,7 @@ export default function DayDetailsModal({
             console.log("🔍 DayDetailsModal: API data fetched:", {
               apiSlots: data.timeSlots,
               hasDisplayFields: data.timeSlots?.some(
-                (slot: any) => slot.startTimeDisplay
+                (slot: TimeSlot) => slot.startTimeDisplay
               ),
               mappedDetails: details,
               detailsCount: Object.keys(details).length,

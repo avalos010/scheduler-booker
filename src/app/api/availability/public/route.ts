@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get availability settings
-    const { data: settings, error: settingsError } = await supabase
+    const { data: settings } = await supabase
       .from("user_availability_settings")
       .select("slot_duration_minutes")
       .eq("user_id", userId)

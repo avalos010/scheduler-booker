@@ -3,7 +3,6 @@ import { useAvailabilityData } from "./useAvailabilityData";
 import { useAvailabilityActions } from "./useAvailabilityActions";
 import { TimeSlotUtils } from "../utils/timeSlotUtils";
 import type {
-  TimeSlot,
   DayAvailability,
   WorkingHours,
   AvailabilitySettings,

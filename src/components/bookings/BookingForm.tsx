@@ -111,7 +111,7 @@ export default function BookingForm({ userId }: BookingFormProps) {
         setIsLoading(false);
       }
     },
-    [userId]
+    []
   );
 
   // Fetch availability for selected date

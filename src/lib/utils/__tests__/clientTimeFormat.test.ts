@@ -39,8 +39,8 @@ describe("formatTime", () => {
     });
 
     it("should handle null/undefined values", () => {
-      expect(formatTime(null as any, true)).toBe("Invalid time");
-      expect(formatTime(undefined as any, true)).toBe("Invalid time");
+      expect(formatTime(null as unknown as string, true)).toBe("Invalid time");
+      expect(formatTime(undefined as unknown as string, true)).toBe("Invalid time");
     });
 
     it("should handle whitespace", () => {

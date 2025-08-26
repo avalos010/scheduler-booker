@@ -78,10 +78,7 @@ describe("AvailabilityCalendar UI", () => {
   // Use a fixed date (Monday) to ensure consistent working hours
   const today = new Date("2025-08-18"); // This is a Monday
   const dateKey = format(today, "yyyy-MM-dd");
-  const _dayIndex = (() => {
-    const d = today.getDay();
-    return d === 0 ? 6 : d - 1; // Monday=0..Sunday=6
-  })();
+
 
   beforeEach(() => {
     const initialSlots = buildSlots("09:00", "12:00", 60); // 3 slots

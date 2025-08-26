@@ -2,6 +2,20 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 import { formatTime } from "@/lib/utils/serverTimeFormat";
 
+type DatabaseWorkingHour = {
+  id: string;
+  user_id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  timezone: string;
+  is_working: boolean;
+  created_at: string;
+  updated_at: string;
+  start_time_display?: string;
+  end_time_display?: string;
+};
+
 export async function GET() {
   try {
     const supabase = await createSupabaseServerClient();
@@ -37,7 +51,8 @@ export async function GET() {
 
     // Format display times if user prefers 12-hour format
     if (shouldUse12HourFormat && data) {
-      data.forEach((workingHour: any) => {
+      const workingHours = data as DatabaseWorkingHour[];
+      workingHours.forEach((workingHour) => {
         workingHour.start_time_display = formatTime(
           workingHour.start_time,
           false
