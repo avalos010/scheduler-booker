@@ -5,6 +5,7 @@ This document explains how time formatting works in the scheduler application, p
 ## Overview
 
 The application uses a **database-driven time formatting system** where:
+
 - All times are stored in **24-hour format** in the database (e.g., `"09:00:00"`, `"17:30:00"`)
 - User preferences for display format (12-hour vs 24-hour) are stored in the database
 - APIs conditionally format times based on user preferences
@@ -59,10 +60,10 @@ CREATE TABLE user_time_slots (
   "timeSlots": [
     {
       "id": "slot-1",
-      "startTime": "09:00:00",           // Raw 24-hour (always present)
-      "endTime": "10:00:00",             // Raw 24-hour (always present)
-      "startTimeDisplay": "9:00 AM",     // Formatted (only if 12-hour preference)
-      "endTimeDisplay": "10:00 AM",      // Formatted (only if 12-hour preference)
+      "startTime": "09:00:00", // Raw 24-hour (always present)
+      "endTime": "10:00:00", // Raw 24-hour (always present)
+      "startTimeDisplay": "9:00 AM", // Formatted (only if 12-hour preference)
+      "endTimeDisplay": "10:00 AM", // Formatted (only if 12-hour preference)
       "isAvailable": true
     }
   ]
@@ -85,7 +86,8 @@ Frontend components use this priority order:
 
 ```typescript
 // Component usage example
-const displayTime = slot.startTimeDisplay || formatTime(slot.startTime, is24Hour);
+const displayTime =
+  slot.startTimeDisplay || formatTime(slot.startTime, is24Hour);
 ```
 
 ### File Organization
@@ -101,21 +103,25 @@ src/lib/utils/
 ## Benefits of This Architecture
 
 ### 1. Performance
+
 - **Reduced client-side processing**: Times pre-formatted by API
 - **Consistent formatting**: All times formatted using same server logic
 - **Fewer client requests**: Preference fetched once by API
 
 ### 2. Consistency
+
 - **Single source of truth**: Database preference drives all formatting
 - **No formatting conflicts**: Server and client always agree
 - **Reliable updates**: Preference changes reflect immediately
 
 ### 3. Maintainability
+
 - **Centralized logic**: Time formatting rules in one place (server)
 - **Type safety**: TypeScript interfaces include display fields
 - **Clear separation**: Server utilities vs client utilities
 
 ### 4. User Experience
+
 - **Instant formatting**: No loading flicker for formatted times
 - **Persistent preferences**: Saved in database, not localStorage
 - **Cross-device sync**: Preferences follow user across devices
@@ -158,11 +164,13 @@ The `useAvailabilityData` hook transforms API responses:
 ## Migration Considerations
 
 ### Existing Data
+
 - No migration needed for time values (already in correct format)
 - New `time_format_12h` column defaults to `false` (24-hour format)
 - Existing users see 24-hour format until they change preference
 
 ### Backward Compatibility
+
 - Raw time fields (`startTime`, `endTime`) always present
 - Display fields (`startTimeDisplay`, `endTimeDisplay`) optional
 - Components gracefully handle missing display fields
@@ -170,16 +178,19 @@ The `useAvailabilityData` hook transforms API responses:
 ## Testing Strategy
 
 ### Server-Side Tests
+
 - Time parsing with various input formats
 - Correct formatting for both 12-hour and 24-hour output
 - Edge cases (midnight, noon, single-digit hours)
 
 ### Client-Side Tests
+
 - Preference loading and saving
 - Fallback formatting when API doesn't provide display fields
 - Component integration with formatted times
 
 ### Integration Tests
+
 - End-to-end preference changes
 - API formatting with real database data
 - Cross-component consistency
@@ -187,25 +198,64 @@ The `useAvailabilityData` hook transforms API responses:
 ## Future Enhancements
 
 ### Timezone Support
-The architecture supports adding timezone formatting:
+
+✅ **IMPLEMENTED**: The application now includes full timezone support for global scheduling. The database schema uses timezone-aware data types:
+
+**Implementation Details:**
+
+```sql
+-- ✅ Implemented: Global timezone support
+CREATE TABLE user_time_slots (
+  start_time TIMESTAMP WITH TIME ZONE NOT NULL, -- Full timestamp for global scheduling
+  end_time TIMESTAMP WITH TIME ZONE NOT NULL,   -- Full timestamp for global scheduling
+  timezone VARCHAR(50) DEFAULT 'UTC',           -- Explicit timezone reference
+  ...
+);
+
+CREATE TABLE bookings (
+  start_time TIMESTAMP WITH TIME ZONE NOT NULL, -- Global appointment times
+  end_time TIMESTAMP WITH TIME ZONE NOT NULL,   -- Global appointment times
+  timezone VARCHAR(50) DEFAULT 'UTC',           -- Client's timezone
+  ...
+);
+
+CREATE TABLE user_availability_settings (
+  timezone VARCHAR(50) DEFAULT 'UTC',           -- User's primary timezone
+  time_format_12h BOOLEAN DEFAULT false,        -- Display preference
+  ...
+);
+```
+
+**Benefits:**
+
+- ✅ `TIMESTAMP WITH TIME ZONE` stores absolute moments in time
+- ✅ Critical for appointments scheduled across different time zones
+- ✅ Enables proper conversion to user's local time for display
+- ✅ Migration logic handles existing data automatically
+- ✅ Each user can have their own timezone preference
+
+**Timezone-Aware Time Formatting:**
 
 ```typescript
-// Future enhancement
+// ✅ Ready for implementation
 export function formatTimeWithTimezone(
-  timeString: string, 
-  is24Hour: boolean, 
-  timezone: string
+  timestamp: string,
+  is24Hour: boolean,
+  userTimezone: string
 ): string {
-  // Convert to user's timezone before formatting
+  // Convert UTC timestamp to user's timezone before formatting
+  const zonedTime = toZonedTime(timestamp, userTimezone);
+  return formatTime(zonedTime, is24Hour);
 }
 ```
 
 ### Locale-Specific Formatting
+
 ```typescript
 // Future enhancement
 export function formatTimeWithLocale(
-  timeString: string, 
-  is24Hour: boolean, 
+  timeString: string,
+  is24Hour: boolean,
   locale: string
 ): string {
   // Use locale-specific formatting rules
@@ -217,11 +267,13 @@ export function formatTimeWithLocale(
 ### Common Issues
 
 1. **Times showing as 24-hour despite preference**
+
    - Check if API is returning `startTimeDisplay` fields
    - Verify `time_format_12h` preference in database
    - Ensure component is using display fields
 
 2. **Format parsing errors**
+
    - Both server and client utilities handle `HH:mm:ss` format
    - Check console for parsing warnings
    - Verify input time format matches expected patterns
@@ -234,10 +286,11 @@ export function formatTimeWithLocale(
 ### Debug Tools
 
 Enable debug logging:
+
 ```typescript
 // In API routes
 console.log("Should format times?", shouldUse12HourFormat);
 
-// In components  
+// In components
 console.log("Time preference:", { is24Hour, hasDisplayFields });
 ```
