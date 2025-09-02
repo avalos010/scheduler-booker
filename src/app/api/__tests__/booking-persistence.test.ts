@@ -239,8 +239,8 @@ describe("Booking Persistence & Data Integrity", () => {
       id: "slot-1",
       user_id: userId,
       date,
-      start_time: start,
-      end_time: end,
+      start_time: `${date}T${start}:00+00:00`,
+      end_time: `${date}T${end}:00+00:00`,
       is_available: true,
       is_booked: false,
     });
@@ -268,8 +268,8 @@ describe("Booking Persistence & Data Integrity", () => {
     expect(booking).toMatchObject({
       user_id: userId,
       date: date,
-      start_time: start,
-      end_time: end,
+      start_time: `${date}T${start}:00+00:00`,
+      end_time: `${date}T${end}:00+00:00`,
       client_name: "John Doe",
       client_email: "john@example.com",
       status: "pending",
@@ -409,8 +409,8 @@ describe("Booking Persistence & Data Integrity", () => {
       id: "slot-2",
       user_id: userId,
       date,
-      start_time: "10:00",
-      end_time: "11:00",
+      start_time: `${date}T10:00:00+00:00`,
+      end_time: `${date}T11:00:00+00:00`,
       is_available: true,
       is_booked: false,
     });
@@ -447,8 +447,12 @@ describe("Booking Persistence & Data Integrity", () => {
     expect(tables.bookings).toHaveLength(2);
 
     // Verify both time slots are booked
-    const slot1 = tables.user_time_slots.find((s) => s.start_time === "09:00");
-    const slot2 = tables.user_time_slots.find((s) => s.start_time === "10:00");
+    const slot1 = tables.user_time_slots.find(
+      (s) => s.start_time === `${date}T09:00:00+00:00`
+    );
+    const slot2 = tables.user_time_slots.find(
+      (s) => s.start_time === `${date}T10:00:00+00:00`
+    );
 
     expect(slot1?.is_booked).toBe(true);
     expect(slot2?.is_booked).toBe(true);
@@ -465,9 +469,11 @@ describe("Booking Persistence & Data Integrity", () => {
       clientEmail: "history@example.com",
     });
 
-    await bookingsRoute.POST(createReq);
+    const createRes = await bookingsRoute.POST(createReq);
+    expect(createRes.status).toBe(200);
 
     const tables = supabase.__tables();
+    expect(tables.bookings).toHaveLength(1);
     const bookingId = tables.bookings[0].id;
     const originalCreatedAt = tables.bookings[0].created_at;
 

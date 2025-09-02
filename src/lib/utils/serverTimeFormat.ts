@@ -1,6 +1,24 @@
 import { format, parse } from "date-fns";
 
 /**
+ * Extracts time portion from timestamp string
+ * Converts "2025-09-04T09:00:00+00:00" to "09:00:00"
+ */
+export function extractTimeFromTimestamp(timestamp: string): string {
+  if (!timestamp || typeof timestamp !== "string") {
+    return timestamp;
+  }
+
+  if (timestamp.includes("T")) {
+    // Extract time portion from ISO timestamp
+    return timestamp.split("T")[1].split("+")[0].split(".")[0];
+  }
+
+  // Already a time string, return as-is
+  return timestamp;
+}
+
+/**
  * Formats time according to specified format (12-hour AM/PM or 24-hour)
  * Server-safe version without React hooks
  */

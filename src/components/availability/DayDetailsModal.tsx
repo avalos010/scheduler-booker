@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { format } from "date-fns";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { useTimeFormatPreference } from "@/lib/utils/clientTimeFormat";
 
-import type { DayAvailability, WorkingHours } from "@/lib/types/availability";
+import type {
+  DayAvailability,
+  WorkingHours,
+  TimeSlot,
+} from "@/lib/types/availability";
 
 interface DayDetailsModalProps {
   isOpen: boolean;
@@ -14,9 +17,17 @@ interface DayDetailsModalProps {
   availability: Record<string, DayAvailability>;
   workingHours: WorkingHours[];
   userId: string;
-  toggleTimeSlot: (date: Date, slotId: string) => Promise<void> | void;
+  toggleTimeSlot: (
+    date: Date,
+    slot: {
+      id: string;
+      startTime: string;
+      endTime: string;
+      isAvailable: boolean;
+    }
+  ) => Promise<void> | void;
   toggleWorkingDay: (date: Date) => Promise<void> | void;
-
+  onCalendarRefresh?: (date: Date) => Promise<void>;
 }
 
 export default function DayDetailsModal({
@@ -28,6 +39,7 @@ export default function DayDetailsModal({
   userId,
   toggleTimeSlot,
   toggleWorkingDay,
+  onCalendarRefresh,
 }: DayDetailsModalProps) {
   const [bookingDetails, setBookingDetails] = useState<
     Record<
@@ -41,7 +53,60 @@ export default function DayDetailsModal({
     >
   >({});
   const [apiTimeSlots, setApiTimeSlots] = useState<TimeSlot[]>([]);
-  const { is24Hour } = useTimeFormatPreference();
+
+  // Function to refresh the modal data
+  const refreshModalData = useCallback(async () => {
+    if (!selectedDate || !userId) return;
+
+    try {
+      const response = await fetch(
+        `/api/availability/day-details?date=${format(
+          selectedDate,
+          "yyyy-MM-dd"
+        )}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.timeSlots) {
+          const details: Record<
+            string,
+            {
+              clientName: string;
+              clientEmail: string;
+              notes?: string;
+              status: string;
+            }
+          > = {};
+
+          data.timeSlots.forEach(
+            (slot: {
+              id: string;
+              startTime: string;
+              endTime: string;
+              startTimeDisplay?: string;
+              endTimeDisplay?: string;
+              isBooked: boolean;
+              bookingDetails?: {
+                clientName: string;
+                clientEmail: string;
+                notes?: string;
+                status: string;
+              };
+            }) => {
+              if (slot.isBooked && slot.bookingDetails) {
+                details[slot.id] = slot.bookingDetails;
+              }
+            }
+          );
+
+          setBookingDetails(details);
+          setApiTimeSlots(data.timeSlots || []);
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing modal data:", error);
+    }
+  }, [selectedDate, userId]);
 
   // Close modal on escape key
   useEffect(() => {
@@ -96,7 +161,7 @@ export default function DayDetailsModal({
               (slot: { startTimeDisplay?: string }) =>
                 slot.startTimeDisplay !== undefined
             ),
-            userPreference: { is24Hour },
+            userPreference: "server-formatted",
           });
           if (data.timeSlots) {
             const details: Record<
@@ -258,11 +323,24 @@ export default function DayDetailsModal({
                         <div key={slot.id} className="space-y-2">
                           <div className="space-y-2">
                             <button
-                              onClick={async () =>
-                                slot.isBooked
-                                  ? undefined // Disable clicking for booked slots
-                                  : await toggleTimeSlot(selectedDate, slot.id)
-                              }
+                              onClick={async () => {
+                                if (slot.isBooked) {
+                                  return;
+                                }
+                                await toggleTimeSlot(selectedDate, {
+                                  id: slot.id,
+                                  startTime: slot.startTime,
+                                  endTime: slot.endTime,
+                                  isAvailable: slot.isAvailable,
+                                });
+                                // Refresh the modal data to show updated state
+                                await refreshModalData();
+
+                                // Also refresh the calendar data
+                                if (onCalendarRefresh && selectedDate) {
+                                  await onCalendarRefresh(selectedDate);
+                                }
+                              }}
                               className={`w-full px-3 py-2 sm:py-3 text-sm rounded-md border transition-colors ${
                                 slot.isBooked
                                   ? "bg-blue-50 border-blue-200 text-blue-800 cursor-not-allowed"

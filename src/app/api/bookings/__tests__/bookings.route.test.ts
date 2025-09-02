@@ -257,8 +257,8 @@ describe("/api/bookings route", () => {
       id: "slot-1",
       user_id: userId,
       date,
-      start_time: start,
-      end_time: end,
+      start_time: `${date}T${start}:00+00:00`,
+      end_time: `${date}T${end}:00+00:00`,
       is_available: true,
       is_booked: false,
     });

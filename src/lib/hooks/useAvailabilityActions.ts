@@ -249,46 +249,56 @@ export function useAvailabilityActions({
 
   // Toggle time slot availability
   const toggleTimeSlot = useCallback(
-    async (date: Date, slotId: string) => {
-      console.log("🔄 toggleTimeSlot called:", { date, slotId });
+    async (
+      date: Date,
+      slot: {
+        id: string;
+        startTime: string;
+        endTime: string;
+        isAvailable: boolean;
+      }
+    ) => {
+      console.log("🔄 toggleTimeSlot called:", { date, slot });
 
       const dateKey = TimeSlotUtils.formatDateKey(date);
       const currentDay = availability[dateKey];
 
       console.log("🔍 Current day data:", { dateKey, currentDay });
 
+      // Update local state if we have it
       if (currentDay) {
-        const updatedSlots = currentDay.timeSlots.map((slot) =>
-          slot.id === slotId
-            ? { ...slot, isAvailable: !slot.isAvailable }
-            : slot
+        const updatedSlots = currentDay.timeSlots.map((existingSlot) =>
+          existingSlot.id === slot.id
+            ? { ...existingSlot, isAvailable: !slot.isAvailable }
+            : existingSlot
         );
 
         console.log("📝 Updated slots:", { updatedSlots });
 
         // Update local state
         updateDayAvailability(date, { timeSlots: updatedSlots });
+      }
 
-        // Save to database via API
-        try {
-          const slotToUpdate = updatedSlots.find((slot) => slot.id === slotId);
-          if (slotToUpdate) {
-            console.log("💾 Saving slot to database:", slotToUpdate);
-            await ClientAvailabilityService.updateTimeSlot({
-              date: TimeSlotUtils.formatDateKey(date),
-              start_time: slotToUpdate.startTime,
-              end_time: slotToUpdate.endTime,
-              is_available: slotToUpdate.isAvailable,
-            });
-            console.log("✅ Slot saved successfully");
-          } else {
-            console.warn("⚠️ Slot not found for update");
-          }
-        } catch (error) {
-          console.error("❌ Failed to update time slot:", error);
-        }
-      } else {
-        console.warn("⚠️ No current day data found for date:", date);
+      // Save to database via API
+      try {
+        const newAvailability = !slot.isAvailable;
+
+        console.log("💾 Saving slot to database:", {
+          date: TimeSlotUtils.formatDateKey(date),
+          start_time: slot.startTime,
+          end_time: slot.endTime,
+          is_available: newAvailability,
+        });
+
+        await ClientAvailabilityService.updateTimeSlot({
+          date: TimeSlotUtils.formatDateKey(date),
+          start_time: slot.startTime,
+          end_time: slot.endTime,
+          is_available: newAvailability,
+        });
+        console.log("✅ Slot saved successfully");
+      } catch (error) {
+        console.error("❌ Failed to update time slot:", error);
       }
     },
     [availability, updateDayAvailability]

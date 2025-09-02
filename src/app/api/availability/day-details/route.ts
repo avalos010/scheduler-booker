@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { addMonths, startOfMonth } from "date-fns";
-import { formatTime } from "@/lib/utils/serverTimeFormat";
+import {
+  formatTime,
+  extractTimeFromTimestamp,
+} from "@/lib/utils/serverTimeFormat";
 
 type BookingDetails = {
   clientName: string;
@@ -103,13 +106,19 @@ export async function GET(request: NextRequest) {
     // This logic is similar to the public one, but crucially, it WILL return booking details.
     if (customTimeSlots && customTimeSlots.length > 0) {
       console.log("🔥 USING CUSTOM TIME SLOTS PATH");
-      const timeSlots: ApiTimeSlot[] = customTimeSlots.map((slot) => ({
-        id: `${userId}-${date}-${slot.start_time}-${slot.end_time}`,
-        startTime: slot.start_time,
-        endTime: slot.end_time,
-        isAvailable: slot.is_available !== false,
-        isBooked: false,
-      }));
+      const timeSlots: ApiTimeSlot[] = customTimeSlots.map((slot) => {
+        // Extract time portion from timestamp (e.g., "2025-09-04T09:00:00+00:00" -> "09:00:00")
+        const startTime = extractTimeFromTimestamp(slot.start_time);
+        const endTime = extractTimeFromTimestamp(slot.end_time);
+
+        return {
+          id: `${userId}-${date}-${startTime}-${endTime}`,
+          startTime,
+          endTime,
+          isAvailable: slot.is_available !== false,
+          isBooked: false,
+        };
+      });
 
       // Check for existing bookings to enrich the time slots
       const { data: existingBookings } = await supabase
@@ -193,8 +202,13 @@ export async function GET(request: NextRequest) {
     const slotDuration = settings?.slot_duration_minutes || 60;
 
     const timeSlots: ApiTimeSlot[] = [];
-    let currentTime = new Date(`2000-01-01T${workingHours.start_time}`);
-    const endTime = new Date(`2000-01-01T${workingHours.end_time}`);
+
+    // Extract time portion from timestamp (e.g., "2025-09-04T09:00:00+00:00" -> "09:00:00")
+    const startTimeStr = extractTimeFromTimestamp(workingHours.start_time);
+    const endTimeStr = extractTimeFromTimestamp(workingHours.end_time);
+
+    let currentTime = new Date(`2000-01-01T${startTimeStr}`);
+    const endTime = new Date(`2000-01-01T${endTimeStr}`);
 
     while (currentTime < endTime) {
       const slotStart = currentTime.toTimeString().slice(0, 5);
@@ -263,7 +277,6 @@ export async function GET(request: NextRequest) {
     }
 
     console.log("🔥 RETURNING RESPONSE WITH", timeSlots.length, "SLOTS");
-    console.log("🔥 SAMPLE RESPONSE SLOT:", timeSlots[0]);
 
     return NextResponse.json({
       date: new Date(date),

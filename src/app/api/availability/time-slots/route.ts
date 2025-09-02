@@ -1,6 +1,23 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 
+/**
+ * Converts a time string (e.g., "09:30") to a full timestamp for the given date
+ * @param date - The date string (e.g., "2025-01-15")
+ * @param timeString - The time string (e.g., "09:30")
+ * @returns Full timestamp string (e.g., "2025-01-15T09:30:00+00:00")
+ */
+function convertTimeToTimestamp(date: string, timeString: string): string {
+  // Ensure time string has seconds if not provided
+  const timeWithSeconds =
+    timeString.includes(":") && timeString.split(":").length === 2
+      ? `${timeString}:00`
+      : timeString;
+
+  // Create full timestamp
+  return `${date}T${timeWithSeconds}+00:00`;
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createSupabaseServerClient();
@@ -46,8 +63,8 @@ export async function POST(request: Request) {
         }) => ({
           user_id: user.id,
           date,
-          start_time: slot.start_time,
-          end_time: slot.end_time,
+          start_time: convertTimeToTimestamp(date, slot.start_time),
+          end_time: convertTimeToTimestamp(date, slot.end_time),
           is_available: slot.is_available,
           is_booked: slot.is_booked || false,
         })
@@ -97,14 +114,18 @@ export async function PUT(request: Request) {
       );
     }
 
+    // Convert time strings to timestamps for the query
+    const startTimestamp = convertTimeToTimestamp(date, start_time);
+    const endTimestamp = convertTimeToTimestamp(date, end_time);
+
     // Update the specific time slot
     const { error: updateError } = await supabase
       .from("user_time_slots")
       .update({ is_available })
       .eq("user_id", user.id)
       .eq("date", date)
-      .eq("start_time", start_time)
-      .eq("end_time", end_time);
+      .eq("start_time", startTimestamp)
+      .eq("end_time", endTimestamp);
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });

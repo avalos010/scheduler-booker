@@ -27,10 +27,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAvailability } from "@/lib/hooks/useAvailability";
 import type { TimeSlot } from "@/lib/types/availability";
-import {
-  useTimeFormatPreference,
-  formatTime,
-} from "@/lib/utils/clientTimeFormat";
+
 import DayDetailsModal from "./DayDetailsModal";
 import SettingsModal from "./SettingsModal";
 
@@ -45,7 +42,7 @@ export default function AvailabilityCalendar({
   const [showDayModal, setShowDayModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const { is24Hour } = useTimeFormatPreference();
+
   const {
     availability,
     bookings,
@@ -61,6 +58,32 @@ export default function AvailabilityCalendar({
     processMonthDays,
     markTimeSlotsLoaded,
   } = useAvailability();
+
+  // Function to refresh calendar data for a specific date
+  const refreshCalendarForDate = useCallback(
+    async (date: Date) => {
+      try {
+        const startDate = new Date(date);
+        const endDate = new Date(date);
+        const monthData = await loadTimeSlotsForMonth(startDate, endDate);
+        if (monthData) {
+          const monthDays = [date];
+          await processMonthDays(
+            monthDays,
+            monthData.exceptionsMap,
+            monthData.slotsMap
+          );
+          console.log(
+            "✅ Calendar data refreshed for date:",
+            date.toISOString().split("T")[0]
+          );
+        }
+      } catch (error) {
+        console.warn("⚠️ Failed to refresh calendar data for date:", error);
+      }
+    },
+    [loadTimeSlotsForMonth, processMonthDays]
+  );
 
   // Generate calendar days for the current month
   const calendarDays = useMemo(() => {
@@ -293,7 +316,7 @@ export default function AvailabilityCalendar({
               <button
                 onClick={() => setShowSettingsModal(true)}
                 className="px-3 py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Settings"
+                title="Open availability settings"
               >
                 Settings
               </button>
@@ -401,7 +424,7 @@ export default function AvailabilityCalendar({
                 setShowSettingsModal(true);
               }}
               className="px-6 py-3 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-200 border border-gray-300 hover:border-gray-400 flex items-center space-x-2"
-              title="Settings"
+              title="Open availability settings"
             >
               <svg
                 className="w-4 h-4"
@@ -906,11 +929,9 @@ export default function AvailabilityCalendar({
                                       key={slot.id}
                                       className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-400 shadow-sm"
                                       title={`${
-                                        slot.startTimeDisplay ||
-                                        formatTime(slot.startTime, is24Hour)
+                                        slot.startTimeDisplay || slot.startTime
                                       } - ${
-                                        slot.endTimeDisplay ||
-                                        formatTime(slot.endTime, is24Hour)
+                                        slot.endTimeDisplay || slot.endTime
                                       } (Past meeting)`}
                                     />
                                   ))}
@@ -1049,11 +1070,11 @@ export default function AvailabilityCalendar({
         onClose={() => setShowDayModal(false)}
         selectedDate={selectedDate}
         availability={availability}
-
         workingHours={workingHours}
         userId={userId}
         toggleTimeSlot={toggleTimeSlot}
         toggleWorkingDay={toggleWorkingDay}
+        onCalendarRefresh={refreshCalendarForDate}
       />
 
       {/* Settings Modal */}

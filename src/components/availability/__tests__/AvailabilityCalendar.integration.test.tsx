@@ -4,13 +4,25 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { format, addDays, addMonths, startOfMonth } from "date-fns";
 import AvailabilityCalendar from "../AvailabilityCalendar";
-import type { TimeSlot, DayAvailability, WorkingHours } from "@/lib/types/availability";
+import type {
+  TimeSlot,
+  DayAvailability,
+  WorkingHours,
+} from "@/lib/types/availability";
 
 // Mock data generators
-const createMockWorkingHours = (overrides: Partial<WorkingHours>[] = []): WorkingHours[] => {
+const createMockWorkingHours = (
+  overrides: Partial<WorkingHours>[] = []
+): WorkingHours[] => {
   const defaults = [
     { day: "Monday", startTime: "09:00", endTime: "17:00", isWorking: true },
     { day: "Tuesday", startTime: "09:00", endTime: "17:00", isWorking: true },
@@ -27,7 +39,10 @@ const createMockWorkingHours = (overrides: Partial<WorkingHours>[] = []): Workin
   }));
 };
 
-const createRealisticTimeSlots = (date: Date, scenario: "busy" | "light" | "mixed" = "mixed"): TimeSlot[] => {
+const createRealisticTimeSlots = (
+  date: Date,
+  scenario: "busy" | "light" | "mixed" = "mixed"
+): TimeSlot[] => {
   const slots: TimeSlot[] = [];
   const startHour = 9;
   const endHour = 17;
@@ -60,7 +75,13 @@ const createRealisticTimeSlots = (date: Date, scenario: "busy" | "light" | "mixe
         isBooked = Math.random() > 0.6; // 40% booked
         isAvailable = !isBooked;
         if (isBooked) {
-          const statuses = ["pending", "confirmed", "cancelled", "completed", "no-show"] as const;
+          const statuses = [
+            "pending",
+            "confirmed",
+            "cancelled",
+            "completed",
+            "no-show",
+          ] as const;
           bookingStatus = statuses[Math.floor(Math.random() * statuses.length)];
         }
         break;
@@ -70,8 +91,16 @@ const createRealisticTimeSlots = (date: Date, scenario: "busy" | "light" | "mixe
       id,
       startTime,
       endTime,
-      startTimeDisplay: scenario === "busy" ? `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}` : undefined,
-      endTimeDisplay: scenario === "busy" ? `${(hour + 1) > 12 ? (hour + 1) - 12 : (hour + 1)}:00 ${(hour + 1) >= 12 ? "PM" : "AM"}` : undefined,
+      startTimeDisplay:
+        scenario === "busy"
+          ? `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`
+          : undefined,
+      endTimeDisplay:
+        scenario === "busy"
+          ? `${hour + 1 > 12 ? hour + 1 - 12 : hour + 1}:00 ${
+              hour + 1 >= 12 ? "PM" : "AM"
+            }`
+          : undefined,
       isAvailable,
       isBooked,
       bookingStatus,
@@ -176,11 +205,13 @@ describe("AvailabilityCalendar Integration Tests", () => {
   describe("Real-world Usage Scenarios", () => {
     it("handles a typical busy professional's calendar", async () => {
       setupIntegrationTest();
-      
+
       render(<AvailabilityCalendar userId={userId} />);
 
       // Should show current month
-      expect(screen.getByText(format(new Date(), "MMMM yyyy"))).toBeInTheDocument();
+      expect(
+        screen.getByText(format(new Date(), "MMMM yyyy"))
+      ).toBeInTheDocument();
 
       // Should show varying slot availability
       const availableSlots = screen.getAllByText(/slots available/);
@@ -192,7 +223,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
     it("handles month-to-month navigation with data loading", async () => {
       const mockAvailability = setupIntegrationTest();
-      
+
       render(<AvailabilityCalendar userId={userId} />);
 
       const currentMonth = format(new Date(), "MMMM yyyy");
@@ -222,7 +253,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
     it("manages day details modal with complex time slot data", async () => {
       const tomorrow = addDays(new Date(), 1);
       const complexSlots = createRealisticTimeSlots(tomorrow, "mixed");
-      
+
       setupIntegrationTest({
         availability: {
           [format(tomorrow, "yyyy-MM-dd")]: {
@@ -245,7 +276,9 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
       // Should show complex slot information
       const modal = screen.getByRole("dialog");
-      expect(within(modal).getByText(format(tomorrow, "EEEE, MMMM d, yyyy"))).toBeInTheDocument();
+      expect(
+        within(modal).getByText(format(tomorrow, "EEEE, MMMM d, yyyy"))
+      ).toBeInTheDocument();
 
       // Should have toggle functionality
       const toggleButtons = within(modal).getAllByRole("button");
@@ -256,7 +289,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
   describe("Cross-component Integration", () => {
     it("integrates with settings modal for working hours", async () => {
       setupIntegrationTest();
-      
+
       render(<AvailabilityCalendar userId={userId} />);
 
       // Open settings
@@ -276,7 +309,9 @@ describe("AvailabilityCalendar Integration Tests", () => {
       fireEvent.click(closeButton);
 
       await waitFor(() => {
-        expect(screen.queryByText("Availability Settings")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Availability Settings")
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -288,16 +323,20 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
       jest.doMock("@/lib/utils/clientTimeFormat", () => ({
         useTimeFormatPreference: () => mockTimePreference,
-        formatTime: jest.fn((time, is24Hour) => 
-          is24Hour ? time : time.replace(/(\d{2}):(\d{2})/, (_, h, m) => {
-            const hour = parseInt(h);
-            return `${hour > 12 ? hour - 12 : hour}:${m} ${hour >= 12 ? "PM" : "AM"}`;
-          })
+        formatTime: jest.fn((time, is24Hour) =>
+          is24Hour
+            ? time
+            : time.replace(/(\d{2}):(\d{2})/, (_, h, m) => {
+                const hour = parseInt(h);
+                return `${hour > 12 ? hour - 12 : hour}:${m} ${
+                  hour >= 12 ? "PM" : "AM"
+                }`;
+              })
         ),
       }));
 
       setupIntegrationTest();
-      
+
       render(<AvailabilityCalendar userId={userId} />);
 
       // Change time format preference
@@ -315,7 +354,8 @@ describe("AvailabilityCalendar Integration Tests", () => {
   describe("Error Recovery and Edge Cases", () => {
     it("recovers from network errors during navigation", async () => {
       const mockAvailability = setupIntegrationTest({
-        loadTimeSlotsForMonth: jest.fn()
+        loadTimeSlotsForMonth: jest
+          .fn()
           .mockRejectedValueOnce(new Error("Network error"))
           .mockResolvedValue({ exceptionsMap: new Map(), slotsMap: new Map() }),
       });
@@ -350,7 +390,9 @@ describe("AvailabilityCalendar Integration Tests", () => {
       render(<AvailabilityCalendar userId={userId} />);
 
       // Should show calendar without crashing
-      expect(screen.getByText(format(new Date(), "MMMM yyyy"))).toBeInTheDocument();
+      expect(
+        screen.getByText(format(new Date(), "MMMM yyyy"))
+      ).toBeInTheDocument();
 
       // Should show appropriate empty state
       const dayElements = screen.getAllByText(/\d+/);
@@ -389,7 +431,9 @@ describe("AvailabilityCalendar Integration Tests", () => {
       render(<AvailabilityCalendar userId={userId} />);
 
       // Should not crash with corrupted data
-      expect(screen.getByText(format(new Date(), "MMMM yyyy"))).toBeInTheDocument();
+      expect(
+        screen.getByText(format(new Date(), "MMMM yyyy"))
+      ).toBeInTheDocument();
     });
   });
 
@@ -428,12 +472,12 @@ describe("AvailabilityCalendar Integration Tests", () => {
       const { rerender } = render(<AvailabilityCalendar userId={userId} />);
 
       const startTime = performance.now();
-      
+
       // Simulate data update
       for (let i = 0; i < 10; i++) {
         rerender(<AvailabilityCalendar userId={userId} />);
       }
-      
+
       const totalTime = performance.now() - startTime;
 
       // Multiple re-renders should be efficient
@@ -480,7 +524,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
     it("provides appropriate ARIA labels for complex states", () => {
       const tomorrow = addDays(new Date(), 1);
       const busySlots = createRealisticTimeSlots(tomorrow, "busy");
-      
+
       const mockAvailability = setupIntegrationTest({
         availability: {
           [format(tomorrow, "yyyy-MM-dd")]: {
@@ -494,15 +538,21 @@ describe("AvailabilityCalendar Integration Tests", () => {
       render(<AvailabilityCalendar userId={userId} />);
 
       // Should have descriptive labels for different states
-      const availableCount = busySlots.filter(slot => slot.isAvailable).length;
-      const bookedCount = busySlots.filter(slot => slot.isBooked).length;
+      const availableCount = busySlots.filter(
+        (slot) => slot.isAvailable
+      ).length;
+      const bookedCount = busySlots.filter((slot) => slot.isBooked).length;
 
       if (availableCount > 0) {
-        expect(screen.getByText(`${availableCount} slots available`)).toBeInTheDocument();
+        expect(
+          screen.getByText(`${availableCount} slots available`)
+        ).toBeInTheDocument();
       }
-      
+
       if (bookedCount > 0) {
-        expect(screen.getByText(`${bookedCount} slots booked`)).toBeInTheDocument();
+        expect(
+          screen.getByText(`${bookedCount} slots booked`)
+        ).toBeInTheDocument();
       }
     });
   });

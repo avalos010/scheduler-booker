@@ -94,25 +94,22 @@ export default function BookingForm({ userId }: BookingFormProps) {
     }
   }, [searchParams, dayAvailability, selectedTimeSlot]);
 
-  const fetchDayAvailability = useCallback(
-    async (date: Date) => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(
-          `/api/availability/day-details?date=${format(date, "yyyy-MM-dd")}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setDayAvailability(data);
-        }
-      } catch (error) {
-        console.error("Error fetching availability:", error);
-      } finally {
-        setIsLoading(false);
+  const fetchDayAvailability = useCallback(async (date: Date) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/availability/day-details?date=${format(date, "yyyy-MM-dd")}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setDayAvailability(data);
       }
-    },
-    []
-  );
+    } catch (error) {
+      console.error("Error fetching availability:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   // Fetch availability for selected date
   useEffect(() => {

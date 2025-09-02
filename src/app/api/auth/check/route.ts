@@ -9,16 +9,16 @@ export async function GET() {
     console.log("🔍 Auth check: Supabase client created");
 
     const {
-      data: { session },
+      data: { user },
       error,
-    } = await supabase.auth.getSession();
-    console.log("🔍 Auth check: Session result:", {
-      hasSession: !!session,
+    } = await supabase.auth.getUser();
+    console.log("🔍 Auth check: User result:", {
+      hasUser: !!user,
       hasError: !!error,
       errorMessage: error?.message,
     });
 
-    if (error || !session) {
+    if (error || !user) {
       console.log("🔍 Auth check: User not authenticated");
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }

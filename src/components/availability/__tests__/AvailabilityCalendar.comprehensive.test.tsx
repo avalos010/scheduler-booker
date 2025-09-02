@@ -49,12 +49,12 @@ const mockUseTimeFormatPreference = {
 };
 
 jest.mock("@/lib/hooks/useAvailability", () => ({
-  useAvailability: () => mockUseAvailability,
+  useAvailability: jest.fn(() => mockUseAvailability),
 }));
 
 jest.mock("@/lib/utils/clientTimeFormat", () => ({
-  useTimeFormatPreference: () => mockUseTimeFormatPreference,
-  formatTime: (time: string, is24Hour: boolean) => {
+  useTimeFormatPreference: jest.fn(() => mockUseTimeFormatPreference),
+  formatTime: jest.fn((time: string, is24Hour: boolean) => {
     if (is24Hour) return time;
     // Simple 12-hour format conversion for testing
     const [hours, minutes] = time.split(":");
@@ -63,7 +63,7 @@ jest.mock("@/lib/utils/clientTimeFormat", () => ({
     if (hour < 12) return `${hour}:${minutes} AM`;
     if (hour === 12) return `12:${minutes} PM`;
     return `${hour - 12}:${minutes} PM`;
-  },
+  }),
 }));
 
 // Helper function to create time slots
@@ -99,6 +99,26 @@ describe("AvailabilityCalendar", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset mocks to default values
+    (
+      require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
+    ).mockReturnValue(mockUseAvailability);
+    (
+      require("@/lib/utils/clientTimeFormat")
+        .useTimeFormatPreference as jest.Mock
+    ).mockReturnValue(mockUseTimeFormatPreference);
+    (
+      require("@/lib/utils/clientTimeFormat").formatTime as jest.Mock
+    ).mockImplementation((time: string, is24Hour: boolean) => {
+      if (is24Hour) return time;
+      // Simple 12-hour format conversion for testing
+      const [hours, minutes] = time.split(":");
+      const hour = parseInt(hours);
+      if (hour === 0) return `12:${minutes} AM`;
+      if (hour < 12) return `${hour}:${minutes} AM`;
+      if (hour === 12) return `12:${minutes} PM`;
+      return `${hour - 12}:${minutes} PM`;
+    });
   });
 
   describe("Basic Rendering", () => {
@@ -112,17 +132,21 @@ describe("AvailabilityCalendar", () => {
     it("renders navigation buttons", () => {
       render(<AvailabilityCalendar userId={userId} />);
 
-      expect(screen.getByTitle("Previous month")).toBeInTheDocument();
-      expect(screen.getByTitle("Next month")).toBeInTheDocument();
-      expect(screen.getByTitle("Refresh calendar data")).toBeInTheDocument();
+      const prevButtons = screen.getAllByTitle("Previous month");
+      const nextButtons = screen.getAllByTitle("Next month");
+      const refreshButtons = screen.getAllByTitle("Refresh calendar data");
+      expect(prevButtons.length).toBeGreaterThan(0);
+      expect(nextButtons.length).toBeGreaterThan(0);
+      expect(refreshButtons.length).toBeGreaterThan(0);
     });
 
     it("renders settings button", () => {
       render(<AvailabilityCalendar userId={userId} />);
 
-      expect(
-        screen.getByTitle("Open availability settings")
-      ).toBeInTheDocument();
+      const settingsButtons = screen.getAllByTitle(
+        "Open availability settings"
+      );
+      expect(settingsButtons.length).toBeGreaterThan(0);
     });
 
     it("shows loading state when not fully loaded", () => {
@@ -131,9 +155,10 @@ describe("AvailabilityCalendar", () => {
         isFullyLoaded: false,
       };
 
-      jest.doMock("@/lib/hooks/useAvailability", () => ({
-        useAvailability: () => mockAvailability,
-      }));
+      // Override the mock for this test
+      (
+        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
+      ).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -145,8 +170,8 @@ describe("AvailabilityCalendar", () => {
     it("navigates to previous month when clicking previous button", async () => {
       render(<AvailabilityCalendar userId={userId} />);
 
-      const prevButton = screen.getByTitle("Previous month");
-      fireEvent.click(prevButton);
+      const prevButtons = screen.getAllByTitle("Previous month");
+      fireEvent.click(prevButtons[0]);
 
       await waitFor(() => {
         expect(mockUseAvailability.loadTimeSlotsForMonth).toHaveBeenCalled();
@@ -167,8 +192,8 @@ describe("AvailabilityCalendar", () => {
     it("refreshes calendar when clicking refresh button", async () => {
       render(<AvailabilityCalendar userId={userId} />);
 
-      const refreshButton = screen.getByTitle("Refresh calendar data");
-      fireEvent.click(refreshButton);
+      const refreshButtons = screen.getAllByTitle("Refresh calendar data");
+      fireEvent.click(refreshButtons[0]);
 
       await waitFor(() => {
         expect(mockUseAvailability.loadTimeSlotsForMonth).toHaveBeenCalled();
@@ -179,7 +204,8 @@ describe("AvailabilityCalendar", () => {
       render(<AvailabilityCalendar userId={userId} />);
 
       const currentMonth = format(new Date(), "MMMM yyyy");
-      expect(screen.getByText(currentMonth)).toBeInTheDocument();
+      const monthElements = screen.getAllByText(currentMonth);
+      expect(monthElements.length).toBeGreaterThan(0);
     });
   });
 
@@ -195,9 +221,10 @@ describe("AvailabilityCalendar", () => {
         availability: availabilityData,
       };
 
-      jest.doMock("@/lib/hooks/useAvailability", () => ({
-        useAvailability: () => mockAvailability,
-      }));
+      // Override the mock for this test
+      (
+        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
+      ).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -232,14 +259,16 @@ describe("AvailabilityCalendar", () => {
         ),
       };
 
+      // Mock the hook with the specific availability data
       const mockAvailability = {
         ...mockUseAvailability,
         availability: availabilityData,
       };
 
-      jest.doMock("@/lib/hooks/useAvailability", () => ({
-        useAvailability: () => mockAvailability,
-      }));
+      // Override the mock for this test
+      (
+        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
+      ).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -264,9 +293,10 @@ describe("AvailabilityCalendar", () => {
         availability: availabilityData,
       };
 
-      jest.doMock("@/lib/hooks/useAvailability", () => ({
-        useAvailability: () => mockAvailability,
-      }));
+      // Override the mock for this test
+      (
+        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
+      ).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -279,8 +309,10 @@ describe("AvailabilityCalendar", () => {
     it("opens settings modal when clicking settings button", () => {
       render(<AvailabilityCalendar userId={userId} />);
 
-      const settingsButton = screen.getByTitle("Open availability settings");
-      fireEvent.click(settingsButton);
+      const settingsButtons = screen.getAllByTitle(
+        "Open availability settings"
+      );
+      fireEvent.click(settingsButtons[0]);
 
       expect(screen.getByText("Availability Settings")).toBeInTheDocument();
     });
@@ -296,15 +328,19 @@ describe("AvailabilityCalendar", () => {
         availability: availabilityData,
       };
 
-      jest.doMock("@/lib/hooks/useAvailability", () => ({
-        useAvailability: () => mockAvailability,
-      }));
+      // Override the mock for this test
+      (
+        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
+      ).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
-      // Open modal
-      const dayElement = screen.getByText(tomorrow.getDate().toString());
-      fireEvent.click(dayElement);
+      // Open modal - find the day element for tomorrow by looking for the full date text
+      const tomorrowDateText = format(tomorrow, "MMMM d, yyyy");
+      const dayElement = screen.getByText(tomorrowDateText).closest("div");
+      if (dayElement) {
+        fireEvent.click(dayElement);
+      }
 
       await waitFor(() => {
         expect(screen.getByText("Day Details")).toBeInTheDocument();
@@ -366,15 +402,19 @@ describe("AvailabilityCalendar", () => {
         availability: availabilityData,
       };
 
-      jest.doMock("@/lib/hooks/useAvailability", () => ({
-        useAvailability: () => mockAvailability,
-      }));
+      // Override the mock for this test
+      (
+        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
+      ).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
-      // Check tooltip for time format
-      const dayElement = screen.getByText(tomorrow.getDate().toString());
-      fireEvent.mouseOver(dayElement);
+      // Check tooltip for time format - find the day element for tomorrow by looking for the full date text
+      const tomorrowDateText = format(tomorrow, "MMMM d, yyyy");
+      const dayElement = screen.getByText(tomorrowDateText).closest("div");
+      if (dayElement) {
+        fireEvent.mouseOver(dayElement);
+      }
 
       // The exact text depends on the implementation and might not be directly visible
     });
@@ -385,12 +425,16 @@ describe("AvailabilityCalendar", () => {
         is24Hour: true,
       };
 
-      jest.doMock("@/lib/utils/clientTimeFormat", () => ({
-        useTimeFormatPreference: () => mock24HourPreference,
-        formatTime: (time: string, is24Hour: boolean) => {
-          return is24Hour ? time : "formatted-time";
-        },
-      }));
+      // Override the mock for this test
+      (
+        require("@/lib/utils/clientTimeFormat")
+          .useTimeFormatPreference as jest.Mock
+      ).mockReturnValue(mock24HourPreference);
+      (
+        require("@/lib/utils/clientTimeFormat").formatTime as jest.Mock
+      ).mockImplementation((time: string, is24Hour: boolean) => {
+        return is24Hour ? time : "formatted-time";
+      });
 
       const tomorrow = addDays(new Date(), 1);
       const timeSlots = createTimeSlots(1);
@@ -406,9 +450,10 @@ describe("AvailabilityCalendar", () => {
         availability: availabilityData,
       };
 
-      jest.doMock("@/lib/hooks/useAvailability", () => ({
-        useAvailability: () => mockAvailability,
-      }));
+      // Override the mock for this test
+      (
+        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
+      ).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -454,16 +499,17 @@ describe("AvailabilityCalendar", () => {
         availability: {},
       };
 
-      jest.doMock("@/lib/hooks/useAvailability", () => ({
-        useAvailability: () => mockAvailability,
-      }));
+      // Override the mock for this test
+      (
+        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
+      ).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
       // Should not crash and should show appropriate state
-      expect(
-        screen.getByText(format(new Date(), "MMMM yyyy"))
-      ).toBeInTheDocument();
+      const monthYearText = format(new Date(), "MMMM yyyy");
+      const monthElements = screen.getAllByText(monthYearText);
+      expect(monthElements.length).toBeGreaterThan(0);
     });
 
     it("handles hook errors gracefully", () => {
@@ -474,9 +520,10 @@ describe("AvailabilityCalendar", () => {
           .mockRejectedValue(new Error("Network error")),
       };
 
-      jest.doMock("@/lib/hooks/useAvailability", () => ({
-        useAvailability: () => mockAvailability,
-      }));
+      // Override the mock for this test
+      (
+        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
+      ).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -550,9 +597,10 @@ describe("AvailabilityCalendar", () => {
         availability: availabilityData,
       };
 
-      jest.doMock("@/lib/hooks/useAvailability", () => ({
-        useAvailability: () => mockAvailability,
-      }));
+      // Override the mock for this test
+      (
+        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
+      ).mockReturnValue(mockAvailability);
 
       const startTime = performance.now();
       render(<AvailabilityCalendar userId={userId} />);

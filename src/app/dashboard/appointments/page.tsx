@@ -6,12 +6,13 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs";
 export default async function AppointmentsPage() {
   const supabase = await createSupabaseServerClient();
 
-  // Get session on server side
+  // Get user on server side
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (userError || !user) {
     redirect("/login");
   }
 
@@ -38,7 +39,7 @@ export default async function AppointmentsPage() {
 
         {/* Appointments List */}
         <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-gray-200/60 shadow-lg">
-          <AppointmentsList userId={session.user.id} />
+          <AppointmentsList userId={user.id} />
         </div>
       </div>
     </div>

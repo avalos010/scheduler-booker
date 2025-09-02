@@ -54,32 +54,35 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
     },
   });
 
+  const fetchDayAvailability = useCallback(
+    async (date: Date) => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          `/api/availability/public?date=${format(
+            date,
+            "yyyy-MM-dd"
+          )}&userId=${userId}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setDayAvailability(data);
+        }
+      } catch (error) {
+        console.error("Error fetching availability:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [userId]
+  );
+
   // Fetch availability for selected date
   useEffect(() => {
     if (selectedDate) {
       fetchDayAvailability(selectedDate);
     }
   }, [fetchDayAvailability, selectedDate, userId]);
-
-  const fetchDayAvailability = useCallback(async (date: Date) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `/api/availability/public?date=${format(
-          date,
-          "yyyy-MM-dd"
-        )}&userId=${userId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setDayAvailability(data);
-      }
-    } catch (error) {
-      console.error("Error fetching availability:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId]);
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);

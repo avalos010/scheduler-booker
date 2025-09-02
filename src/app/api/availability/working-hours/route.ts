@@ -1,6 +1,9 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
-import { formatTime } from "@/lib/utils/serverTimeFormat";
+import {
+  formatTime,
+  extractTimeFromTimestamp,
+} from "@/lib/utils/serverTimeFormat";
 
 type DatabaseWorkingHour = {
   id: string;
@@ -53,11 +56,12 @@ export async function GET() {
     if (shouldUse12HourFormat && data) {
       const workingHours = data as DatabaseWorkingHour[];
       workingHours.forEach((workingHour) => {
-        workingHour.start_time_display = formatTime(
-          workingHour.start_time,
-          false
-        );
-        workingHour.end_time_display = formatTime(workingHour.end_time, false);
+        // Extract time portion from timestamp (e.g., "2025-09-04T09:00:00+00:00" -> "09:00:00")
+        const startTime = extractTimeFromTimestamp(workingHour.start_time);
+        const endTime = extractTimeFromTimestamp(workingHour.end_time);
+
+        workingHour.start_time_display = formatTime(startTime, false);
+        workingHour.end_time_display = formatTime(endTime, false);
       });
     }
 

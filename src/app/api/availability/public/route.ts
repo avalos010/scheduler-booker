@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { extractTimeFromTimestamp } from "@/lib/utils/serverTimeFormat";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -82,13 +83,19 @@ export async function GET(request: NextRequest) {
           notes?: string;
           status: string;
         };
-      }> = customTimeSlots.map((slot) => ({
-        id: `${userId}-${date}-${slot.start_time}-${slot.end_time}`,
-        startTime: slot.start_time,
-        endTime: slot.end_time,
-        isAvailable: slot.is_available !== false, // Default to available unless explicitly set to false
-        isBooked: false, // Will check bookings below
-      }));
+      }> = customTimeSlots.map((slot) => {
+        // Extract time portion from timestamp (e.g., "2025-09-04T09:00:00+00:00" -> "09:00:00")
+        const startTime = extractTimeFromTimestamp(slot.start_time);
+        const endTime = extractTimeFromTimestamp(slot.end_time);
+
+        return {
+          id: `${userId}-${date}-${startTime}-${endTime}`,
+          startTime,
+          endTime,
+          isAvailable: slot.is_available !== false, // Default to available unless explicitly set to false
+          isBooked: false, // Will check bookings below
+        };
+      });
 
       // Check for existing bookings and mark slots as unavailable
       const { data: existingBookings } = await supabase
@@ -170,8 +177,13 @@ export async function GET(request: NextRequest) {
         status: string;
       };
     }> = [];
-    let currentTime = new Date(`2000-01-01T${workingHours.start_time}`);
-    const endTime = new Date(`2000-01-01T${workingHours.end_time}`);
+
+    // Extract time portion from timestamp (e.g., "2025-09-04T09:00:00+00:00" -> "09:00:00")
+    const startTimeStr = extractTimeFromTimestamp(workingHours.start_time);
+    const endTimeStr = extractTimeFromTimestamp(workingHours.end_time);
+
+    let currentTime = new Date(`2000-01-01T${startTimeStr}`);
+    const endTime = new Date(`2000-01-01T${endTimeStr}`);
 
     while (currentTime < endTime) {
       const slotStart = currentTime.toTimeString().slice(0, 5);

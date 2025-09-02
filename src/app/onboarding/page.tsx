@@ -33,17 +33,18 @@ export const metadata: Metadata = {
 export default async function OnboardingPage() {
   const supabase = await createSupabaseServerClient();
 
-  // Get session on server side
+  // Get user on server side
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (userError || !user) {
     redirect("/login");
   }
 
   // Check if user is already onboarded
-  const onboarded = Boolean(session.user?.user_metadata?.onboarded);
+  const onboarded = Boolean(user?.user_metadata?.onboarded);
 
   if (onboarded) {
     console.log(
