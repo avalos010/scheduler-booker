@@ -73,10 +73,6 @@ export default function AvailabilityCalendar({
             monthData.exceptionsMap,
             monthData.slotsMap
           );
-          console.log(
-            "✅ Calendar data refreshed for date:",
-            date.toISOString().split("T")[0]
-          );
         }
       } catch (error) {
         console.warn("⚠️ Failed to refresh calendar data for date:", error);
@@ -138,20 +134,8 @@ export default function AvailabilityCalendar({
 
   // Main calendar processing effect - handles month changes and working hours updates
   useEffect(() => {
-    console.log("📅 Calendar effect triggered:", {
-      workingHoursLength: workingHours.length,
-      currentMonth: currentMonth.toISOString(),
-      isFullyLoaded,
-      availabilityKeys: Object.keys(availability).length,
-      timestamp: new Date().toISOString(),
-    });
-
     // Only process if working hours are loaded AND data is fully loaded
     if (workingHours.length === 0 || !isFullyLoaded) {
-      console.log("⏳ Waiting for data to be fully loaded:", {
-        workingHoursLength: workingHours.length,
-        isFullyLoaded,
-      });
       return;
     }
 
@@ -159,11 +143,9 @@ export default function AvailabilityCalendar({
 
     // Skip if month already processed
     if (processedMonthRef.current === monthKey) {
-      console.log("✅ Month already processed, skipping");
       return;
     }
 
-    console.log("🔄 Processing new month, resetting flags");
     // Reset flags for new month
     timeSlotsMarkedRef.current = false;
     processedMonthRef.current = monthKey;
@@ -190,8 +172,6 @@ export default function AvailabilityCalendar({
         loadTimeSlotsForMonth(processMonthStart, processMonthEnd),
         loadAndSetBookings(processMonthStart, processMonthEnd), // This now updates the state
       ]);
-
-      console.log("📅 Loaded month data:", { monthData });
 
       if (monthData) {
         // Process all days with the batched data (no more database calls)
@@ -225,15 +205,12 @@ export default function AvailabilityCalendar({
 
   // Reset processed month when data changes (so calendar reprocesses with new data)
   useEffect(() => {
-    console.log("🔄 Data changed, resetting processed month flag");
     processedMonthRef.current = "";
     timeSlotsMarkedRef.current = false;
   }, [workingHours, settings]);
 
   // Function to refresh calendar data
   const refreshCalendar = useCallback(async () => {
-    console.log("🔄 refreshCalendar called at:", new Date().toISOString());
-
     // Clear current availability to force regeneration
     setAvailability({});
 
@@ -243,8 +220,6 @@ export default function AvailabilityCalendar({
 
     // Force reload data from database
     await loadAvailability();
-
-    console.log("🔄 refreshCalendar completed, flags reset");
   }, [loadAvailability, setAvailability]);
 
   const navigateMonth = (direction: "prev" | "next") => {
@@ -297,22 +272,6 @@ export default function AvailabilityCalendar({
           {/* Mobile Menu Toggle */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-3">
-              <button
-                onClick={() => {
-                  console.log("🔍 Debug Info:", {
-                    workingHours,
-                    settings,
-                    availabilityKeys: Object.keys(availability).length,
-                    isFullyLoaded,
-                    currentMonth: currentMonth.toISOString(),
-                    timestamp: new Date().toISOString(),
-                  });
-                }}
-                className="px-3 py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Debug: Show current state in console"
-              >
-                Debug
-              </button>
               <button
                 onClick={() => setShowSettingsModal(true)}
                 className="px-3 py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
@@ -387,36 +346,6 @@ export default function AvailabilityCalendar({
                 />
               </svg>
               <span>Refresh</span>
-            </button>
-
-            <button
-              onClick={() => {
-                console.log("🔍 Debug Info:", {
-                  workingHours,
-                  settings,
-                  availabilityKeys: Object.keys(availability).length,
-                  isFullyLoaded,
-                  currentMonth: currentMonth.toISOString(),
-                  timestamp: new Date().toISOString(),
-                });
-              }}
-              className="px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all duration-200 border border-gray-200 hover:border-gray-300 flex items-center space-x-2"
-              title="Debug: Show current state in console"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              <span>Debug</span>
             </button>
 
             <button
@@ -774,51 +703,6 @@ export default function AvailabilityCalendar({
                     timeSlots: [],
                     isWorkingDay: dayHours?.isWorking ?? false,
                   };
-
-                // Debug logging for each day
-                if (dayAvailability.timeSlots.length > 0) {
-                  console.log(`📅 Day ${dateKeyLocal}:`, {
-                    hasSlots: dayAvailability.timeSlots.length,
-                    isWorkingDay: dayAvailability.isWorkingDay,
-                    sampleSlots: dayAvailability.timeSlots.slice(0, 2),
-                    dateKeyLocal,
-                    dateKeyIso,
-                    foundInAvailability:
-                      !!availability[dateKeyLocal] ||
-                      !!availability[dateKeyIso],
-                    // Debug: Show what keys we tried
-                    triedKeys: [
-                      dateKeyLocal,
-                      dateKeyIso,
-                      day.toDateString(),
-                      day.toLocaleDateString(),
-                    ],
-                    // Debug: Show if any of these keys exist in availability
-                    keyExists: {
-                      dateKeyLocal: !!availability[dateKeyLocal],
-                      dateKeyIso: !!availability[dateKeyIso],
-                      toDateString: !!availability[day.toDateString()],
-                      toLocaleDateString:
-                        !!availability[day.toLocaleDateString()],
-                    },
-                    // Debug: Show all time slots for this day
-                    allTimeSlots: dayAvailability.timeSlots.map((slot) => ({
-                      id: slot.id,
-                      startTime: slot.startTime,
-                      endTime: slot.endTime,
-                      isAvailable: slot.isAvailable,
-                      isBooked: slot.isBooked,
-                    })),
-                    // Debug: Show counts
-                    totalSlots: dayAvailability.timeSlots.length,
-                    availableSlots: dayAvailability.timeSlots.filter(
-                      (slot) => slot.isAvailable && !slot.isBooked
-                    ).length,
-                    bookedSlots: dayAvailability.timeSlots.filter(
-                      (slot) => slot.isBooked
-                    ).length,
-                  });
-                }
 
                 const isCurrentMonth = isSameMonth(day, currentMonth);
                 const isSelected = selectedDate && isSameDay(day, selectedDate);

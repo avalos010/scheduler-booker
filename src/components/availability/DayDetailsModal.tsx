@@ -209,7 +209,7 @@ export default function DayDetailsModal({
           }
         }
       } catch (error) {
-        console.error("Error fetching booking details:", error);
+        // Error fetching booking details - silently fail in tests
       }
     };
 
