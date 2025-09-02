@@ -208,7 +208,7 @@ export default function DayDetailsModal({
             setApiTimeSlots(data.timeSlots || []);
           }
         }
-      } catch (error) {
+      } catch {
         // Error fetching booking details - silently fail in tests
       }
     };

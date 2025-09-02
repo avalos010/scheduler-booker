@@ -13,6 +13,12 @@ import type {
   LoadingSteps,
 } from "../types/availability";
 
+// Extended type for working hours with display formatting
+type UserWorkingHourWithDisplay = UserWorkingHour & {
+  start_time_display?: string;
+  end_time_display?: string;
+};
+
 interface UseAvailabilityDataProps {
   setWorkingHours: (hours: WorkingHours[]) => void;
   setSettings: (settings: AvailabilitySettings) => void;
@@ -72,8 +78,9 @@ export function useAvailabilityData({
             ][wh.day_of_week],
             startTime: wh.start_time,
             endTime: wh.end_time,
-            startTimeDisplay: wh.start_time_display,
-            endTimeDisplay: wh.end_time_display,
+            startTimeDisplay: (wh as UserWorkingHourWithDisplay)
+              .start_time_display,
+            endTimeDisplay: (wh as UserWorkingHourWithDisplay).end_time_display,
             isWorking: wh.is_working,
           })
         );
@@ -103,8 +110,10 @@ export function useAvailabilityData({
               ][wh.day_of_week],
               startTime: wh.start_time,
               endTime: wh.end_time,
-              startTimeDisplay: wh.start_time_display,
-              endTimeDisplay: wh.end_time_display,
+              startTimeDisplay: (wh as UserWorkingHourWithDisplay)
+                .start_time_display,
+              endTimeDisplay: (wh as UserWorkingHourWithDisplay)
+                .end_time_display,
               isWorking: wh.is_working,
             })
           );

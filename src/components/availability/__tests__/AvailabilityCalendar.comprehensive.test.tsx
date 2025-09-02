@@ -104,16 +104,12 @@ describe("AvailabilityCalendar", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset mocks to default values
-    (
-      require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
-    ).mockReturnValue(mockUseAvailability);
-    (
-      require("@/lib/utils/clientTimeFormat")
-        .useTimeFormatPreference as jest.Mock
-    ).mockReturnValue(mockUseTimeFormatPreference);
-    (
-      require("@/lib/utils/clientTimeFormat").formatTime as jest.Mock
-    ).mockImplementation((time: string, is24Hour: boolean) => {
+    const { useAvailability } = jest.requireMock("@/lib/hooks/useAvailability");
+    const { useTimeFormatPreference, formatTime } = jest.requireMock("@/lib/utils/clientTimeFormat");
+    
+    (useAvailability as jest.Mock).mockReturnValue(mockUseAvailability);
+    (useTimeFormatPreference as jest.Mock).mockReturnValue(mockUseTimeFormatPreference);
+    (formatTime as jest.Mock).mockImplementation((time: string, is24Hour: boolean) => {
       if (is24Hour) return time;
       // Simple 12-hour format conversion for testing
       const [hours, minutes] = time.split(":");
@@ -160,9 +156,8 @@ describe("AvailabilityCalendar", () => {
       };
 
       // Override the mock for this test
-      (
-        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
-      ).mockReturnValue(mockAvailability);
+      const { useAvailability } = jest.requireMock("@/lib/hooks/useAvailability");
+      (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -226,9 +221,8 @@ describe("AvailabilityCalendar", () => {
       };
 
       // Override the mock for this test
-      (
-        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
-      ).mockReturnValue(mockAvailability);
+      const { useAvailability } = jest.requireMock("@/lib/hooks/useAvailability");
+      (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -278,9 +272,8 @@ describe("AvailabilityCalendar", () => {
       };
 
       // Override the mock for this test
-      (
-        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
-      ).mockReturnValue(mockAvailability);
+      const { useAvailability } = jest.requireMock("@/lib/hooks/useAvailability");
+      (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -306,9 +299,8 @@ describe("AvailabilityCalendar", () => {
       };
 
       // Override the mock for this test
-      (
-        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
-      ).mockReturnValue(mockAvailability);
+      const { useAvailability } = jest.requireMock("@/lib/hooks/useAvailability");
+      (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -341,9 +333,8 @@ describe("AvailabilityCalendar", () => {
       };
 
       // Override the mock for this test
-      (
-        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
-      ).mockReturnValue(mockAvailability);
+      const { useAvailability } = jest.requireMock("@/lib/hooks/useAvailability");
+      (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -421,9 +412,8 @@ describe("AvailabilityCalendar", () => {
       };
 
       // Override the mock for this test
-      (
-        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
-      ).mockReturnValue(mockAvailability);
+      const { useAvailability } = jest.requireMock("@/lib/hooks/useAvailability");
+      (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -444,13 +434,9 @@ describe("AvailabilityCalendar", () => {
       };
 
       // Override the mock for this test
-      (
-        require("@/lib/utils/clientTimeFormat")
-          .useTimeFormatPreference as jest.Mock
-      ).mockReturnValue(mock24HourPreference);
-      (
-        require("@/lib/utils/clientTimeFormat").formatTime as jest.Mock
-      ).mockImplementation((time: string, is24Hour: boolean) => {
+      const { useTimeFormatPreference, formatTime } = jest.requireMock("@/lib/utils/clientTimeFormat");
+      (useTimeFormatPreference as jest.Mock).mockReturnValue(mock24HourPreference);
+      (formatTime as jest.Mock).mockImplementation((time: string, is24Hour: boolean) => {
         return is24Hour ? time : "formatted-time";
       });
 
@@ -469,9 +455,8 @@ describe("AvailabilityCalendar", () => {
       };
 
       // Override the mock for this test
-      (
-        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
-      ).mockReturnValue(mockAvailability);
+      const { useAvailability } = jest.requireMock("@/lib/hooks/useAvailability");
+      (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -518,9 +503,8 @@ describe("AvailabilityCalendar", () => {
       };
 
       // Override the mock for this test
-      (
-        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
-      ).mockReturnValue(mockAvailability);
+      const { useAvailability } = jest.requireMock("@/lib/hooks/useAvailability");
+      (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -539,9 +523,8 @@ describe("AvailabilityCalendar", () => {
       };
 
       // Override the mock for this test
-      (
-        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
-      ).mockReturnValue(mockAvailability);
+      const { useAvailability } = jest.requireMock("@/lib/hooks/useAvailability");
+      (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
       render(<AvailabilityCalendar userId={userId} />);
 
@@ -616,9 +599,8 @@ describe("AvailabilityCalendar", () => {
       };
 
       // Override the mock for this test
-      (
-        require("@/lib/hooks/useAvailability").useAvailability as jest.Mock
-      ).mockReturnValue(mockAvailability);
+      const { useAvailability } = jest.requireMock("@/lib/hooks/useAvailability");
+      (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
       const startTime = performance.now();
       render(<AvailabilityCalendar userId={userId} />);
