@@ -266,10 +266,7 @@ describe("/api/bookings route", () => {
 
   it("creates booking and marks slot booked", async () => {
     const req = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
-      startTime: start,
-      endTime: end,
+      timeSlotId: "slot-1",
       clientName: "A",
       clientEmail: "a@example.com",
     });
@@ -289,10 +286,7 @@ describe("/api/bookings route", () => {
     // create booking first
     const createRes = await route.POST(
       makeRequest("POST", `${baseUrl}/api/bookings`, {
-        userId,
-        date,
-        startTime: start,
-        endTime: end,
+        timeSlotId: "slot-1",
         clientName: "A",
         clientEmail: "a@example.com",
       }) as unknown as NextRequest
@@ -318,10 +312,7 @@ describe("/api/bookings route", () => {
   it("cancels booking and frees slot", async () => {
     const createRes = await route.POST(
       makeRequest("POST", `${baseUrl}/api/bookings`, {
-        userId,
-        date,
-        startTime: start,
-        endTime: end,
+        timeSlotId: "slot-1",
         clientName: "A",
         clientEmail: "a@example.com",
       }) as unknown as NextRequest
@@ -349,10 +340,7 @@ describe("/api/bookings route", () => {
   it("deletes booking and frees slot", async () => {
     const createRes = await route.POST(
       makeRequest("POST", `${baseUrl}/api/bookings`, {
-        userId,
-        date,
-        startTime: start,
-        endTime: end,
+        timeSlotId: "slot-1",
         clientName: "A",
         clientEmail: "a@example.com",
       }) as unknown as NextRequest

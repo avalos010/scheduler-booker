@@ -16,7 +16,6 @@ interface DayDetailsModalProps {
   selectedDate: Date | null;
   availability: Record<string, DayAvailability>;
   workingHours: WorkingHours[];
-  userId: string;
   toggleTimeSlot: (
     date: Date,
     slot: {
@@ -36,7 +35,6 @@ export default function DayDetailsModal({
   selectedDate,
   availability,
   workingHours,
-  userId,
   toggleTimeSlot,
   toggleWorkingDay,
   onCalendarRefresh,
@@ -53,10 +51,11 @@ export default function DayDetailsModal({
     >
   >({});
   const [apiTimeSlots, setApiTimeSlots] = useState<TimeSlot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState<Set<string>>(new Set());
 
   // Function to refresh the modal data
   const refreshModalData = useCallback(async () => {
-    if (!selectedDate || !userId) return;
+    if (!selectedDate) return;
 
     try {
       const response = await fetch(
@@ -106,7 +105,7 @@ export default function DayDetailsModal({
     } catch (error) {
       console.error("Error refreshing modal data:", error);
     }
-  }, [selectedDate, userId]);
+  }, [selectedDate]);
 
   // Close modal on escape key
   useEffect(() => {
@@ -141,7 +140,7 @@ export default function DayDetailsModal({
 
   // Fetch booking details when modal opens or date changes
   useEffect(() => {
-    if (!isOpen || !selectedDate || !userId) {
+    if (!isOpen || !selectedDate) {
       return;
     }
 
@@ -214,7 +213,7 @@ export default function DayDetailsModal({
     };
 
     fetchBookingDetails();
-  }, [isOpen, selectedDate, userId]);
+  }, [isOpen, selectedDate]);
 
   if (!isOpen || !selectedDate) return null;
 
@@ -308,7 +307,8 @@ export default function DayDetailsModal({
                   <span className="ml-2 text-xs sm:text-sm text-gray-500">
                     {
                       displayTimeSlots.filter(
-                        (s) => s.isAvailable && !s.isBooked
+                        (slotDuration) =>
+                          slotDuration.isAvailable && !slotDuration.isBooked
                       ).length
                     }
                     /{displayTimeSlots.length} available
@@ -324,270 +324,286 @@ export default function DayDetailsModal({
                           <div className="space-y-2">
                             <button
                               onClick={async () => {
-                                if (slot.isBooked) {
+                                if (
+                                  slot.isBooked ||
+                                  loadingSlots.has(slot.id)
+                                ) {
                                   return;
                                 }
-                                await toggleTimeSlot(selectedDate, {
-                                  id: slot.id,
-                                  startTime: slot.startTime,
-                                  endTime: slot.endTime,
-                                  isAvailable: slot.isAvailable,
-                                });
-                                // Refresh the modal data to show updated state
-                                await refreshModalData();
 
-                                // Also refresh the calendar data
-                                if (onCalendarRefresh && selectedDate) {
-                                  await onCalendarRefresh(selectedDate);
+                                // Add to loading state
+                                setLoadingSlots((prev) =>
+                                  new Set(prev).add(slot.id)
+                                );
+
+                                try {
+                                  await toggleTimeSlot(selectedDate, {
+                                    id: slot.id,
+                                    startTime: slot.startTime,
+                                    endTime: slot.endTime,
+                                    isAvailable: slot.isAvailable,
+                                  });
+                                  // Refresh the modal data to show updated state
+                                  await refreshModalData();
+
+                                  // Also refresh the calendar data
+                                  if (onCalendarRefresh && selectedDate) {
+                                    await onCalendarRefresh(selectedDate);
+                                  }
+                                } finally {
+                                  // Remove from loading state
+                                  setLoadingSlots((prev) => {
+                                    const newSet = new Set(prev);
+                                    newSet.delete(slot.id);
+                                    return newSet;
+                                  });
                                 }
                               }}
-                              className={`w-full px-3 py-2 sm:py-3 text-sm rounded-md border transition-colors ${
-                                slot.isBooked
+                              className={`relative w-full px-3 py-2 sm:py-3 text-sm rounded-md border transition-colors flex items-center justify-center gap-2 ${
+                                loadingSlots.has(slot.id)
+                                  ? "bg-yellow-50 border-yellow-200 text-yellow-800 cursor-wait"
+                                  : slot.isBooked
                                   ? "bg-blue-50 border-blue-200 text-blue-800 cursor-not-allowed"
                                   : slot.isAvailable
                                   ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100 active:bg-green-200"
                                   : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 active:bg-gray-200"
                               }`}
                               title={
-                                slot.isBooked
+                                loadingSlots.has(slot.id)
+                                  ? "Updating..."
+                                  : slot.isBooked
                                   ? "Booked - cannot modify"
                                   : slot.isAvailable
                                   ? "Mark unavailable"
                                   : "Mark available"
                               }
-                              disabled={slot.isBooked}
+                              disabled={
+                                slot.isBooked || loadingSlots.has(slot.id)
+                              }
                             >
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium truncate">
-                                  {slot.startTimeDisplay || slot.startTime} -{" "}
-                                  {slot.endTimeDisplay || slot.endTime}
-                                </span>
-                                <span
-                                  className={`ml-2 sm:ml-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 ${
-                                    slot.isBooked
-                                      ? "bg-blue-100 text-blue-800"
-                                      : slot.isAvailable
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-gray-200 text-gray-700"
-                                  }`}
-                                >
+                              {loadingSlots.has(slot.id) && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-600 border-t-transparent"></div>
+                                </div>
+                              )}
+                              <div
+                                className={`${
+                                  loadingSlots.has(slot.id) ? "opacity-50" : ""
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="font-medium truncate">
+                                    {slot.startTimeDisplay || slot.startTime} -{" "}
+                                    {slot.endTimeDisplay || slot.endTime}
+                                  </span>
                                   <span
-                                    className={`inline-block h-1.5 w-1.5 rounded-full ${
+                                    className={`ml-2 sm:ml-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 ${
                                       slot.isBooked
-                                        ? "bg-blue-500"
+                                        ? "bg-blue-100 text-blue-800"
                                         : slot.isAvailable
-                                        ? "bg-green-600"
-                                        : "bg-gray-500"
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-gray-200 text-gray-700"
                                     }`}
-                                  />
-                                  <span className="hidden sm:inline">
-                                    {slot.isBooked
-                                      ? "Booked"
-                                      : slot.isAvailable
-                                      ? "Available"
-                                      : "Unavailable"}
-                                  </span>
-                                  <span className="sm:hidden">
-                                    {slot.isBooked
-                                      ? "📅"
-                                      : slot.isAvailable
-                                      ? "✓"
-                                      : "✗"}
-                                  </span>
-                                </span>
-                              </div>
-
-                              {/* Show booking details inline within the same button */}
-                              {slot.isBooked &&
-                                (() => {
-                                  // Find booking details by time match since IDs might not match
-                                  const timeBasedKey = Object.keys(
-                                    bookingDetails
-                                  ).find((key) =>
-                                    key.includes(
-                                      `${slot.startTime}-${slot.endTime}`
-                                    )
-                                  );
-                                  const bookingDetail =
-                                    bookingDetails[slot.id] ||
-                                    (timeBasedKey
-                                      ? bookingDetails[timeBasedKey]
-                                      : null);
-
-                                  return !!bookingDetail;
-                                })() && (
-                                  <div className="text-left space-y-1.5">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-blue-600 text-xs">
-                                        👤
-                                      </span>
-                                      <span className="text-xs font-medium text-blue-800">
-                                        {(() => {
-                                          const timeBasedKey = Object.keys(
-                                            bookingDetails
-                                          ).find((key) =>
-                                            key.includes(
-                                              `${slot.startTime}-${slot.endTime}`
-                                            )
-                                          );
-                                          const detail =
-                                            bookingDetails[slot.id] ||
-                                            (timeBasedKey
-                                              ? bookingDetails[timeBasedKey]
-                                              : null);
-                                          return (
-                                            detail?.clientName ||
-                                            "Unknown Client"
-                                          );
-                                        })()}
-                                      </span>
-                                      <span
-                                        className={`ml-auto px-1.5 py-0.5 rounded-full text-xs font-medium ${(() => {
-                                          const timeBasedKey = Object.keys(
-                                            bookingDetails
-                                          ).find((key) =>
-                                            key.includes(
-                                              `${slot.startTime}-${slot.endTime}`
-                                            )
-                                          );
-                                          const detail =
-                                            bookingDetails[slot.id] ||
-                                            (timeBasedKey
-                                              ? bookingDetails[timeBasedKey]
-                                              : null);
-                                          return detail?.status === "confirmed"
-                                            ? "bg-green-100 text-green-800 border border-green-200"
-                                            : "bg-yellow-100 text-yellow-800 border border-green-200";
-                                        })()}`}
-                                      >
-                                        {(() => {
-                                          const timeBasedKey = Object.keys(
-                                            bookingDetails
-                                          ).find((key) =>
-                                            key.includes(
-                                              `${slot.startTime}-${slot.endTime}`
-                                            )
-                                          );
-                                          const detail =
-                                            bookingDetails[slot.id] ||
-                                            (timeBasedKey
-                                              ? bookingDetails[timeBasedKey]
-                                              : null);
-                                          return detail?.status === "confirmed"
-                                            ? "✓ Confirmed"
-                                            : "⏳ Pending";
-                                        })()}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-blue-600 text-xs">
-                                        📧
-                                      </span>
-                                      <span className="text-xs text-blue-700">
-                                        {(() => {
-                                          const timeBasedKey = Object.keys(
-                                            bookingDetails
-                                          ).find((key) =>
-                                            key.includes(
-                                              `${slot.startTime}-${slot.endTime}`
-                                            )
-                                          );
-                                          const detail =
-                                            bookingDetails[slot.id] ||
-                                            (timeBasedKey
-                                              ? bookingDetails[timeBasedKey]
-                                              : null);
-                                          return (
-                                            detail?.clientEmail || "No email"
-                                          );
-                                        })()}
-                                      </span>
-                                    </div>
-                                    {(() => {
-                                      const timeBasedKey = Object.keys(
-                                        bookingDetails
-                                      ).find((key) =>
-                                        key.includes(
-                                          `${slot.startTime}-${slot.endTime}`
-                                        )
-                                      );
-                                      const detail =
-                                        bookingDetails[slot.id] ||
-                                        (timeBasedKey
-                                          ? bookingDetails[timeBasedKey]
-                                          : null);
-                                      return detail?.notes ? (
-                                        <div className="flex items-start gap-2">
-                                          <span className="text-blue-600 text-xs mt-0.5">
-                                            📝
-                                          </span>
-                                          <span className="text-xs text-blue-700 italic leading-tight">
-                                            &ldquo;
-                                            {detail.notes}
-                                            &rdquo;
-                                          </span>
-                                        </div>
-                                      ) : null;
-                                    })()}
-                                  </div>
-                                )}
-                            </button>
-
-                            {/* Booking details now shown inline within the button */}
-                            {/* {slot.isBooked &&
-                              Object.keys(bookingDetails).length > 0 && (
-                                <div className="ml-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-blue-600 text-sm">
-                                      👤
-                                    </span>
-                                    <span className="text-sm font-medium text-blue-900">
-                                      {Object.values(bookingDetails)[0]
-                                        ?.clientName || "Unknown Client"}
-                                    </span>
+                                  >
                                     <span
-                                      className={`ml-auto px-2 py-1 rounded-full text-xs font-medium ${
-                                        Object.values(bookingDetails)[0]
-                                          ?.status === "confirmed"
-                                          ? "bg-green-100 text-green-800 border border-green-200"
-                                          : "bg-yellow-100 text-yellow-800 border border-green-200"
+                                      className={`inline-block h-1.5 w-1.5 rounded-full ${
+                                        slot.isBooked
+                                          ? "bg-blue-500"
+                                          : slot.isAvailable
+                                          ? "bg-green-600"
+                                          : "bg-gray-500"
                                       }`}
-                                    >
-                                      {Object.values(bookingDetails)[0]
-                                        ?.status === "confirmed"
-                                        ? "✓ Confirmed"
-                                        : "⏳ Pending"}
+                                    />
+                                    <span className="hidden sm:inline">
+                                      {slot.isBooked
+                                        ? "Booked"
+                                        : slot.isAvailable
+                                        ? "Available"
+                                        : "Unavailable"}
                                     </span>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-blue-600 text-xs">
-                                        📧
-                                      </span>
-                                      <span className="text-xs text-blue-800">
-                                        {Object.values(bookingDetails)[0]
-                                          ?.clientEmail || "No email"}
-                                      </span>
-                                    </div>
-                                    {Object.values(bookingDetails)[0]
-                                      ?.notes && (
-                                      <div className="flex items-start gap-2">
-                                        <span className="text-blue-600 text-xs mt-0.5">
-                                          📝
+                                    <span className="sm:hidden">
+                                      {slot.isBooked
+                                        ? "📅"
+                                        : slot.isAvailable
+                                        ? "✓"
+                                        : "✗"}
+                                    </span>
+                                  </span>
+                                </div>
+
+                                {/* Show booking details inline within the same button */}
+                                {slot.isBooked &&
+                                  (() => {
+                                    // Find booking details by time match since IDs might not match
+                                    const timeBasedKey = Object.keys(
+                                      bookingDetails
+                                    ).find((key) =>
+                                      key.includes(
+                                        `${
+                                          slot.startTimeDisplay ||
+                                          slot.startTime
+                                        }-${
+                                          slot.endTimeDisplay || slot.endTime
+                                        }`
+                                      )
+                                    );
+                                    const bookingDetail =
+                                      bookingDetails[slot.id] ||
+                                      (timeBasedKey
+                                        ? bookingDetails[timeBasedKey]
+                                        : null);
+
+                                    return !!bookingDetail;
+                                  })() && (
+                                    <div className="text-left space-y-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-blue-600 text-xs">
+                                          👤
                                         </span>
-                                        <span className="text-xs text-blue-700 italic leading-tight">
-                                          &ldquo;
-                                          {
-                                            Object.values(bookingDetails)[0]
-                                              ?.notes
-                                          }
-                                          &rdquo;
+                                        <span className="text-xs font-medium text-blue-800">
+                                          {(() => {
+                                            const timeBasedKey = Object.keys(
+                                              bookingDetails
+                                            ).find((key) =>
+                                              key.includes(
+                                                `${
+                                                  slot.startTimeDisplay ||
+                                                  slot.startTime
+                                                }-${
+                                                  slot.endTimeDisplay ||
+                                                  slot.endTime
+                                                }`
+                                              )
+                                            );
+                                            const detail =
+                                              bookingDetails[slot.id] ||
+                                              (timeBasedKey
+                                                ? bookingDetails[timeBasedKey]
+                                                : null);
+                                            return (
+                                              detail?.clientName ||
+                                              "Unknown Client"
+                                            );
+                                          })()}
+                                        </span>
+                                        <span
+                                          className={`ml-auto px-1.5 py-0.5 rounded-full text-xs font-medium ${(() => {
+                                            const timeBasedKey = Object.keys(
+                                              bookingDetails
+                                            ).find((key) =>
+                                              key.includes(
+                                                `${
+                                                  slot.startTimeDisplay ||
+                                                  slot.startTime
+                                                }-${
+                                                  slot.endTimeDisplay ||
+                                                  slot.endTime
+                                                }`
+                                              )
+                                            );
+                                            const detail =
+                                              bookingDetails[slot.id] ||
+                                              (timeBasedKey
+                                                ? bookingDetails[timeBasedKey]
+                                                : null);
+                                            return detail?.status ===
+                                              "confirmed"
+                                              ? "bg-green-100 text-green-800 border border-green-200"
+                                              : "bg-yellow-100 text-yellow-800 border border-green-200";
+                                          })()}`}
+                                        >
+                                          {(() => {
+                                            const timeBasedKey = Object.keys(
+                                              bookingDetails
+                                            ).find((key) =>
+                                              key.includes(
+                                                `${
+                                                  slot.startTimeDisplay ||
+                                                  slot.startTime
+                                                }-${
+                                                  slot.endTimeDisplay ||
+                                                  slot.endTime
+                                                }`
+                                              )
+                                            );
+                                            const detail =
+                                              bookingDetails[slot.id] ||
+                                              (timeBasedKey
+                                                ? bookingDetails[timeBasedKey]
+                                                : null);
+                                            return detail?.status ===
+                                              "confirmed"
+                                              ? "✓ Confirmed"
+                                              : "⏳ Pending";
+                                          })()}
                                         </span>
                                       </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )} */}
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-blue-600 text-xs">
+                                          📧
+                                        </span>
+                                        <span className="text-xs text-blue-700">
+                                          {(() => {
+                                            const timeBasedKey = Object.keys(
+                                              bookingDetails
+                                            ).find((key) =>
+                                              key.includes(
+                                                `${
+                                                  slot.startTimeDisplay ||
+                                                  slot.startTime
+                                                }-${
+                                                  slot.endTimeDisplay ||
+                                                  slot.endTime
+                                                }`
+                                              )
+                                            );
+                                            const detail =
+                                              bookingDetails[slot.id] ||
+                                              (timeBasedKey
+                                                ? bookingDetails[timeBasedKey]
+                                                : null);
+                                            return (
+                                              detail?.clientEmail || "No email"
+                                            );
+                                          })()}
+                                        </span>
+                                      </div>
+                                      {(() => {
+                                        const timeBasedKey = Object.keys(
+                                          bookingDetails
+                                        ).find((key) =>
+                                          key.includes(
+                                            `${
+                                              slot.startTimeDisplay ||
+                                              slot.startTime
+                                            }-${
+                                              slot.endTimeDisplay ||
+                                              slot.endTime
+                                            }`
+                                          )
+                                        );
+                                        const detail =
+                                          bookingDetails[slot.id] ||
+                                          (timeBasedKey
+                                            ? bookingDetails[timeBasedKey]
+                                            : null);
+                                        return detail?.notes ? (
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-blue-600 text-xs mt-0.5">
+                                              📝
+                                            </span>
+                                            <span className="text-xs text-blue-700 italic leading-tight">
+                                              &ldquo;
+                                              {detail.notes}
+                                              &rdquo;
+                                            </span>
+                                          </div>
+                                        ) : null;
+                                      })()}
+                                    </div>
+                                  )}
+                              </div>
+                            </button>
                           </div>
                         </div>
                       ))}

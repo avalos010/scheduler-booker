@@ -249,10 +249,7 @@ describe("Booking Persistence & Data Integrity", () => {
   it("persists booking data correctly across operations", async () => {
     // Step 1: Create a booking
     const createReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
-      startTime: start,
-      endTime: end,
+      timeSlotId: "slot-1",
       clientName: "John Doe",
       clientEmail: "john@example.com",
     });
@@ -284,10 +281,7 @@ describe("Booking Persistence & Data Integrity", () => {
   it("maintains data consistency during status changes", async () => {
     // Create initial booking
     const createReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
-      startTime: start,
-      endTime: end,
+      timeSlotId: "slot-1",
       clientName: "Jane Smith",
       clientEmail: "jane@example.com",
     });
@@ -332,10 +326,7 @@ describe("Booking Persistence & Data Integrity", () => {
   it("handles booking deletion with proper cleanup", async () => {
     // Create booking
     const createReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
-      startTime: start,
-      endTime: end,
+      timeSlotId: "slot-1",
       clientName: "Delete Test",
       clientEmail: "delete@example.com",
     });
@@ -369,10 +360,7 @@ describe("Booking Persistence & Data Integrity", () => {
   it("prevents booking conflicts and maintains slot integrity", async () => {
     // Create first booking
     const firstBookingReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
-      startTime: start,
-      endTime: end,
+      timeSlotId: "slot-1",
       clientName: "First Client",
       clientEmail: "first@example.com",
     });
@@ -386,10 +374,7 @@ describe("Booking Persistence & Data Integrity", () => {
 
     // Try to book the same slot again (should fail due to lack of available slot)
     const conflictBookingReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
-      startTime: start,
-      endTime: end,
+      timeSlotId: "slot-1",
       clientName: "Second Client",
       clientEmail: "second@example.com",
     });
@@ -417,19 +402,13 @@ describe("Booking Persistence & Data Integrity", () => {
 
     // Create two bookings simultaneously
     const booking1Req = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
-      startTime: "09:00",
-      endTime: "10:00",
+      timeSlotId: "slot-1",
       clientName: "Client A",
       clientEmail: "a@example.com",
     });
 
     const booking2Req = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
-      startTime: "10:00",
-      endTime: "11:00",
+      timeSlotId: "slot-2",
       clientName: "Client B",
       clientEmail: "b@example.com",
     });
@@ -461,10 +440,7 @@ describe("Booking Persistence & Data Integrity", () => {
   it("preserves booking history through status transitions", async () => {
     // Create booking
     const createReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
-      startTime: start,
-      endTime: end,
+      timeSlotId: "slot-1",
       clientName: "History Test",
       clientEmail: "history@example.com",
     });

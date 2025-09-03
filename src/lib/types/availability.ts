@@ -39,6 +39,7 @@ export interface AvailabilitySettings {
   slotDuration: number;
   breakDuration: number;
   advanceBookingDays: number;
+  timeFormat12h?: boolean;
 }
 
 export interface LoadingSteps {

@@ -39,7 +39,7 @@ export default async function AppointmentsPage() {
 
         {/* Appointments List */}
         <div className="rounded-2xl bg-white/70 backdrop-blur ring-1 ring-gray-200/60 shadow-lg">
-          <AppointmentsList userId={user.id} />
+          <AppointmentsList />
         </div>
       </div>
     </div>

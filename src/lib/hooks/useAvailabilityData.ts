@@ -4,7 +4,9 @@ import {
   ClientAvailabilityService,
   type UserWorkingHour,
 } from "../services/clientAvailabilityService";
-import { processMultipleDays, getUserIdFromServer } from "./availabilityUtils";
+import { processMultipleDays } from "./availabilityUtils";
+import { extractTimeFromTimestamp } from "../utils/serverTimeFormat";
+import { formatTime } from "../utils/clientTimeFormat";
 import type {
   TimeSlot,
   DayAvailability,
@@ -128,6 +130,7 @@ export function useAvailabilityData({
           slotDuration: settingsData[0].slot_duration_minutes,
           breakDuration: settingsData[0].break_duration_minutes,
           advanceBookingDays: settingsData[0].advance_booking_days,
+          timeFormat12h: settingsData[0].time_format_12h || false,
         };
 
         setSettings(convertedSettings);
@@ -143,6 +146,7 @@ export function useAvailabilityData({
             slotDuration: defaultSettings[0].slot_duration_minutes,
             breakDuration: defaultSettings[0].break_duration_minutes,
             advanceBookingDays: defaultSettings[0].advance_booking_days,
+            timeFormat12h: defaultSettings[0].time_format_12h || false,
           };
           setSettings(convertedSettings);
         }
@@ -249,13 +253,24 @@ export function useAvailabilityData({
             if (!slotsMap.has(dateKey)) {
               slotsMap.set(dateKey, []);
             }
-            slotsMap.get(dateKey).push({
+            const startTime = extractTimeFromTimestamp(slot.start_time);
+            const endTime = extractTimeFromTimestamp(slot.end_time);
+
+            const timeSlot: TimeSlot = {
               id: slot.id,
-              startTime: slot.start_time,
-              endTime: slot.end_time,
+              startTime,
+              endTime,
               isAvailable: slot.is_available,
               isBooked: slot.is_booked,
-            });
+            };
+
+            // Apply time formatting if user prefers 12-hour format
+            if (settings.timeFormat12h) {
+              timeSlot.startTimeDisplay = formatTime(startTime, false);
+              timeSlot.endTimeDisplay = formatTime(endTime, false);
+            }
+
+            slotsMap.get(dateKey).push(timeSlot);
           }
         );
 
@@ -268,7 +283,7 @@ export function useAvailabilityData({
         };
       }
     },
-    []
+    [settings.timeFormat12h]
   );
 
   // Process multiple days with batched data
@@ -278,16 +293,12 @@ export function useAvailabilityData({
       exceptionsMap: Map<string, { is_available: boolean; reason?: string }>,
       slotsMap: Map<string, TimeSlot[]>
     ) => {
-      // Get userId for consistent slot ID generation from server
-      const userId = await getUserIdFromServer();
-
       const newAvailability = processMultipleDays(
         days,
         workingHours,
         settings,
         exceptionsMap,
-        slotsMap,
-        userId
+        slotsMap
       );
 
       // Update state with all processed days at once

@@ -39,7 +39,7 @@ export default async function BookingsPage() {
 
         {/* Booking Form */}
         <div className="rounded-2xl bg-white/70 p-6 backdrop-blur ring-1 ring-gray-200/60 shadow-lg">
-          <BookingForm userId={user.id} />
+          <BookingForm />
         </div>
       </div>
     </div>

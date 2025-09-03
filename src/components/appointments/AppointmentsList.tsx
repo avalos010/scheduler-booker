@@ -32,13 +32,12 @@ interface Booking {
   created_at: string;
 }
 
-interface AppointmentsListProps {
-  userId: string;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface AppointmentsListProps {}
 
 // Local config inside BookingCard handles display styling
 
-export default function AppointmentsList({ userId }: AppointmentsListProps) {
+export default function AppointmentsList({}: AppointmentsListProps) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
@@ -58,7 +57,7 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
 
   const fetchBookings = useCallback(async () => {
     try {
-      const response = await fetch(`/api/bookings?userId=${userId}`);
+      const response = await fetch("/api/bookings");
       if (response.ok) {
         const data = await response.json();
         setBookings(data.bookings || []);
@@ -68,7 +67,7 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     fetchBookings();

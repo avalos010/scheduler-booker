@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { TimeSlotUtils } from "../utils/timeSlotUtils";
 import { ClientAvailabilityService } from "../services/clientAvailabilityService";
-import { getUserIdFromServer } from "./availabilityUtils";
+
 import type {
   TimeSlot,
   DayAvailability,
@@ -45,8 +45,6 @@ export function useAvailabilityActions({
     async (date: Date) => {
       if (workingHours.length === 0) return;
 
-      // Get userId for consistent slot ID generation from server
-      const userId = await getUserIdFromServer();
       const dateKey = TimeSlotUtils.formatDateKey(date);
       const currentDay = availability[dateKey];
 
@@ -66,7 +64,7 @@ export function useAvailabilityActions({
               dayHours.endTime,
               settings.slotDuration,
               settings.breakDuration,
-              userId,
+              undefined, // userId - no longer needed for client-side generation
               dateKey
             );
           } else {
@@ -75,7 +73,7 @@ export function useAvailabilityActions({
               "17:00",
               settings.slotDuration,
               settings.breakDuration,
-              userId,
+              undefined, // userId - no longer needed for client-side generation
               dateKey
             );
           }
@@ -148,7 +146,7 @@ export function useAvailabilityActions({
               dayHours.endTime,
               settings.slotDuration,
               settings.breakDuration,
-              userId,
+              undefined, // userId - no longer needed for client-side generation
               dateKey
             );
           } else {
@@ -157,7 +155,7 @@ export function useAvailabilityActions({
               "17:00",
               settings.slotDuration,
               settings.breakDuration,
-              userId,
+              undefined, // userId - no longer needed for client-side generation
               dateKey
             );
           }
@@ -183,7 +181,7 @@ export function useAvailabilityActions({
                 dayHours.endTime,
                 settings.slotDuration,
                 settings.breakDuration,
-                userId,
+                undefined, // userId - no longer needed for client-side generation
                 dateKey
               );
             } else {
@@ -192,7 +190,7 @@ export function useAvailabilityActions({
                 "17:00",
                 settings.slotDuration,
                 settings.breakDuration,
-                userId,
+                undefined, // userId - no longer needed for client-side generation
                 dateKey
               );
             }
@@ -283,11 +281,21 @@ export function useAvailabilityActions({
       try {
         const newAvailability = !slot.isAvailable;
 
+        const formattedDate = TimeSlotUtils.formatDateKey(date);
         console.log("💾 Saving slot to database:", {
-          date: TimeSlotUtils.formatDateKey(date),
+          date: formattedDate,
           start_time: slot.startTime,
           end_time: slot.endTime,
           is_available: newAvailability,
+        });
+        console.log("💾 Raw values:", {
+          rawDate: date,
+          formattedDate,
+          slotStartTime: slot.startTime,
+          slotEndTime: slot.endTime,
+          slotStartTimeType: typeof slot.startTime,
+          slotEndTimeType: typeof slot.endTime,
+          fullSlot: slot,
         });
 
         await ClientAvailabilityService.updateTimeSlot({
@@ -319,15 +327,13 @@ export function useAvailabilityActions({
         slotDuration,
       });
 
-      // Get userId for consistent slot ID generation from server
-      const userId = await getUserIdFromServer();
       const dateKey = TimeSlotUtils.formatDateKey(date);
       const newSlots = TimeSlotUtils.generateDefaultTimeSlots(
         startTime,
         endTime,
         slotDuration,
         0, // breakDuration
-        userId,
+        undefined, // userId - no longer needed for client-side generation
         dateKey
       );
 

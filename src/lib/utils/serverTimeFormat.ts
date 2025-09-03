@@ -11,10 +11,19 @@ export function extractTimeFromTimestamp(timestamp: string): string {
 
   if (timestamp.includes("T")) {
     // Extract time portion from ISO timestamp
-    return timestamp.split("T")[1].split("+")[0].split(".")[0];
+    const extracted = timestamp.split("T")[1].split("+")[0].split(".")[0];
+    // Convert HH:MM:SS to HH:MM format to match generated slots
+    const timeOnly = extracted.split(":").slice(0, 2).join(":");
+    console.log("🔥 extractTimeFromTimestamp:", {
+      input: timestamp,
+      extracted,
+      timeOnly,
+    });
+    return timeOnly;
   }
 
   // Already a time string, return as-is
+  console.log("🔥 extractTimeFromTimestamp (already time string):", timestamp);
   return timestamp;
 }
 

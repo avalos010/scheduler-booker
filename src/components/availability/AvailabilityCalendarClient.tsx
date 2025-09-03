@@ -34,7 +34,7 @@ import SettingsModal from "./SettingsModal";
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface AvailabilityCalendarProps {}
 
-export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
+export default function AvailabilityCalendarClient({}: AvailabilityCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showDayModal, setShowDayModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);

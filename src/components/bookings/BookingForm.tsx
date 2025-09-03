@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { UserIcon } from "@heroicons/react/24/outline";
+
 import {
   bookingFormSchema,
   type BookingFormData,
@@ -28,11 +29,7 @@ interface DayAvailability {
   isWorkingDay: boolean;
 }
 
-interface BookingFormProps {
-  userId: string;
-}
-
-export default function BookingForm({ userId }: BookingFormProps) {
+export default function BookingForm() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(
     null
@@ -142,13 +139,9 @@ export default function BookingForm({ userId }: BookingFormProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId,
-          date: format(selectedDate, "yyyy-MM-dd"),
-          startTime: selectedTimeSlot.startTime,
-          endTime: selectedTimeSlot.endTime,
+          timeSlotId: selectedTimeSlot.id,
           clientName: data.clientName,
           clientEmail: data.clientEmail,
-          clientPhone: data.clientPhone,
           notes: data.notes,
         }),
       });

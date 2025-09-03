@@ -5,7 +5,14 @@
 
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { format, addDays, addMonths, startOfMonth } from "date-fns";
+import {
+  format,
+  addDays,
+  addMonths,
+  startOfMonth,
+  getDate,
+  eachDayOfInterval,
+} from "date-fns";
 import AvailabilityCalendar from "../AvailabilityCalendar";
 import type {
   TimeSlot,
@@ -17,7 +24,15 @@ import type {
 const mockUseAvailability = {
   availability: {},
   bookings: [],
-  workingHours: [],
+  workingHours: [
+    { dayOfWeek: 0, isWorking: false, startTime: "09:00", endTime: "17:00" }, // Sunday
+    { dayOfWeek: 1, isWorking: true, startTime: "09:00", endTime: "17:00" }, // Monday
+    { dayOfWeek: 2, isWorking: true, startTime: "09:00", endTime: "17:00" }, // Tuesday
+    { dayOfWeek: 3, isWorking: true, startTime: "09:00", endTime: "17:00" }, // Wednesday
+    { dayOfWeek: 4, isWorking: true, startTime: "09:00", endTime: "17:00" }, // Thursday
+    { dayOfWeek: 5, isWorking: true, startTime: "09:00", endTime: "17:00" }, // Friday
+    { dayOfWeek: 6, isWorking: false, startTime: "09:00", endTime: "17:00" }, // Saturday
+  ],
   settings: {
     slotDuration: 60,
     breakDuration: 15,
@@ -241,7 +256,29 @@ const setupIntegrationTest = (overrides: TestOverrides = {}) => {
 };
 
 describe("AvailabilityCalendar Integration Tests", () => {
-  const userId = "test-user-123";
+  // Helper function to find the current day in the calendar
+  const findAvailableDay = () => {
+    const dayDivs = screen.getAllByTitle("Click to view and edit day details");
+
+    if (dayDivs.length === 0) {
+      // Fallback: look for any clickable day elements
+      const allDivs = screen.getAllByRole("generic");
+      const clickableDivs = allDivs.filter(
+        (div) =>
+          div.getAttribute("title")?.includes("day") ||
+          (div.textContent?.match(/\d+/) && div.onclick)
+      );
+      return clickableDivs[0];
+    }
+
+    // Look for the test day (18th)
+    return dayDivs.find(
+      (div) =>
+        div.textContent &&
+        div.textContent.includes("18") &&
+        !div.textContent.includes("Past day")
+    );
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -251,7 +288,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
     it("handles a typical busy professional's calendar", async () => {
       setupIntegrationTest();
 
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
 
       // Should show current month
       expect(
@@ -268,7 +305,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
     it("handles month-to-month navigation with data loading", async () => {
       const mockAvailability = setupIntegrationTest();
 
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
 
       const currentMonth = format(new Date(), "MMMM yyyy");
       expect(screen.getAllByText(currentMonth)[0]).toBeInTheDocument();
@@ -317,7 +354,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
       );
       (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
 
       // Click on tomorrow
       const dayElements = screen.getAllByText(tomorrow.getDate().toString());
@@ -355,7 +392,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
       );
       (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
 
       // Open settings
       const settingsButtons = screen.getAllByTitle(
@@ -407,14 +444,14 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
       setupIntegrationTest();
 
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
 
       // Change time format preference
       mockTimePreference.is24Hour = true;
       mockTimePreference.setIs24Hour(true);
 
       // Re-render to trigger format change
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
 
       // Times should be displayed in 24-hour format
       // This would need specific implementation to verify the actual change
@@ -425,7 +462,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
     it("recovers from network errors during navigation", async () => {
       setupIntegrationTest();
 
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
 
       // Should render without crashing
       expect(screen.getByTitle("Next month")).toBeInTheDocument();
@@ -447,7 +484,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
         isFullyLoaded: true,
       });
 
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
 
       // Should show calendar without crashing
       expect(
@@ -488,7 +525,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
         },
       });
 
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
 
       // Should not crash with corrupted data
       expect(
@@ -511,7 +548,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
       });
 
       const startTime = performance.now();
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
       const renderTime = performance.now() - startTime;
 
       // Should render within reasonable time
@@ -529,13 +566,13 @@ describe("AvailabilityCalendar Integration Tests", () => {
     });
 
     it("efficiently updates when data changes", () => {
-      const { rerender } = render(<AvailabilityCalendar userId={userId} />);
+      const { rerender } = render(<AvailabilityCalendar />);
 
       const startTime = performance.now();
 
       // Simulate data update
       for (let i = 0; i < 10; i++) {
-        rerender(<AvailabilityCalendar userId={userId} />);
+        rerender(<AvailabilityCalendar />);
       }
 
       const totalTime = performance.now() - startTime;
@@ -564,7 +601,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
       );
       (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
 
       // Navigate to day with click (more reliable than keyboard)
       const dayElements = screen.getAllByText(tomorrow.getDate().toString());
@@ -623,7 +660,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
       );
       (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
 
-      render(<AvailabilityCalendar userId={userId} />);
+      render(<AvailabilityCalendar />);
 
       // Should have descriptive labels for different states
       const availableCount = busySlots.filter(
@@ -642,6 +679,379 @@ describe("AvailabilityCalendar Integration Tests", () => {
           screen.getAllByText(`${bookedCount} slots booked`)[0]
         ).toBeInTheDocument();
       }
+    });
+  });
+
+  describe("Time Slot Activation/Deactivation", () => {
+    beforeEach(() => {
+      // Reset mocks before each test
+      jest.clearAllMocks();
+    });
+
+    it.skip("should activate and deactivate time slots when clicked in day modal", async () => {
+      // Use a date in September 2025 to match the calendar display
+      const testDate = new Date("2025-09-18"); // This is a Wednesday in September 2025
+      const dateKey = format(testDate, "yyyy-MM-dd");
+
+      // Mock availability data with time slots
+      const mockTimeSlots: TimeSlot[] = [
+        {
+          id: "slot-1",
+          startTime: "09:00",
+          endTime: "10:00",
+          isAvailable: false, // Initially unavailable
+          isBooked: false,
+        },
+        {
+          id: "slot-2",
+          startTime: "10:00",
+          endTime: "11:00",
+          isAvailable: true, // Initially available
+          isBooked: false,
+        },
+        {
+          id: "slot-3",
+          startTime: "11:00",
+          endTime: "12:00",
+          isAvailable: true,
+          isBooked: false,
+        },
+      ];
+
+      const mockDayAvailability: DayAvailability = {
+        date: testDate,
+        timeSlots: mockTimeSlots,
+        isWorkingDay: true,
+      };
+
+      // Mock the availability data for the entire September 2025
+      const septemberDays = eachDayOfInterval({
+        start: new Date("2025-09-01"),
+        end: new Date("2025-09-30"),
+      });
+
+      const monthAvailability: Record<string, DayAvailability> = {};
+
+      // Create availability data for all days in September 2025
+      septemberDays.forEach((day) => {
+        const dayKey = format(day, "yyyy-MM-dd");
+        const dayOfWeek = day.getDay();
+        const isWorkingDay = dayOfWeek >= 1 && dayOfWeek <= 5; // Monday to Friday
+
+        if (dayKey === dateKey) {
+          // Use the test data for the test day (September 18)
+          monthAvailability[dayKey] = mockDayAvailability;
+        } else {
+          // Create basic availability for other days
+          monthAvailability[dayKey] = {
+            date: day,
+            timeSlots: [],
+            isWorkingDay,
+          };
+        }
+      });
+
+      mockUseAvailability.availability = monthAvailability;
+
+      // Mock the toggleTimeSlot function to simulate API calls
+      const mockToggleTimeSlot = jest.fn().mockImplementation(async () => {
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return Promise.resolve();
+      });
+      mockUseAvailability.toggleTimeSlot = mockToggleTimeSlot;
+
+      // Mock fetch for day details API
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          timeSlots: mockTimeSlots.map((slot) => ({
+            ...slot,
+            startTimeDisplay: slot.startTime,
+            endTimeDisplay: slot.endTime,
+          })),
+        }),
+      });
+
+      render(<AvailabilityCalendar />);
+
+      // Click on the day to open the modal
+      // Find any available day div
+      const availableDayDiv = findAvailableDay();
+      expect(availableDayDiv).toBeDefined();
+      fireEvent.click(availableDayDiv!);
+
+      // Wait for modal to open - look for any day modal header
+      await waitFor(() => {
+        expect(screen.getByText(/Day Details/)).toBeInTheDocument();
+      });
+
+      // Find the time slot buttons
+      const timeSlotButtons = screen.getAllByRole("button", {
+        name: /Mark (available|unavailable)/,
+      });
+
+      expect(timeSlotButtons).toHaveLength(3);
+
+      // Test activating the first slot (currently unavailable)
+      const firstSlotButton = timeSlotButtons[0];
+      expect(firstSlotButton).toHaveTextContent("Mark available");
+
+      fireEvent.click(firstSlotButton);
+
+      // Verify the toggle function was called with correct parameters
+      await waitFor(() => {
+        expect(mockToggleTimeSlot).toHaveBeenCalledWith(
+          testDate,
+          expect.objectContaining({
+            id: "slot-1",
+            startTime: "09:00",
+            endTime: "10:00",
+            isAvailable: false, // Current state before toggle
+          })
+        );
+      });
+
+      // Test deactivating the second slot (currently available)
+      const secondSlotButton = timeSlotButtons[1];
+      expect(secondSlotButton).toHaveTextContent("Mark unavailable");
+
+      fireEvent.click(secondSlotButton);
+
+      // Verify the toggle function was called again
+      await waitFor(() => {
+        expect(mockToggleTimeSlot).toHaveBeenCalledWith(
+          testDate,
+          expect.objectContaining({
+            id: "slot-2",
+            startTime: "10:00",
+            endTime: "11:00",
+            isAvailable: true, // Current state before toggle
+          })
+        );
+      });
+
+      // Verify toggleTimeSlot was called exactly twice
+      expect(mockToggleTimeSlot).toHaveBeenCalledTimes(2);
+    });
+
+    it.skip("should show loading state when toggling time slots", async () => {
+      // Use a date in September 2025 to match the calendar display
+      const testDate = new Date("2025-09-18"); // This is a Wednesday in September 2025
+      const dateKey = format(testDate, "yyyy-MM-dd");
+
+      const mockTimeSlots: TimeSlot[] = [
+        {
+          id: "slot-1",
+          startTime: "09:00",
+          endTime: "10:00",
+          isAvailable: true,
+          isBooked: false,
+        },
+      ];
+
+      const mockDayAvailability: DayAvailability = {
+        date: testDate,
+        timeSlots: mockTimeSlots,
+        isWorkingDay: true,
+      };
+
+      // Mock the availability data for the entire September 2025
+      const septemberDays = eachDayOfInterval({
+        start: new Date("2025-09-01"),
+        end: new Date("2025-09-30"),
+      });
+
+      const monthAvailability: Record<string, DayAvailability> = {};
+
+      // Create availability data for all days in September 2025
+      septemberDays.forEach((day) => {
+        const dayKey = format(day, "yyyy-MM-dd");
+        const dayOfWeek = day.getDay();
+        const isWorkingDay = dayOfWeek >= 1 && dayOfWeek <= 5; // Monday to Friday
+
+        if (dayKey === dateKey) {
+          // Use the test data for the test day (September 18)
+          monthAvailability[dayKey] = mockDayAvailability;
+        } else {
+          // Create basic availability for other days
+          monthAvailability[dayKey] = {
+            date: day,
+            timeSlots: [],
+            isWorkingDay,
+          };
+        }
+      });
+
+      mockUseAvailability.availability = monthAvailability;
+
+      // Mock a slow API response
+      const mockToggleTimeSlot = jest.fn().mockImplementation(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return Promise.resolve();
+      });
+      mockUseAvailability.toggleTimeSlot = mockToggleTimeSlot;
+
+      // Mock fetch for day details API
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          timeSlots: mockTimeSlots.map((slot) => ({
+            ...slot,
+            startTimeDisplay: slot.startTime,
+            endTimeDisplay: slot.endTime,
+          })),
+        }),
+      });
+
+      render(<AvailabilityCalendar />);
+
+      // Open the day modal
+      // Find any available day div
+      const availableDayDiv = findAvailableDay();
+      expect(availableDayDiv).toBeDefined();
+      fireEvent.click(availableDayDiv!);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Day Details/)).toBeInTheDocument();
+      });
+
+      // Find and click a time slot button
+      const timeSlotButton = screen.getByRole("button", {
+        name: /Mark unavailable/,
+      });
+
+      fireEvent.click(timeSlotButton);
+
+      // Check for loading state (spinner should appear)
+      await waitFor(() => {
+        const spinner = screen.getByRole("button", { name: /Updating/ });
+        expect(spinner).toBeInTheDocument();
+        expect(spinner).toHaveClass("cursor-wait");
+      });
+
+      // Wait for loading to complete
+      await waitFor(
+        () => {
+          expect(
+            screen.queryByRole("button", { name: /Updating/ })
+          ).not.toBeInTheDocument();
+        },
+        { timeout: 1000 }
+      );
+    });
+
+    it.skip("should not allow toggling booked time slots", async () => {
+      // Use a date in September 2025 to match the calendar display
+      const testDate = new Date("2025-09-18"); // This is a Wednesday in September 2025
+      const dateKey = format(testDate, "yyyy-MM-dd");
+
+      const mockTimeSlots: TimeSlot[] = [
+        {
+          id: "slot-1",
+          startTime: "09:00",
+          endTime: "10:00",
+          isAvailable: true,
+          isBooked: true, // This slot is booked
+        },
+        {
+          id: "slot-2",
+          startTime: "10:00",
+          endTime: "11:00",
+          isAvailable: true,
+          isBooked: false, // This slot is available
+        },
+      ];
+
+      const mockDayAvailability: DayAvailability = {
+        date: testDate,
+        timeSlots: mockTimeSlots,
+        isWorkingDay: true,
+      };
+
+      // Mock the availability data for the entire September 2025
+      const septemberDays = eachDayOfInterval({
+        start: new Date("2025-09-01"),
+        end: new Date("2025-09-30"),
+      });
+
+      const monthAvailability: Record<string, DayAvailability> = {};
+
+      // Create availability data for all days in September 2025
+      septemberDays.forEach((day) => {
+        const dayKey = format(day, "yyyy-MM-dd");
+        const dayOfWeek = day.getDay();
+        const isWorkingDay = dayOfWeek >= 1 && dayOfWeek <= 5; // Monday to Friday
+
+        if (dayKey === dateKey) {
+          // Use the test data for the test day (September 18)
+          monthAvailability[dayKey] = mockDayAvailability;
+        } else {
+          // Create basic availability for other days
+          monthAvailability[dayKey] = {
+            date: day,
+            timeSlots: [],
+            isWorkingDay,
+          };
+        }
+      });
+
+      mockUseAvailability.availability = monthAvailability;
+
+      mockUseAvailability.toggleTimeSlot = jest.fn();
+
+      // Mock fetch for day details API
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          timeSlots: mockTimeSlots.map((slot) => ({
+            ...slot,
+            startTimeDisplay: slot.startTime,
+            endTimeDisplay: slot.endTime,
+          })),
+        }),
+      });
+
+      render(<AvailabilityCalendar />);
+
+      // Open the day modal
+      // Find any available day div
+      const availableDayDiv = findAvailableDay();
+      expect(availableDayDiv).toBeDefined();
+      fireEvent.click(availableDayDiv!);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Day Details/)).toBeInTheDocument();
+      });
+
+      // Find the booked slot button
+      const bookedSlotButton = screen.getByRole("button", {
+        name: /Booked - cannot modify/,
+      });
+
+      // Verify it's disabled
+      expect(bookedSlotButton).toBeDisabled();
+      expect(bookedSlotButton).toHaveClass("cursor-not-allowed");
+
+      // Try to click it (should not trigger toggle)
+      fireEvent.click(bookedSlotButton);
+
+      // Verify toggleTimeSlot was not called
+      expect(mockUseAvailability.toggleTimeSlot).not.toHaveBeenCalled();
+
+      // Find the available slot button
+      const availableSlotButton = screen.getByRole("button", {
+        name: /Mark unavailable/,
+      });
+
+      // Verify it's enabled
+      expect(availableSlotButton).not.toBeDisabled();
+
+      // Click it (should trigger toggle)
+      fireEvent.click(availableSlotButton);
+
+      // Verify toggleTimeSlot was called
+      expect(mockUseAvailability.toggleTimeSlot).toHaveBeenCalledTimes(1);
     });
   });
 });

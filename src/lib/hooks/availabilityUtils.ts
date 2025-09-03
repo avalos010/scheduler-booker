@@ -12,8 +12,7 @@ export function processMultipleDays(
   workingHours: WorkingHours[],
   settings: AvailabilitySettings,
   exceptionsMap: Map<string, { is_available: boolean; reason?: string }>,
-  slotsMap: Map<string, TimeSlot[]>,
-  userId?: string
+  slotsMap: Map<string, TimeSlot[]>
 ): Record<string, DayAvailability> {
   const newAvailability: Record<string, DayAvailability> = {};
 
@@ -27,26 +26,11 @@ export function processMultipleDays(
       workingHours,
       settings,
       exception,
-      existingSlots,
-      userId
+      existingSlots
     );
 
     newAvailability[dateKey] = dayAvailability;
   }
 
   return newAvailability;
-}
-
-// Helper function to get user ID from server
-export async function getUserIdFromServer(): Promise<string | undefined> {
-  try {
-    const response = await fetch("/api/auth/user-id");
-    if (response.ok) {
-      const data = await response.json();
-      return data.userId;
-    }
-  } catch (error) {
-    console.warn("Could not get user ID for slot generation:", error);
-  }
-  return undefined;
 }
