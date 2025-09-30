@@ -28,6 +28,46 @@ export function extractTimeFromTimestamp(timestamp: string): string {
 }
 
 /**
+ * Converts a time string to a full timestamp for the given date
+ * Handles UTC timestamps ending with "Z" and supports timezone-aware conversion
+ * @param date - The date string (e.g., "2025-01-15")
+ * @param timeString - The time string (e.g., "09:30", "2025-01-15T09:30:00Z", "2025-01-15T09:30:00+00:00")
+ * @param timezone - Optional timezone (defaults to UTC)
+ * @returns Full timestamp string with proper timezone handling
+ */
+export function convertTimeToTimestamp(
+  date: string,
+  timeString: string,
+  timezone: string = "UTC"
+): string {
+  // Check if timeString is already a full timestamp
+  if (timeString.includes("T")) {
+    // Handle UTC timestamps ending with "Z"
+    if (timeString.endsWith("Z")) {
+      return timeString;
+    }
+
+    // Handle timestamps with timezone offset (check for + or - after the time part)
+    const timePart = timeString.split("T")[1];
+    if (timePart.includes("+") || timePart.includes("-")) {
+      return timeString;
+    }
+
+    // Handle incomplete timestamps (missing timezone) - add UTC timezone
+    return `${timeString}+00:00`;
+  }
+
+  // Ensure time string has seconds if not provided
+  const timeWithSeconds =
+    timeString.includes(":") && timeString.split(":").length === 2
+      ? `${timeString}:00`
+      : timeString;
+
+  // Create full timestamp with timezone
+  return `${date}T${timeWithSeconds}+00:00`;
+}
+
+/**
  * Formats time according to specified format (12-hour AM/PM or 24-hour)
  * Server-safe version without React hooks
  */

@@ -3,29 +3,8 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import {
   formatTime,
   extractTimeFromTimestamp,
+  convertTimeToTimestamp,
 } from "@/lib/utils/serverTimeFormat";
-
-// Helper function to convert time string to full timestamp
-function convertTimeToTimestamp(date: string, timeString: string): string {
-  // If timeString is already a full timestamp, return it
-  if (timeString.includes("T") && timeString.includes("+")) {
-    return timeString;
-  }
-
-  // Handle different time formats
-  let formattedTime = timeString;
-
-  // If it's just "HH:mm", add seconds
-  if (/^\d{2}:\d{2}$/.test(timeString)) {
-    formattedTime = `${timeString}:00`;
-  }
-  // If it's "HH:mm:ss", use as is
-  else if (/^\d{2}:\d{2}:\d{2}$/.test(timeString)) {
-    formattedTime = timeString;
-  }
-
-  return `${date}T${formattedTime}+00:00`;
-}
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,32 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
-
-/**
- * Converts a time string (e.g., "09:30") to a full timestamp for the given date
- * @param date - The date string (e.g., "2025-01-15")
- * @param timeString - The time string (e.g., "09:30")
- * @returns Full timestamp string (e.g., "2025-01-15T09:30:00+00:00")
- */
-function convertTimeToTimestamp(date: string, timeString: string): string {
-  console.log("🔥 convertTimeToTimestamp called with:", { date, timeString });
-
-  // Check if timeString is already a full timestamp
-  if (timeString.includes("T") && timeString.includes("+")) {
-    console.log("🔥 timeString is already a timestamp, returning as-is");
-    return timeString;
-  }
-
-  // Ensure time string has seconds if not provided
-  const timeWithSeconds =
-    timeString.includes(":") && timeString.split(":").length === 2
-      ? `${timeString}:00`
-      : timeString;
-
-  // Create full timestamp
-  const result = `${date}T${timeWithSeconds}+00:00`;
-  console.log("🔥 convertTimeToTimestamp result:", result);
-  return result;
-}
+import { convertTimeToTimestamp } from "@/lib/utils/serverTimeFormat";
 
 export async function POST(request: Request) {
   try {
@@ -137,7 +111,7 @@ export async function PUT(request: Request) {
     });
 
     // First, let's see what's actually in the database for this date
-    const { data: allSlotsForDate, error: allSlotsError } = await supabase
+    const { data: allSlotsForDate } = await supabase
       .from("user_time_slots")
       .select("*")
       .eq("user_id", user.id)
