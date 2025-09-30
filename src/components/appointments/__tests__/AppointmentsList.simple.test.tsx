@@ -6,14 +6,13 @@ import AppointmentsList from "../AppointmentsList";
 global.fetch = jest.fn();
 
 describe("AppointmentsList", () => {
-  const mockUserId = "test-user-id";
 
   beforeEach(() => {
     (fetch as jest.Mock).mockClear();
   });
 
   it("renders loading state initially", () => {
-    render(<AppointmentsList userId={mockUserId} />);
+    render(<AppointmentsList />);
 
     expect(screen.getByText("Loading appointments...")).toBeInTheDocument();
   });
@@ -24,7 +23,7 @@ describe("AppointmentsList", () => {
       json: async () => ({ bookings: [] }),
     });
 
-    render(<AppointmentsList userId={mockUserId} />);
+    render(<AppointmentsList />);
 
     expect(await screen.findByText("No appointments")).toBeInTheDocument();
     expect(
@@ -53,7 +52,7 @@ describe("AppointmentsList", () => {
       json: async () => ({ bookings: mockBookings }),
     });
 
-    render(<AppointmentsList userId={mockUserId} />);
+    render(<AppointmentsList />);
 
     expect(await screen.findByText("Pending Bookings (1)")).toBeInTheDocument();
     expect(screen.getByText("John Doe")).toBeInTheDocument();
@@ -82,7 +81,7 @@ describe("AppointmentsList", () => {
       json: async () => ({ bookings: mockBookings }),
     });
 
-    render(<AppointmentsList userId={mockUserId} />);
+    render(<AppointmentsList />);
 
     expect(
       await screen.findByText("Confirmed Appointments (1)")

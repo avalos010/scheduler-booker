@@ -117,7 +117,6 @@ function createDayAvailability(
 }
 
 describe("AvailabilityCalendar", () => {
-  const userId = "test-user-123";
 
   beforeEach(() => {
     jest.clearAllMocks();

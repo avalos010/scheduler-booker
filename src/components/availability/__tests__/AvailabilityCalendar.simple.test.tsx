@@ -241,7 +241,7 @@ describe("AvailabilityCalendar UI", () => {
   });
 
   it("renders header and shows initial slot count for today", () => {
-    render(<AvailabilityCalendar userId="test-user-123" />);
+    render(<AvailabilityCalendar />);
 
     // Header shows current month - target the mobile layout specifically
     const currentMonth = format(today, "MMMM yyyy"); // Use our test date instead of new Date()
@@ -263,7 +263,7 @@ describe("AvailabilityCalendar UI", () => {
   });
 
   it("opens day details modal and shows time slots", async () => {
-    render(<AvailabilityCalendar userId="test-user-123" />);
+    render(<AvailabilityCalendar />);
 
     // Click today's cell to open the modal
     const dayNumber = today.getDate().toString();
@@ -287,9 +287,7 @@ describe("AvailabilityCalendar UI", () => {
   });
 
   it("toggles working day from cell and shows non-working label afterward", () => {
-    const { rerender } = render(
-      <AvailabilityCalendar userId="test-user-123" />
-    );
+    const { rerender } = render(<AvailabilityCalendar />);
 
     // First, verify the calendar is rendering with our mock data - target mobile layout
     const mobileMonthHeader = screen.getByText("September 2025", {
@@ -309,7 +307,7 @@ describe("AvailabilityCalendar UI", () => {
     expect(mockState.toggleWorkingDay).toHaveBeenCalled();
 
     // Rerender and expect non-working label for today
-    rerender(<AvailabilityCalendar userId="test-user-123" />);
+    rerender(<AvailabilityCalendar />);
     // The component shows "Past day" for non-working days, not "Non-working day"
     expect(
       screen.getAllByText(/Past day|slots available/i).length
@@ -317,9 +315,7 @@ describe("AvailabilityCalendar UI", () => {
   });
 
   it("updates slot count instantly when toggling a slot inside modal", async () => {
-    const { rerender } = render(
-      <AvailabilityCalendar userId="test-user-123" />
-    );
+    const { rerender } = render(<AvailabilityCalendar />);
 
     // Open modal
     const dayNumber = today.getDate().toString();
@@ -343,7 +339,7 @@ describe("AvailabilityCalendar UI", () => {
 
     // Close modal, rerender, and verify available count decreased from 3 to 2
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
-    rerender(<AvailabilityCalendar userId="test-user-123" />);
+    rerender(<AvailabilityCalendar />);
 
     const indicators = screen.getAllByText(/slots available/i);
     expect(
@@ -352,9 +348,7 @@ describe("AvailabilityCalendar UI", () => {
   });
 
   it("toggles working day status in modal", async () => {
-    const { rerender } = render(
-      <AvailabilityCalendar userId="test-user-123" />
-    );
+    const { rerender } = render(<AvailabilityCalendar />);
 
     // Open modal
     const dayNumber = today.getDate().toString();
@@ -376,7 +370,7 @@ describe("AvailabilityCalendar UI", () => {
 
     // Close modal and rerender
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
-    rerender(<AvailabilityCalendar userId="test-user-123" />);
+    rerender(<AvailabilityCalendar />);
 
     // Should show non-working day status
     expect(mockState.toggleWorkingDay).toHaveBeenCalled();
