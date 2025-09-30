@@ -440,176 +440,53 @@ export default function DayDetailsModal({
                                 </div>
 
                                 {/* Show booking details inline within the same button */}
-                                {slot.isBooked &&
-                                  (() => {
-                                    // Find booking details by time match since IDs might not match
-                                    const timeBasedKey = Object.keys(
-                                      bookingDetails
-                                    ).find((key) =>
-                                      key.includes(
-                                        `${
-                                          slot.startTimeDisplay ||
-                                          slot.startTime
-                                        }-${
-                                          slot.endTimeDisplay || slot.endTime
-                                        }`
-                                      )
-                                    );
-                                    const bookingDetail =
-                                      bookingDetails[slot.id] ||
-                                      (timeBasedKey
-                                        ? bookingDetails[timeBasedKey]
-                                        : null);
-
-                                    return !!bookingDetail;
-                                  })() && (
-                                    <div className="text-left space-y-1.5">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-blue-600 text-xs">
-                                          👤
-                                        </span>
-                                        <span className="text-xs font-medium text-blue-800">
-                                          {(() => {
-                                            const timeBasedKey = Object.keys(
-                                              bookingDetails
-                                            ).find((key) =>
-                                              key.includes(
-                                                `${
-                                                  slot.startTimeDisplay ||
-                                                  slot.startTime
-                                                }-${
-                                                  slot.endTimeDisplay ||
-                                                  slot.endTime
-                                                }`
-                                              )
-                                            );
-                                            const detail =
-                                              bookingDetails[slot.id] ||
-                                              (timeBasedKey
-                                                ? bookingDetails[timeBasedKey]
-                                                : null);
-                                            return (
-                                              detail?.clientName ||
-                                              "Unknown Client"
-                                            );
-                                          })()}
-                                        </span>
-                                        <span
-                                          className={`ml-auto px-1.5 py-0.5 rounded-full text-xs font-medium ${(() => {
-                                            const timeBasedKey = Object.keys(
-                                              bookingDetails
-                                            ).find((key) =>
-                                              key.includes(
-                                                `${
-                                                  slot.startTimeDisplay ||
-                                                  slot.startTime
-                                                }-${
-                                                  slot.endTimeDisplay ||
-                                                  slot.endTime
-                                                }`
-                                              )
-                                            );
-                                            const detail =
-                                              bookingDetails[slot.id] ||
-                                              (timeBasedKey
-                                                ? bookingDetails[timeBasedKey]
-                                                : null);
-                                            return detail?.status ===
-                                              "confirmed"
-                                              ? "bg-green-100 text-green-800 border border-green-200"
-                                              : "bg-yellow-100 text-yellow-800 border border-green-200";
-                                          })()}`}
-                                        >
-                                          {(() => {
-                                            const timeBasedKey = Object.keys(
-                                              bookingDetails
-                                            ).find((key) =>
-                                              key.includes(
-                                                `${
-                                                  slot.startTimeDisplay ||
-                                                  slot.startTime
-                                                }-${
-                                                  slot.endTimeDisplay ||
-                                                  slot.endTime
-                                                }`
-                                              )
-                                            );
-                                            const detail =
-                                              bookingDetails[slot.id] ||
-                                              (timeBasedKey
-                                                ? bookingDetails[timeBasedKey]
-                                                : null);
-                                            return detail?.status ===
-                                              "confirmed"
-                                              ? "✓ Confirmed"
-                                              : "⏳ Pending";
-                                          })()}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-blue-600 text-xs">
-                                          📧
-                                        </span>
-                                        <span className="text-xs text-blue-700">
-                                          {(() => {
-                                            const timeBasedKey = Object.keys(
-                                              bookingDetails
-                                            ).find((key) =>
-                                              key.includes(
-                                                `${
-                                                  slot.startTimeDisplay ||
-                                                  slot.startTime
-                                                }-${
-                                                  slot.endTimeDisplay ||
-                                                  slot.endTime
-                                                }`
-                                              )
-                                            );
-                                            const detail =
-                                              bookingDetails[slot.id] ||
-                                              (timeBasedKey
-                                                ? bookingDetails[timeBasedKey]
-                                                : null);
-                                            return (
-                                              detail?.clientEmail || "No email"
-                                            );
-                                          })()}
-                                        </span>
-                                      </div>
-                                      {(() => {
-                                        const timeBasedKey = Object.keys(
-                                          bookingDetails
-                                        ).find((key) =>
-                                          key.includes(
-                                            `${
-                                              slot.startTimeDisplay ||
-                                              slot.startTime
-                                            }-${
-                                              slot.endTimeDisplay ||
-                                              slot.endTime
-                                            }`
-                                          )
-                                        );
-                                        const detail =
-                                          bookingDetails[slot.id] ||
-                                          (timeBasedKey
-                                            ? bookingDetails[timeBasedKey]
-                                            : null);
-                                        return detail?.notes ? (
-                                          <div className="flex items-start gap-2">
-                                            <span className="text-blue-600 text-xs mt-0.5">
-                                              📝
-                                            </span>
-                                            <span className="text-xs text-blue-700 italic leading-tight">
-                                              &ldquo;
-                                              {detail.notes}
-                                              &rdquo;
-                                            </span>
-                                          </div>
-                                        ) : null;
-                                      })()}
+                                {slot.isBooked && bookingDetails[slot.id] && (
+                                  <div className="text-left space-y-1.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-blue-600 text-xs">
+                                        👤
+                                      </span>
+                                      <span className="text-xs font-medium text-blue-800">
+                                        {bookingDetails[slot.id]?.clientName ||
+                                          "Unknown Client"}
+                                      </span>
+                                      <span
+                                        className={`ml-auto px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                                          bookingDetails[slot.id]?.status ===
+                                          "confirmed"
+                                            ? "bg-green-100 text-green-800 border border-green-200"
+                                            : "bg-yellow-100 text-yellow-800 border border-green-200"
+                                        }`}
+                                      >
+                                        {bookingDetails[slot.id]?.status ===
+                                        "confirmed"
+                                          ? "✓ Confirmed"
+                                          : "⏳ Pending"}
+                                      </span>
                                     </div>
-                                  )}
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-blue-600 text-xs">
+                                        📧
+                                      </span>
+                                      <span className="text-xs text-blue-700">
+                                        {bookingDetails[slot.id]?.clientEmail ||
+                                          "No email"}
+                                      </span>
+                                    </div>
+                                    {bookingDetails[slot.id]?.notes && (
+                                      <div className="flex items-start gap-2">
+                                        <span className="text-blue-600 text-xs mt-0.5">
+                                          📝
+                                        </span>
+                                        <span className="text-xs text-blue-700 italic leading-tight">
+                                          &ldquo;
+                                          {bookingDetails[slot.id].notes}
+                                          &rdquo;
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </button>
                           </div>

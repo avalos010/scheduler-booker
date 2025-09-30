@@ -142,6 +142,7 @@ export default function BookingForm() {
           timeSlotId: selectedTimeSlot.id,
           clientName: data.clientName,
           clientEmail: data.clientEmail,
+          clientPhone: data.clientPhone,
           notes: data.notes,
         }),
       });
