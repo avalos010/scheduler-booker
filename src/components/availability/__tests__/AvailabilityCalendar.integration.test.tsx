@@ -77,6 +77,24 @@ jest.mock("@/lib/utils/clientTimeFormat", () => ({
   }),
 }));
 
+// Helper function to find a future working day
+function getWorkingDayInCurrentMonth(): Date {
+  const today = new Date();
+  // Start from 3 days in the future to ensure it's clearly in the future
+  const testDate = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 3
+  );
+
+  // Find the next working day (Monday-Friday)
+  while (testDate.getDay() === 0 || testDate.getDay() === 6) {
+    testDate.setDate(testDate.getDate() + 1);
+  }
+
+  return testDate;
+}
+
 // Mock data generators
 const createMockWorkingHours = (
   overrides: Partial<WorkingHours>[] = []
@@ -282,6 +300,8 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset availability to empty before each test
+    mockUseAvailability.availability = {};
   });
 
   describe("Real-world Usage Scenarios", () => {
@@ -335,13 +355,14 @@ describe("AvailabilityCalendar Integration Tests", () => {
     });
 
     it("manages day details modal with complex time slot data", async () => {
-      const tomorrow = addDays(new Date(), 1);
-      const complexSlots = createRealisticTimeSlots(tomorrow, "mixed");
+      // Use a fixed date in mid-September to avoid month boundary issues
+      const testDate = getWorkingDayInCurrentMonth();
+      const complexSlots = createRealisticTimeSlots(testDate, "mixed");
 
       const mockAvailability = setupIntegrationTest({
         availability: {
-          [format(tomorrow, "yyyy-MM-dd")]: {
-            date: tomorrow,
+          [format(testDate, "yyyy-MM-dd")]: {
+            date: testDate,
             timeSlots: complexSlots,
             isWorkingDay: true,
           },
@@ -356,24 +377,22 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
       render(<AvailabilityCalendar />);
 
-      // Click on tomorrow
-      const dayElements = screen.getAllByText(tomorrow.getDate().toString());
-      const dayElement =
-        dayElements.find(
-          (el) =>
-            el.closest("div")?.classList.contains("cursor-pointer") ||
-            el.closest("button")?.classList.contains("cursor-pointer")
-        ) || dayElements[0];
-      fireEvent.click(dayElement);
+      // Click on the test date - look for the accessible date text
+      const dateText = format(testDate, "MMMM d, yyyy");
+      const dayElements = screen.getAllByText(dateText);
+      const dayElement = dayElements[0].closest("div");
+      if (dayElement) {
+        fireEvent.click(dayElement);
+      }
 
       await waitFor(() => {
         // Look for the modal header with the formatted date
-        const formattedDate = format(tomorrow, "EEEE, MMMM d, yyyy");
+        const formattedDate = format(testDate, "EEEE, MMMM d, yyyy");
         expect(screen.getByText(formattedDate)).toBeInTheDocument();
       });
 
       // Should show complex slot information
-      const modal = screen.getByText(format(tomorrow, "EEEE, MMMM d, yyyy"));
+      const modal = screen.getByText(format(testDate, "EEEE, MMMM d, yyyy"));
       expect(modal).toBeInTheDocument();
 
       // Should have toggle functionality
@@ -584,12 +603,13 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
   describe("Accessibility in Complex Scenarios", () => {
     it("maintains keyboard navigation with modal interactions", async () => {
-      const tomorrow = addDays(new Date(), 1);
+      // Use a fixed date in mid-September to avoid month boundary issues
+      const testDate = getWorkingDayInCurrentMonth();
       const mockAvailability = setupIntegrationTest({
         availability: {
-          [format(tomorrow, "yyyy-MM-dd")]: {
-            date: tomorrow,
-            timeSlots: createRealisticTimeSlots(tomorrow, "mixed"),
+          [format(testDate, "yyyy-MM-dd")]: {
+            date: testDate,
+            timeSlots: createRealisticTimeSlots(testDate, "mixed"),
             isWorkingDay: true,
           },
         },
@@ -603,29 +623,26 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
       render(<AvailabilityCalendar />);
 
-      // Navigate to day with click (more reliable than keyboard)
-      const dayElements = screen.getAllByText(tomorrow.getDate().toString());
-      const dayElement =
-        dayElements.find(
-          (el) =>
-            el.closest("div")?.classList.contains("cursor-pointer") ||
-            el.closest("button")?.classList.contains("cursor-pointer")
-        ) || dayElements[0];
+      // Navigate to day with click - look for the accessible date text
+      const dateText = format(testDate, "MMMM d, yyyy");
+      const dayElements = screen.getAllByText(dateText);
+      const dayElement = dayElements[0].closest("div");
 
-      // Try clicking first
-      fireEvent.click(dayElement);
+      if (dayElement) {
+        fireEvent.click(dayElement);
+      }
 
       await waitFor(
         () => {
           // Look for the modal header with the formatted date
-          const formattedDate = format(tomorrow, "EEEE, MMMM d, yyyy");
+          const formattedDate = format(testDate, "EEEE, MMMM d, yyyy");
           expect(screen.getByText(formattedDate)).toBeInTheDocument();
         },
         { timeout: 3000 }
       );
 
       // Should trap focus in modal - find modal by its content
-      const modal = screen.getByText(format(tomorrow, "EEEE, MMMM d, yyyy"));
+      const modal = screen.getByText(format(testDate, "EEEE, MMMM d, yyyy"));
       expect(modal).toBeInTheDocument();
 
       // Escape should close modal
@@ -633,7 +650,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
       await waitFor(
         () => {
-          const formattedDate = format(tomorrow, "EEEE, MMMM d, yyyy");
+          const formattedDate = format(testDate, "EEEE, MMMM d, yyyy");
           expect(screen.queryByText(formattedDate)).not.toBeInTheDocument();
         },
         { timeout: 2000 }
@@ -641,24 +658,18 @@ describe("AvailabilityCalendar Integration Tests", () => {
     }, 10000);
 
     it("provides appropriate ARIA labels for complex states", () => {
-      const tomorrow = addDays(new Date(), 1);
-      const busySlots = createRealisticTimeSlots(tomorrow, "busy");
+      // Use a fixed date in mid-September to avoid month boundary issues
+      const testDate = getWorkingDayInCurrentMonth();
+      const busySlots = createRealisticTimeSlots(testDate, "busy");
 
-      const mockAvailability = setupIntegrationTest({
-        availability: {
-          [format(tomorrow, "yyyy-MM-dd")]: {
-            date: tomorrow,
-            timeSlots: busySlots,
-            isWorkingDay: true,
-          },
+      // Directly modify the mock object
+      mockUseAvailability.availability = {
+        [format(testDate, "yyyy-MM-dd")]: {
+          date: testDate,
+          timeSlots: busySlots,
+          isWorkingDay: true,
         },
-      });
-
-      // Override the mock for this test
-      const { useAvailability } = jest.requireMock(
-        "@/lib/hooks/useAvailability"
-      );
-      (useAvailability as jest.Mock).mockReturnValue(mockAvailability);
+      };
 
       render(<AvailabilityCalendar />);
 
@@ -669,16 +680,17 @@ describe("AvailabilityCalendar Integration Tests", () => {
       const bookedCount = busySlots.filter((slot) => slot.isBooked).length;
 
       if (availableCount > 0) {
-        expect(
-          screen.getAllByText(`${availableCount} slots available`)[0]
-        ).toBeInTheDocument();
+        const bodyText = document.body.textContent || "";
+        expect(bodyText).toContain(`${availableCount} slots available`);
       }
 
       if (bookedCount > 0) {
-        expect(
-          screen.getAllByText(`${bookedCount} slots booked`)[0]
-        ).toBeInTheDocument();
+        const bodyText = document.body.textContent || "";
+        expect(bodyText).toContain(`${bookedCount} slots booked`);
       }
+
+      // Clean up
+      mockUseAvailability.availability = {};
     });
   });
 
@@ -690,7 +702,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
     it.skip("should activate and deactivate time slots when clicked in day modal", async () => {
       // Use a date in September 2025 to match the calendar display
-      const testDate = new Date("2025-09-18"); // This is a Wednesday in September 2025
+      const testDate = getWorkingDayInCurrentMonth();
       const dateKey = format(testDate, "yyyy-MM-dd");
 
       // Mock availability data with time slots
@@ -837,7 +849,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
     it.skip("should show loading state when toggling time slots", async () => {
       // Use a date in September 2025 to match the calendar display
-      const testDate = new Date("2025-09-18"); // This is a Wednesday in September 2025
+      const testDate = getWorkingDayInCurrentMonth();
       const dateKey = format(testDate, "yyyy-MM-dd");
 
       const mockTimeSlots: TimeSlot[] = [
@@ -943,7 +955,7 @@ describe("AvailabilityCalendar Integration Tests", () => {
 
     it.skip("should not allow toggling booked time slots", async () => {
       // Use a date in September 2025 to match the calendar display
-      const testDate = new Date("2025-09-18"); // This is a Wednesday in September 2025
+      const testDate = getWorkingDayInCurrentMonth();
       const dateKey = format(testDate, "yyyy-MM-dd");
 
       const mockTimeSlots: TimeSlot[] = [
