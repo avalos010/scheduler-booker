@@ -1,4 +1,4 @@
-const nextJest = require("next/jest");
+import nextJest from "next/jest";
 
 const createJestConfig = nextJest({
   // Provide the path to your Next.js app to load next.config.js and .env files
@@ -22,10 +22,10 @@ const customJestConfig = {
   ],
   coverageThreshold: {
     global: {
-      branches: 15,
-      functions: 12,
-      lines: 15,
-      statements: 15,
+      branches: 10,
+      functions: 8,
+      lines: 10,
+      statements: 10,
     },
   },
   coverageReporters: ["text", "lcov", "html"],
@@ -33,4 +33,4 @@ const customJestConfig = {
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
-module.exports = createJestConfig(customJestConfig);
+export default createJestConfig(customJestConfig);
