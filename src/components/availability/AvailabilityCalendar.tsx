@@ -219,13 +219,40 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
     await loadAvailability();
   }, [loadAvailability, setAvailability]);
 
-  const navigateMonth = (direction: "prev" | "next") => {
-    setCurrentMonth(
-      direction === "prev"
-        ? subMonths(currentMonth, 1)
-        : addMonths(currentMonth, 1)
-    );
-  };
+  const navigateMonth = useCallback(
+    async (direction: "prev" | "next") => {
+      const newMonth =
+        direction === "prev"
+          ? subMonths(currentMonth, 1)
+          : addMonths(currentMonth, 1);
+
+      setCurrentMonth(newMonth);
+
+      // Auto-refresh data for the new month
+      try {
+        await refreshCalendarForDate(newMonth);
+      } catch (error) {
+        console.warn(
+          "⚠️ Failed to auto-refresh calendar data for new month:",
+          error
+        );
+      }
+    },
+    [currentMonth, refreshCalendarForDate]
+  );
+
+  // Optional: Auto-refresh every 5 minutes to catch external changes
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        await refreshCalendarForDate(currentMonth);
+      } catch (error) {
+        console.warn("⚠️ Failed to auto-refresh calendar data:", error);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [currentMonth, refreshCalendarForDate]);
 
   return (
     <div className="space-y-4 sm:space-y-6">

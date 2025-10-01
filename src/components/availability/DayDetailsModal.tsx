@@ -223,6 +223,7 @@ export default function DayDetailsModal({
     fetchBookingDetails();
   }, [isOpen, selectedDate]);
 
+  // Early return if modal is not open or no date selected
   if (!isOpen || !selectedDate) return null;
 
   const dateKeyLocal = format(selectedDate, "yyyy-MM-dd");

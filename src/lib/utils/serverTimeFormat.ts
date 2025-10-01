@@ -37,8 +37,7 @@ export function extractTimeFromTimestamp(timestamp: string): string {
  */
 export function convertTimeToTimestamp(
   date: string,
-  timeString: string,
-  timezone: string = "UTC"
+  timeString: string
 ): string {
   // Check if timeString is already a full timestamp
   if (timeString.includes("T")) {

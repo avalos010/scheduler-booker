@@ -86,20 +86,20 @@ function buildSlots(start: string, end: string, duration: number): TimeSlot[] {
 
 describe("AvailabilityCalendar UI", () => {
   // Use a fixed date (Monday) to ensure consistent working hours
-  const today = new Date("2025-09-18"); // This is a Thursday in September 2025
+  const today = new Date(2025, 9, 1); // This is October 1st, 2025 (month is 0-indexed)
   const dateKey = format(today, "yyyy-MM-dd");
 
   beforeEach(() => {
     const initialSlots = buildSlots("09:00", "12:00", 60); // 3 slots
 
-    // Create availability for multiple days in September 2025
-    const septemberDays = eachDayOfInterval({
-      start: new Date("2025-09-01"),
-      end: new Date("2025-09-30"),
+    // Create availability for multiple days in October 2025
+    const octoberDays = eachDayOfInterval({
+      start: new Date("2025-10-01"),
+      end: new Date("2025-10-31"),
     });
 
     const availability: Record<string, DayAvailability> = {};
-    septemberDays.forEach((day) => {
+    octoberDays.forEach((day) => {
       const dayKey = format(day, "yyyy-MM-dd");
       const dayOfWeek = day.getDay();
       const isWorkingDay = dayOfWeek >= 1 && dayOfWeek <= 5; // Monday to Friday
@@ -290,7 +290,7 @@ describe("AvailabilityCalendar UI", () => {
     const { rerender } = render(<AvailabilityCalendar />);
 
     // First, verify the calendar is rendering with our mock data - target mobile layout
-    const mobileMonthHeader = screen.getByText("September 2025", {
+    const mobileMonthHeader = screen.getByText("October 2025", {
       selector: "h3.text-xl.sm\\:text-2xl",
     });
     expect(mobileMonthHeader).toBeTruthy();

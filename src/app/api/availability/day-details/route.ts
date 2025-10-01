@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { addMonths, startOfMonth } from "date-fns";
+// Removed unused imports: addMonths, startOfMonth
 import {
   formatTime,
   extractTimeFromTimestamp,

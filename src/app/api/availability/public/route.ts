@@ -143,13 +143,11 @@ export async function GET(request: NextRequest) {
           endTime: slotEnd,
           isAvailable: true,
           isBooked: false,
+          ...(shouldUse12HourFormat && {
+            startTimeDisplay: formatTime(slotStart, false), // false = 12-hour format
+            endTimeDisplay: formatTime(slotEnd, false),
+          }),
         };
-
-        // Apply time formatting if user prefers 12-hour format
-        if (shouldUse12HourFormat) {
-          timeSlot.startTimeDisplay = formatTime(slotStart, false); // false = 12-hour format
-          timeSlot.endTimeDisplay = formatTime(slotEnd, false);
-        }
 
         timeSlots.push(timeSlot);
       }
