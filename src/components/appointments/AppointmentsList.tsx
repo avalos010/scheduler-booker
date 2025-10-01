@@ -176,7 +176,10 @@ export default function AppointmentsList({}: AppointmentsListProps) {
           </div>
         );
       case "confirmed": {
-        const startDateTime = new Date(`${booking.date}T${booking.start_time}`);
+        // Create date more explicitly for Node 18 compatibility
+        const startDateTime = new Date(
+          `${booking.date}T${booking.start_time}:00`
+        );
         const fifteenMinutesMs = 15 * 60 * 1000;
         const startWithGrace = new Date(
           startDateTime.getTime() + fifteenMinutesMs
@@ -321,7 +324,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
       ? b.client_name.toLowerCase().includes(normalizedQuery) ||
         b.client_email.toLowerCase().includes(normalizedQuery)
       : true;
-    const startDateTime = new Date(`${b.date}T${b.start_time}`);
+    const startDateTime = new Date(`${b.date}T${b.start_time}:00`);
     const matchesUpcoming = upcomingOnly ? startDateTime >= now : true;
     return matchesStatus && matchesQuery && matchesUpcoming;
   });
