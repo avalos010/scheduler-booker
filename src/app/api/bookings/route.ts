@@ -92,22 +92,28 @@ export async function POST(request: NextRequest) {
 
       timeSlot = result.data;
       timeSlotError = result.error;
-    } else if (timeSlotParts.length >= 4) {
+    } else if (timeSlotParts.length >= 6) {
       // Format: ${userId}-${date}-${startTime}-${endTime}
-      const date = timeSlotParts.slice(1, -2).join("-"); // Handle dates with hyphens
-      const startTime = timeSlotParts[timeSlotParts.length - 2];
+      // Parse from the end since we know the structure:
+      // - endTime is last part (HH:MM format)
+      // - startTime is second-to-last part (HH:MM format)
+      // - date is third-to-last part (YYYY-MM-DD format, so 3 parts when split)
+      // - everything before date is userId (UUID with hyphens)
       const endTime = timeSlotParts[timeSlotParts.length - 1];
+      const startTime = timeSlotParts[timeSlotParts.length - 2];
+      const dateFromId = timeSlotParts.slice(-5, -2).join("-"); // Get the 3 parts for date
+      const userIdFromId = timeSlotParts.slice(0, -5).join("-"); // Everything before date (for debugging)
 
       // Convert time strings to timestamps for database lookup
-      const startTimestamp = convertTimeToTimestamp(date, startTime);
-      const endTimestamp = convertTimeToTimestamp(date, endTime);
+      const startTimestamp = convertTimeToTimestamp(dateFromId, startTime);
+      const endTimestamp = convertTimeToTimestamp(dateFromId, endTime);
 
       // Get the time slot details and verify it belongs to the user
       const result = await supabase
         .from("user_time_slots")
         .select("*")
         .eq("user_id", user.id)
-        .eq("date", date)
+        .eq("date", dateFromId)
         .eq("start_time", startTimestamp)
         .eq("end_time", endTimestamp)
         .single();
@@ -163,31 +169,29 @@ export async function POST(request: NextRequest) {
         }
 
         timeSlot = newTimeSlot;
-      } else if (timeSlotParts.length >= 4) {
+      } else if (timeSlotParts.length >= 6) {
         // Format: ${userId}-${date}-${startTime}-${endTime}
-        // Since userId can contain hyphens (UUIDs), we need to extract from the end
-        const startTime = timeSlotParts[timeSlotParts.length - 2];
+        // Parse from the end since we know the structure:
+        // - endTime is last part (HH:MM format)
+        // - startTime is second-to-last part (HH:MM format)
+        // - date is third-to-last part (YYYY-MM-DD format, so 3 parts when split)
+        // - everything before date is userId (UUID with hyphens)
         const endTime = timeSlotParts[timeSlotParts.length - 1];
-
-        // Find the date by looking for the pattern YYYY-MM-DD
-        // The date should be the 3 parts before startTime and endTime
-        const dateParts = timeSlotParts.slice(-5, -2); // Get the 3 parts before startTime/endTime
-        const date = dateParts.join("-");
-
-        // The userId is everything before the date
-        const userId = timeSlotParts.slice(0, -5).join("-");
+        const startTime = timeSlotParts[timeSlotParts.length - 2];
+        const dateFromId = timeSlotParts.slice(-5, -2).join("-"); // Get the 3 parts for date
+        const userIdFromId = timeSlotParts.slice(0, -5).join("-"); // Everything before date (for debugging)
 
         console.log("🔥 Parsed userId-date format:", {
-          date,
+          date: dateFromId,
           startTime,
           endTime,
-          userId,
+          userId: userIdFromId,
           originalTimeSlotId: timeSlotId,
         });
 
         // Convert time strings to timestamps
-        const startTimestamp = convertTimeToTimestamp(date, startTime);
-        const endTimestamp = convertTimeToTimestamp(date, endTime);
+        const startTimestamp = convertTimeToTimestamp(dateFromId, startTime);
+        const endTimestamp = convertTimeToTimestamp(dateFromId, endTime);
 
         console.log("🔥 Converted timestamps (userId-date format):", {
           startTimestamp,
@@ -197,7 +201,7 @@ export async function POST(request: NextRequest) {
         // Create the time slot
         console.log("🔥 Creating time slot (userId-date format) with data:", {
           user_id: user.id,
-          date,
+          date: dateFromId,
           start_time: startTimestamp,
           end_time: endTimestamp,
           is_available: true,
@@ -208,7 +212,7 @@ export async function POST(request: NextRequest) {
           .from("user_time_slots")
           .insert({
             user_id: user.id,
-            date,
+            date: dateFromId,
             start_time: startTimestamp,
             end_time: endTimestamp,
             is_available: true,
@@ -268,7 +272,7 @@ export async function POST(request: NextRequest) {
       .from("bookings")
       .insert({
         user_id: user.id,
-        date: date,
+        date: date, // Use the date from the request body
         start_time: convertTimeToTimestamp(date, startTime),
         end_time: convertTimeToTimestamp(date, endTime),
         client_name: clientName,
