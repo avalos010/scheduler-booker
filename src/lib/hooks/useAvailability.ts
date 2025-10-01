@@ -7,22 +7,8 @@ import type {
   WorkingHours,
   AvailabilitySettings,
   LoadingSteps,
+  Booking,
 } from "../types/availability";
-
-interface Booking {
-  id: string;
-  user_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  client_name: string;
-  client_email: string;
-  client_phone?: string;
-  notes?: string;
-  status: "pending" | "confirmed" | "cancelled" | "completed" | "no-show";
-  created_at: string;
-  updated_at: string;
-}
 
 export function useAvailability() {
   // Core State
@@ -113,7 +99,6 @@ export function useAvailability() {
 
   // Load data on hook initialization
   useEffect(() => {
-    console.log("🔄 useAvailability hook initialized, loading data...");
     loadAvailability();
   }, [loadAvailability]);
 
@@ -141,8 +126,13 @@ export function useAvailability() {
         updated[index] = { ...updated[index], [field]: value };
         return updated;
       });
+
+      // TODO: Add conflict resolution for working hours changes
+      // When changing working hours, check for existing bookings that would be affected
+      // Show warning dialog if conflicts exist, allow user to cancel or proceed
+      // This should be implemented in a separate branch focused on conflict resolution
     },
-    [workingHours.length]
+    [workingHours]
   );
 
   const updateSettings = useCallback(

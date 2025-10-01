@@ -48,21 +48,12 @@ export function useAvailabilityData({
 }: UseAvailabilityDataProps) {
   // Load availability data
   const loadAvailability = useCallback(async () => {
-    console.log("🔄 loadAvailability called");
-
     try {
-      console.log("📡 Loading working hours and settings...");
-
       // Load working hours and settings using the new client service
       const [workingHoursData, settingsData] = await Promise.all([
         ClientAvailabilityService.loadWorkingHours(),
         ClientAvailabilityService.loadSettings(),
       ]);
-
-      console.log("📥 Data loaded successfully:", {
-        workingHoursCount: workingHoursData?.length,
-        settings: settingsData,
-      });
 
       // Only set data if we actually received it from the database
       if (workingHoursData && workingHoursData.length > 0) {
@@ -90,9 +81,6 @@ export function useAvailabilityData({
         setWorkingHours(convertedWorkingHours);
         setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
       } else {
-        console.warn(
-          "⚠️ No working hours found in database, creating defaults"
-        );
         // Create default working hours if none exist
         await ClientAvailabilityService.createDefaultWorkingHours();
         // Reload the data
@@ -136,7 +124,6 @@ export function useAvailabilityData({
         setSettings(convertedSettings);
         setLoadingSteps((prev) => ({ ...prev, settings: true }));
       } else {
-        console.warn("⚠️ No settings found in database, creating defaults");
         // Create default settings if none exist
         await ClientAvailabilityService.createDefaultSettings();
         // Reload the data
@@ -159,9 +146,7 @@ export function useAvailabilityData({
         exceptions: true,
         timeSlots: true,
       }));
-    } catch (error) {
-      console.error("❌ Error loading availability data:", error);
-
+    } catch {
       // Don't set fallback data on error - let the UI show the error state
       setLoadingSteps({
         workingHours: true,

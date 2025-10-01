@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAvailability } from "@/lib/hooks/useAvailability";
 import TimePicker from "./TimePicker";
 import TimeFormatToggle from "../settings/TimeFormatToggle";
+import { useTimeFormatPreference } from "@/lib/utils/clientTimeFormat";
 
 export default function AvailabilitySettings() {
   const {
@@ -14,6 +15,9 @@ export default function AvailabilitySettings() {
     saveAvailability,
     isLoading,
   } = useAvailability();
+
+  // Get the current time format preference directly
+  const { is24Hour } = useTimeFormatPreference();
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{
@@ -141,6 +145,7 @@ export default function AvailabilitySettings() {
                           }
                           placeholder="Start time"
                           disabled={isLoading}
+                          use12HourFormat={!is24Hour}
                         />
                       </div>
                       <span className="text-gray-500 text-sm font-medium flex-shrink-0">
@@ -155,6 +160,7 @@ export default function AvailabilitySettings() {
                         }
                         placeholder="End time"
                         disabled={isLoading}
+                        use12HourFormat={!is24Hour}
                       />
                     </div>
                   </div>

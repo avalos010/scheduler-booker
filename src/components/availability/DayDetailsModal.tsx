@@ -221,7 +221,7 @@ export default function DayDetailsModal({
     };
 
     fetchBookingDetails();
-  }, [isOpen, selectedDate]);
+  }, [isOpen, selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Early return if modal is not open or no date selected
   if (!isOpen || !selectedDate) return null;

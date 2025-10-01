@@ -11,19 +11,27 @@ export function formatTime(timeString: string, is24Hour: boolean): string {
   try {
     // Validate input
     if (!timeString || typeof timeString !== "string") {
-      console.warn("Invalid time string:", timeString);
       return "Invalid time";
     }
 
     // Clean and validate the time string format
     const cleanTimeString = timeString.trim();
 
+    // Check if it's already formatted (contains AM/PM)
+    if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(cleanTimeString)) {
+      // Already formatted, return as-is if user wants 12-hour format
+      if (!is24Hour) {
+        return cleanTimeString;
+      }
+      // Convert 12-hour to 24-hour format
+      const time = parse(cleanTimeString, "h:mm a", new Date());
+      if (!isNaN(time.getTime())) {
+        return format(time, "HH:mm");
+      }
+    }
+
     // Check if it matches HH:mm, H:mm, HH:mm:ss, or H:mm:ss format
     if (!/^\d{1,2}:\d{2}(:\d{2})?$/.test(cleanTimeString)) {
-      console.warn(
-        "Time string doesn't match expected format (HH:mm or HH:mm:ss):",
-        cleanTimeString
-      );
       return timeString; // Return original if format is unexpected
     }
 
@@ -94,11 +102,6 @@ export function useTimeFormatPreference() {
         if (response.ok) {
           const data = await response.json();
           const format24h = !data.time_format_12h; // Invert because API stores 12h preference
-          console.log("🔍 Time format preference loaded:", {
-            apiResponse: data,
-            time_format_12h: data.time_format_12h,
-            computed24h: format24h,
-          });
           setIs24Hour(format24h);
           localStorage.setItem("timeFormat24h", format24h.toString());
         } else {

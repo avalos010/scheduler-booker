@@ -2,13 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-
+import { formatTime } from "@/lib/utils/clientTimeFormat";
 
 interface TimePickerProps {
   value: string;
   onChange: (time: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  use12HourFormat?: boolean;
 }
 
 export default function TimePicker({
@@ -16,11 +17,11 @@ export default function TimePicker({
   onChange,
   placeholder,
   disabled = false,
+  use12HourFormat = false,
 }: TimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
-
 
   // Generate time options (24-hour format, 30-minute intervals)
   const timeOptions = [
@@ -114,7 +115,11 @@ export default function TimePicker({
         <span
           className={`truncate ${value ? "text-gray-900" : "text-gray-500"}`}
         >
-          {value || placeholder}
+          {value
+            ? use12HourFormat
+              ? formatTime(value, false)
+              : value
+            : placeholder}
         </span>
         <ChevronDownIcon
           className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${
@@ -145,13 +150,13 @@ export default function TimePicker({
                   key={time}
                   onClick={() => handleSelect(time)}
                   className={`w-full px-3 py-2 sm:py-2.5 text-left text-sm hover:bg-blue-50 active:bg-blue-100 transition-colors ${
-                    value === time
+                    time === value
                       ? "bg-blue-100 text-blue-900"
                       : "text-gray-700"
                   }`}
                 >
                   <span className="font-medium">
-                    {time}
+                    {use12HourFormat ? formatTime(time, false) : time}
                   </span>
                 </button>
               ))

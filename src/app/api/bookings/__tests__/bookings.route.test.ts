@@ -46,7 +46,10 @@ interface Builder {
   update: (updates: Partial<BookingRow & TimeSlotRow>) => Builder;
   insert: (row: Partial<BookingRow & TimeSlotRow>) => Builder;
   delete: () => Builder;
-  then: (onFulfilled: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) => Promise<unknown>;
+  then: (
+    onFulfilled: (value: unknown) => unknown,
+    onRejected?: (reason: unknown) => unknown
+  ) => Promise<unknown>;
 }
 
 interface MockSupabaseClient extends SupabaseClient {
@@ -227,7 +230,6 @@ jest.mock("@/lib/supabase-server", () => {
               queryState.equalsFilters,
               queryState.inFilter
             );
-
 
             rowsToUpdate.forEach((row) =>
               Object.assign(row, queryState.pendingUpdate)

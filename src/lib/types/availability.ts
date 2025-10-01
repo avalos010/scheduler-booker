@@ -42,6 +42,21 @@ export interface AvailabilitySettings {
   timeFormat12h?: boolean;
 }
 
+export interface Booking {
+  id: string;
+  user_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  client_name: string;
+  client_email: string;
+  client_phone?: string;
+  notes?: string;
+  status: "pending" | "confirmed" | "cancelled" | "completed" | "no-show";
+  created_at: string;
+  updated_at: string;
+}
+
 export interface LoadingSteps {
   workingHours: boolean;
   settings: boolean;

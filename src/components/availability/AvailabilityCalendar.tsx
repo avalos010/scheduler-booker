@@ -26,7 +26,7 @@ import {
   PauseIcon,
 } from "@heroicons/react/24/outline";
 import { useAvailability } from "@/lib/hooks/useAvailability";
-import type { TimeSlot } from "@/lib/types/availability";
+import type { TimeSlot, Booking } from "@/lib/types/availability";
 
 import DayDetailsModal from "./DayDetailsModal";
 import SettingsModal from "./SettingsModal";
@@ -120,10 +120,14 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
       const dayBookings = getDayBookings(day);
       return {
         total: dayBookings.length,
-        confirmed: dayBookings.filter((b) => b.status === "confirmed").length,
-        pending: dayBookings.filter((b) => b.status === "pending").length,
-        cancelled: dayBookings.filter((b) => b.status === "cancelled").length,
-        completed: dayBookings.filter((b) => b.status === "completed").length,
+        confirmed: dayBookings.filter((b: Booking) => b.status === "confirmed")
+          .length,
+        pending: dayBookings.filter((b: Booking) => b.status === "pending")
+          .length,
+        cancelled: dayBookings.filter((b: Booking) => b.status === "cancelled")
+          .length,
+        completed: dayBookings.filter((b: Booking) => b.status === "completed")
+          .length,
       };
     },
     [getDayBookings]
