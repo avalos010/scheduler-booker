@@ -246,7 +246,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the booking record
+    // First, try to atomically claim the slot by flipping is_booked only if still free
+    const { data: claimedSlot, error: claimError } = await supabase
+      .from("user_time_slots")
+      .update({ is_booked: true, updated_at: new Date().toISOString() })
+      .eq("id", timeSlot!.id)
+      .eq("is_booked", false)
+      .eq("is_available", true)
+      .select("id")
+      .single();
+
+    if (claimError || !claimedSlot) {
+      return NextResponse.json(
+        { message: "Time slot is no longer available" },
+        { status: 409 }
+      );
+    }
+
+    // Proceed to create booking after successful claim
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .insert({
@@ -265,26 +282,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (bookingError) {
-      console.error("Error creating booking:", bookingError);
+      // rollback claim on failure
+      await supabase
+        .from("user_time_slots")
+        .update({ is_booked: false, updated_at: new Date().toISOString() })
+        .eq("id", timeSlot!.id);
       return NextResponse.json(
         { message: "Error creating booking" },
         { status: 500 }
       );
-    }
-
-    // Update the time slot to mark it as booked
-    const { error: updateError } = await supabase
-      .from("user_time_slots")
-      .update({
-        is_booked: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", timeSlot!.id);
-
-    if (updateError) {
-      console.error("Error updating time slot:", updateError);
-      // Note: We don't fail the request here as the booking was created
-      // The time slot will be updated in a background process if needed
     }
 
     return NextResponse.json({

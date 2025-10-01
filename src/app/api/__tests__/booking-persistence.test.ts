@@ -98,6 +98,10 @@ jest.mock("@/lib/supabase-server", () => {
           error: null | { code: string };
         }>;
         update: (updates: Partial<BookingRow & TimeSlotRow>) => Builder;
+        then: (
+          onFulfilled: (value: unknown) => unknown,
+          onRejected?: (reason: unknown) => unknown
+        ) => Promise<unknown>;
         insert: (row: Partial<BookingRow & TimeSlotRow>) => Builder;
         delete: () => Builder;
       };
@@ -138,41 +142,36 @@ jest.mock("@/lib/supabase-server", () => {
         },
         eq(column: keyof (BookingRow & TimeSlotRow), value: unknown) {
           queryState.equalsFilters.push({ col: column, val: value });
-          if (queryState.pendingUpdate) {
-            const rowsToUpdate = filterRows(
-              tableName,
-              queryState.equalsFilters
-            );
-            rowsToUpdate.forEach((row) =>
-              Object.assign(
-                row,
-                queryState.pendingUpdate as Partial<BookingRow & TimeSlotRow>
-              )
-            );
-            queryState.mutationResultRows = rowsToUpdate;
-          }
-          if (queryState.pendingDelete) {
-            const rowsToDelete = filterRows(
-              tableName,
-              queryState.equalsFilters
-            );
-            if (tableName === "bookings") {
-              tables.bookings = (tables.bookings as BookingRow[]).filter(
-                (row) => !rowsToDelete.includes(row)
-              );
-            } else {
-              tables.user_time_slots = (
-                tables.user_time_slots as TimeSlotRow[]
-              ).filter((row) => !rowsToDelete.includes(row));
-            }
-            queryState.mutationResultRows = rowsToDelete;
-          }
           return builder;
         },
         order() {
           return builder;
         },
         async single() {
+          if (queryState.pendingUpdate) {
+            // Apply conditional update - only update rows that match ALL conditions
+            const rowsToUpdate = filterRows(
+              tableName,
+              queryState.equalsFilters
+            );
+
+            if (rowsToUpdate.length === 0) {
+              // No rows match the conditions, return error
+              return { data: null, error: { code: "PGRST116" } };
+            }
+
+            // Apply the update to matching rows
+            rowsToUpdate.forEach((row) =>
+              Object.assign(row, queryState.pendingUpdate)
+            );
+
+            // Clear the pending update
+            queryState.pendingUpdate = undefined;
+
+            // Return the first updated row
+            return { data: rowsToUpdate[0], error: null };
+          }
+
           const rows =
             queryState.mutationResultRows ??
             filterRows(tableName, queryState.equalsFilters);
@@ -187,6 +186,52 @@ jest.mock("@/lib/supabase-server", () => {
         insert(row: Partial<BookingRow & TimeSlotRow>) {
           queryState.pendingInsert = row;
           return builder;
+        },
+        then(
+          onFulfilled: (value: unknown) => unknown,
+          onRejected?: (reason: unknown) => unknown
+        ) {
+          // Handle cases where update() is called but single() is not
+          if (queryState.pendingUpdate) {
+            const rowsToUpdate = filterRows(
+              tableName,
+              queryState.equalsFilters
+            );
+
+            rowsToUpdate.forEach((row) =>
+              Object.assign(row, queryState.pendingUpdate)
+            );
+
+            // Clear the pending update
+            queryState.pendingUpdate = undefined;
+          }
+
+          // Handle cases where delete() is called but single() is not
+          if (queryState.pendingDelete) {
+            const rowsToDelete = filterRows(
+              tableName,
+              queryState.equalsFilters
+            );
+
+            if (tableName === "bookings") {
+              tables.bookings = (tables.bookings as BookingRow[]).filter(
+                (row) => !rowsToDelete.includes(row)
+              );
+            } else {
+              tables.user_time_slots = (
+                tables.user_time_slots as TimeSlotRow[]
+              ).filter((row) => !rowsToDelete.includes(row));
+            }
+
+            // Clear the pending delete
+            queryState.pendingDelete = false;
+          }
+
+          // Return a resolved promise
+          return Promise.resolve({ data: null, error: null }).then(
+            onFulfilled,
+            onRejected
+          );
         },
         delete() {
           queryState.pendingDelete = true;

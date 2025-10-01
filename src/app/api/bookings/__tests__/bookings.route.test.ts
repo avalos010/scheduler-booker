@@ -46,6 +46,7 @@ interface Builder {
   update: (updates: Partial<BookingRow & TimeSlotRow>) => Builder;
   insert: (row: Partial<BookingRow & TimeSlotRow>) => Builder;
   delete: () => Builder;
+  then: (onFulfilled: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) => Promise<unknown>;
 }
 
 interface MockSupabaseClient extends SupabaseClient {
@@ -146,38 +147,6 @@ jest.mock("@/lib/supabase-server", () => {
         },
         eq(column: keyof (BookingRow & TimeSlotRow), value: unknown) {
           queryState.equalsFilters.push({ col: column, val: value });
-          // Support executing updates or deletes on eq() since real supabase executes on await
-          if (queryState.pendingUpdate) {
-            const rowsToUpdate = filterRows(
-              tableName,
-              queryState.equalsFilters,
-              queryState.inFilter
-            );
-            rowsToUpdate.forEach((row) =>
-              Object.assign(
-                row,
-                queryState.pendingUpdate as Partial<BookingRow & TimeSlotRow>
-              )
-            );
-            queryState.mutationResultRows = rowsToUpdate;
-          }
-          if (queryState.pendingDelete) {
-            const rowsToDelete = filterRows(
-              tableName,
-              queryState.equalsFilters,
-              queryState.inFilter
-            );
-            if (tableName === "bookings") {
-              tables.bookings = (tables.bookings as BookingRow[]).filter(
-                (row) => !rowsToDelete.includes(row)
-              );
-            } else {
-              tables.user_time_slots = (
-                tables.user_time_slots as TimeSlotRow[]
-              ).filter((row) => !rowsToDelete.includes(row));
-            }
-            queryState.mutationResultRows = rowsToDelete;
-          }
           return builder;
         },
         in(column: keyof (BookingRow & TimeSlotRow), values: unknown[]) {
@@ -188,6 +157,44 @@ jest.mock("@/lib/supabase-server", () => {
           return builder;
         },
         async single() {
+          if (queryState.pendingUpdate) {
+            // Apply conditional update - only update rows that match ALL conditions
+            console.log("🔥 Mock: Applying conditional update", {
+              tableName,
+              equalsFilters: queryState.equalsFilters,
+              pendingUpdate: queryState.pendingUpdate,
+            });
+
+            // Show all available rows before filtering
+            console.log("🔥 Mock: All available rows", tables[tableName]);
+
+            const rowsToUpdate = filterRows(
+              tableName,
+              queryState.equalsFilters,
+              queryState.inFilter
+            );
+
+            console.log("🔥 Mock: Rows to update", { rowsToUpdate });
+
+            if (rowsToUpdate.length === 0) {
+              // No rows match the conditions, return error
+              console.log("🔥 Mock: No rows match conditions");
+              return { data: null, error: { code: "PGRST116" } };
+            }
+
+            // Apply the update to matching rows
+            rowsToUpdate.forEach((row) =>
+              Object.assign(row, queryState.pendingUpdate)
+            );
+
+            // Clear the pending update
+            queryState.pendingUpdate = undefined;
+
+            // Return the first updated row
+            console.log("🔥 Mock: Returning updated row", rowsToUpdate[0]);
+            return { data: rowsToUpdate[0], error: null };
+          }
+
           const rows =
             queryState.mutationResultRows ??
             filterRows(
@@ -208,6 +215,33 @@ jest.mock("@/lib/supabase-server", () => {
           // Defer insert until select()/single() to mimic supabase chainability
           queryState.pendingInsert = row;
           return builder;
+        },
+        then(
+          onFulfilled: (value: unknown) => unknown,
+          onRejected?: (reason: unknown) => unknown
+        ) {
+          // Handle cases where update() is called but single() is not
+          if (queryState.pendingUpdate) {
+            const rowsToUpdate = filterRows(
+              tableName,
+              queryState.equalsFilters,
+              queryState.inFilter
+            );
+
+
+            rowsToUpdate.forEach((row) =>
+              Object.assign(row, queryState.pendingUpdate)
+            );
+
+            // Clear the pending update
+            queryState.pendingUpdate = undefined;
+          }
+
+          // Return a resolved promise
+          return Promise.resolve({ data: null, error: null }).then(
+            onFulfilled,
+            onRejected
+          );
         },
         delete() {
           // Defer delete and allow eq() calls to define filters
