@@ -20,11 +20,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { timeSlotId, clientName, clientEmail, clientPhone, notes } =
-      await request.json();
+    const {
+      timeSlotId,
+      date,
+      startTime,
+      endTime,
+      clientName,
+      clientEmail,
+      clientPhone,
+      notes,
+    } = await request.json();
 
     console.log("🔥 Booking request received:", {
       timeSlotId,
+      date,
+      startTime,
+      endTime,
       clientName,
       clientEmail,
       clientPhone,
@@ -32,7 +43,14 @@ export async function POST(request: NextRequest) {
     });
 
     // Validate required fields
-    if (!timeSlotId || !clientName || !clientEmail) {
+    if (
+      !timeSlotId ||
+      !date ||
+      !startTime ||
+      !endTime ||
+      !clientName ||
+      !clientEmail
+    ) {
       return NextResponse.json(
         { message: "Missing required fields" },
         { status: 400 }
@@ -54,14 +72,13 @@ export async function POST(request: NextRequest) {
 
     if (timeSlotId.startsWith("slot-") && timeSlotParts.length >= 3) {
       // Format: slot-${startTime}-${endTime}
-      const startTime = timeSlotParts[1];
-      const endTime = timeSlotParts[2];
-      // For test environment, use today's date
-      const date = new Date().toISOString().split("T")[0];
+      // Use the provided date from the request instead of hardcoding today's date
+      const slotStartTime = timeSlotParts[1];
+      const slotEndTime = timeSlotParts[2];
 
       // Convert time strings to timestamps for database lookup
-      const startTimestamp = convertTimeToTimestamp(date, startTime);
-      const endTimestamp = convertTimeToTimestamp(date, endTime);
+      const startTimestamp = convertTimeToTimestamp(date, slotStartTime);
+      const endTimestamp = convertTimeToTimestamp(date, slotEndTime);
 
       // Get the time slot details and verify it belongs to the user
       const result = await supabase
@@ -115,13 +132,13 @@ export async function POST(request: NextRequest) {
       // Let's try to create it if we can parse the timeSlotId
       if (timeSlotId.startsWith("slot-") && timeSlotParts.length >= 3) {
         // Format: slot-${startTime}-${endTime}
-        const startTime = timeSlotParts[1];
-        const endTime = timeSlotParts[2];
-        const date = new Date().toISOString().split("T")[0];
+        const slotStartTime = timeSlotParts[1];
+        const slotEndTime = timeSlotParts[2];
+        // Use the provided date from the request instead of hardcoding today's date
 
         // Convert time strings to timestamps
-        const startTimestamp = convertTimeToTimestamp(date, startTime);
-        const endTimestamp = convertTimeToTimestamp(date, endTime);
+        const startTimestamp = convertTimeToTimestamp(date, slotStartTime);
+        const endTimestamp = convertTimeToTimestamp(date, slotEndTime);
 
         // Create the time slot
         const { data: newTimeSlot, error: createError } = await supabase
@@ -234,9 +251,9 @@ export async function POST(request: NextRequest) {
       .from("bookings")
       .insert({
         user_id: user.id,
-        date: timeSlot!.date,
-        start_time: timeSlot!.start_time,
-        end_time: timeSlot!.end_time,
+        date: date,
+        start_time: convertTimeToTimestamp(date, startTime),
+        end_time: convertTimeToTimestamp(date, endTime),
         client_name: clientName,
         client_email: clientEmail,
         client_phone: clientPhone || null,

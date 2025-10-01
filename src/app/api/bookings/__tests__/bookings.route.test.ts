@@ -267,6 +267,9 @@ describe("/api/bookings route", () => {
   it("creates booking and marks slot booked", async () => {
     const req = makeRequest("POST", `${baseUrl}/api/bookings`, {
       timeSlotId: "slot-1",
+      date: date,
+      startTime: start,
+      endTime: end,
       clientName: "A",
       clientEmail: "a@example.com",
     });
@@ -287,6 +290,9 @@ describe("/api/bookings route", () => {
     const createRes = await route.POST(
       makeRequest("POST", `${baseUrl}/api/bookings`, {
         timeSlotId: "slot-1",
+        date: date,
+        startTime: start,
+        endTime: end,
         clientName: "A",
         clientEmail: "a@example.com",
       }) as unknown as NextRequest
@@ -313,6 +319,9 @@ describe("/api/bookings route", () => {
     const createRes = await route.POST(
       makeRequest("POST", `${baseUrl}/api/bookings`, {
         timeSlotId: "slot-1",
+        date: date,
+        startTime: start,
+        endTime: end,
         clientName: "A",
         clientEmail: "a@example.com",
       }) as unknown as NextRequest
@@ -341,6 +350,9 @@ describe("/api/bookings route", () => {
     const createRes = await route.POST(
       makeRequest("POST", `${baseUrl}/api/bookings`, {
         timeSlotId: "slot-1",
+        date: date,
+        startTime: start,
+        endTime: end,
         clientName: "A",
         clientEmail: "a@example.com",
       }) as unknown as NextRequest
@@ -362,6 +374,40 @@ describe("/api/bookings route", () => {
     expect(res.status).toBe(200);
     expect(mockSupabaseDelete.__tables().user_time_slots[0].is_booked).toBe(
       false
+    );
+  });
+
+  it("creates booking with slot-startTime-endTime format using provided date", async () => {
+    const testDate = "2025-02-15";
+    const testStartTime = "10:00";
+    const testEndTime = "11:00";
+
+    const req = makeRequest("POST", `${baseUrl}/api/bookings`, {
+      timeSlotId: `slot-${testStartTime}-${testEndTime}`,
+      date: testDate,
+      startTime: testStartTime,
+      endTime: testEndTime,
+      clientName: "Test Client",
+      clientEmail: "test@example.com",
+    });
+
+    const res = await route.POST(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+
+    const supabase = (
+      await import("@/lib/supabase-server")
+    ).createSupabaseServerClient();
+    const mockSupabase = (await supabase) as MockSupabaseClient;
+    const tables = mockSupabase.__tables();
+
+    // Verify booking was created with the correct date
+    expect(tables.bookings.length).toBe(1);
+    expect(tables.bookings[0].date).toBe(testDate);
+    expect(tables.bookings[0].start_time).toBe(
+      `${testDate}T${testStartTime}:00+00:00`
+    );
+    expect(tables.bookings[0].end_time).toBe(
+      `${testDate}T${testEndTime}:00+00:00`
     );
   });
 });

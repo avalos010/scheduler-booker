@@ -140,6 +140,9 @@ export default function BookingForm() {
         },
         body: JSON.stringify({
           timeSlotId: selectedTimeSlot.id,
+          date: format(selectedDate, "yyyy-MM-dd"),
+          startTime: selectedTimeSlot.startTime,
+          endTime: selectedTimeSlot.endTime,
           clientName: data.clientName,
           clientEmail: data.clientEmail,
           clientPhone: data.clientPhone,

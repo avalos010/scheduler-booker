@@ -58,21 +58,20 @@ export async function GET(request: NextRequest) {
 
     const shouldUse12HourFormat = userSettings?.time_format_12h || false;
 
-    // Validate that the requested date is within the allowed booking range
-    // (current month + first 15 days of next month)
+    // Validate that the requested date is within a reasonable booking range
+    // (past 30 days to future 90 days)
     const requestedDate = new Date(date);
     const today = new Date();
-    const currentMonthStart = startOfMonth(today);
-    const nextMonth = addMonths(today, 1);
-    const nextMonthStart = startOfMonth(nextMonth);
-    const cutoffDate = new Date(nextMonthStart);
-    cutoffDate.setDate(15); // 15th day of next month
+    const pastLimit = new Date(today);
+    pastLimit.setDate(today.getDate() - 30);
+    const futureLimit = new Date(today);
+    futureLimit.setDate(today.getDate() + 90);
 
-    if (requestedDate < currentMonthStart || requestedDate > cutoffDate) {
+    if (requestedDate < pastLimit || requestedDate > futureLimit) {
       return NextResponse.json(
         {
           message:
-            "Date is outside the allowed booking range. You can only view availability for the current month and the first 15 days of next month.",
+            "Date is outside the allowed booking range. You can only view availability for the past 30 days to 90 days in the future.",
         },
         { status: 400 }
       );
