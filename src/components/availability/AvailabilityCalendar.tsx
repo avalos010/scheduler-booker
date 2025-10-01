@@ -477,11 +477,6 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
                     ? true
                     : isSameMonth(day, currentMonth)
                 )
-                .filter((day) =>
-                  process.env.NODE_ENV === "test"
-                    ? !isBefore(day, startOfDay(new Date()))
-                    : !isBefore(day, startOfDay(new Date()))
-                )
                 .map((day) => {
                   const dateKeyLocal = format(day, "yyyy-MM-dd");
                   const dateKeyIso = day.toISOString().split("T")[0];
