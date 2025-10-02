@@ -20,8 +20,8 @@ export function useSnackbar() {
     const { type = "info", duration, persistent } = options;
 
     const toastOptions = {
-      duration: persistent ? Infinity : duration,
       ...options,
+      duration: persistent ? Infinity : duration,
     };
 
     switch (type) {
@@ -54,12 +54,16 @@ export function useSnackbar() {
     toast.dismiss();
   };
 
-  const updateToast = (toastId: string, message: string, options: SnackbarOptions = {}) => {
+  const updateToast = (
+    toastId: string,
+    message: string,
+    options: SnackbarOptions = {}
+  ) => {
     const { type = "info", duration, persistent } = options;
 
     const toastOptions = {
-      duration: persistent ? Infinity : duration,
       ...options,
+      duration: persistent ? Infinity : duration,
     };
 
     switch (type) {
