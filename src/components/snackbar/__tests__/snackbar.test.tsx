@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { act } from "react";
 import { SnackbarProvider, useSnackbar } from "@/components/snackbar";
 
@@ -19,7 +19,7 @@ Object.defineProperty(window, "matchMedia", {
 
 // Test component that uses the snackbar hook
 function TestComponent() {
-  const { success, error, warning, info, loading, dismissToast, dismissAll } =
+  const { success, error, warning, info, loading, dismiss, dismissAll } =
     useSnackbar();
 
   return (
@@ -48,7 +48,7 @@ function TestComponent() {
       >
         Loading
       </button>
-      <button onClick={() => dismissToast("test-id")} data-testid="dismiss-btn">
+      <button onClick={() => dismiss("test-id")} data-testid="dismiss-btn">
         Dismiss
       </button>
       <button onClick={() => dismissAll()} data-testid="dismiss-all-btn">
@@ -117,7 +117,7 @@ describe("Snackbar Integration", () => {
       expect(typeof snackbar.warning).toBe("function");
       expect(typeof snackbar.info).toBe("function");
       expect(typeof snackbar.loading).toBe("function");
-      expect(typeof snackbar.dismissToast).toBe("function");
+      expect(typeof snackbar.dismiss).toBe("function");
       expect(typeof snackbar.dismissAll).toBe("function");
 
       return <div>Hook Test Complete</div>;
