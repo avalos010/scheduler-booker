@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
+import { useSnackbar } from "@/components/snackbar";
 
 import {
   CheckCircleIcon,
@@ -49,6 +50,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
   );
   const [upcomingOnly, setUpcomingOnly] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const { success, error } = useSnackbar();
 
   const navigateToRebook = (date: string, start: string, end: string) => {
     const params = new URLSearchParams({ date, start, end });
@@ -97,12 +99,12 @@ export default function AppointmentsList({}: AppointmentsListProps) {
           )
         );
       } else {
-        const error = await response.json();
-        alert(`Error updating booking: ${error.message}`);
+        const errorData = await response.json();
+        error(`Error updating booking: ${errorData.message}`);
       }
-    } catch (error) {
-      console.error("Error updating booking status:", error);
-      alert("Error updating booking status. Please try again.");
+    } catch (err) {
+      console.error("Error updating booking status:", err);
+      error("Error updating booking status. Please try again.");
     } finally {
       setUpdatingStatus(null);
     }
@@ -118,12 +120,12 @@ export default function AppointmentsList({}: AppointmentsListProps) {
       if (response.ok) {
         setBookings((prev) => prev.filter((b) => b.id !== bookingId));
       } else {
-        const error = await response.json();
-        alert(`Error deleting booking: ${error.message}`);
+        const errorData = await response.json();
+        error(`Error deleting booking: ${errorData.message}`);
       }
-    } catch (error) {
-      console.error("Error deleting booking:", error);
-      alert("Error deleting booking. Please try again.");
+    } catch (err) {
+      console.error("Error deleting booking:", err);
+      error("Error deleting booking. Please try again.");
     } finally {
       setUpdatingStatus(null);
     }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/common/Navbar";
+import { SnackbarProvider } from "@/components/snackbar";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
@@ -219,8 +220,10 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Navbar isAuthed={isAuthed} />
-        {children}
+        <SnackbarProvider>
+          <Navbar isAuthed={isAuthed} />
+          {children}
+        </SnackbarProvider>
       </body>
     </html>
   );

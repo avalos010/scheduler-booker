@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { UserIcon } from "@heroicons/react/24/outline";
+import { useSnackbar } from "@/components/snackbar";
 
 import {
   bookingFormSchema,
@@ -38,6 +39,7 @@ export default function BookingForm() {
     useState<DayAvailability | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
+  const { success, error, warning } = useSnackbar();
   const {
     register,
     handleSubmit,
@@ -128,7 +130,7 @@ export default function BookingForm() {
 
   const onSubmit = async (data: BookingFormData) => {
     if (!selectedTimeSlot || !selectedDate) {
-      alert("Please select a date and time slot");
+      warning("Please select a date and time slot");
       return;
     }
 
@@ -151,7 +153,7 @@ export default function BookingForm() {
       });
 
       if (response.ok) {
-        alert(
+        success(
           "Booking created successfully! It's now pending your approval. You can review and accept it from the Appointments tab."
         );
         // Reset form
@@ -160,12 +162,12 @@ export default function BookingForm() {
         // Refresh availability
         fetchDayAvailability(selectedDate);
       } else {
-        const error = await response.json();
-        alert(`Error creating booking: ${error.message}`);
+        const errorData = await response.json();
+        error(`Error creating booking: ${errorData.message}`);
       }
-    } catch (error) {
-      console.error("Error creating booking:", error);
-      alert("Error creating booking. Please try again.");
+    } catch (err) {
+      console.error("Error creating booking:", err);
+      error("Error creating booking. Please try again.");
     }
   };
 

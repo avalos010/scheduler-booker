@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { UserIcon } from "@heroicons/react/24/outline";
+import { useSnackbar } from "@/components/snackbar";
 import {
   publicBookingFormSchema,
   type PublicBookingFormData,
@@ -39,6 +40,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
   const [dayAvailability, setDayAvailability] =
     useState<DayAvailability | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { success, error, warning } = useSnackbar();
   const {
     register,
     handleSubmit,
@@ -97,7 +99,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
 
   const onSubmit = async (data: PublicBookingFormData) => {
     if (!selectedTimeSlot || !selectedDate) {
-      alert("Please select a date and time slot");
+      warning("Please select a date and time slot");
       return;
     }
 
@@ -120,7 +122,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
       });
 
       if (response.ok) {
-        alert(
+        success(
           "Booking request submitted successfully! We'll review your request and confirm your appointment soon. You'll receive an email confirmation once approved."
         );
         // Reset form
@@ -129,12 +131,12 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
         // Refresh availability
         fetchDayAvailability(selectedDate);
       } else {
-        const error = await response.json();
-        alert(`Error submitting booking: ${error.message}`);
+        const errorData = await response.json();
+        error(`Error submitting booking: ${errorData.message}`);
       }
-    } catch (error) {
-      console.error("Error submitting booking:", error);
-      alert("Error submitting booking. Please try again.");
+    } catch (err) {
+      console.error("Error submitting booking:", err);
+      error("Error submitting booking. Please try again.");
     }
   };
 

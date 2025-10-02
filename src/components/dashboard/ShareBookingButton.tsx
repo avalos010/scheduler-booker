@@ -1,18 +1,37 @@
 "use client";
 
 import { ShareIcon } from "@heroicons/react/24/outline";
+import { useSnackbar } from "@/components/snackbar";
 
 interface ShareBookingButtonProps {
   userId: string;
 }
 
-export default function ShareBookingButton({ userId }: ShareBookingButtonProps) {
-  const handleShare = () => {
-    const bookingUrl = `${window.location.origin}/book/${userId}`;
-    navigator.clipboard.writeText(bookingUrl);
-    alert(
-      "Booking link copied to clipboard! Share this link with your clients."
-    );
+export default function ShareBookingButton({
+  userId,
+}: ShareBookingButtonProps) {
+  const { success } = useSnackbar();
+
+  const handleShare = async () => {
+    try {
+      const bookingUrl = `${window.location.origin}/book/${userId}`;
+      await navigator.clipboard.writeText(bookingUrl);
+      success(
+        "Booking link copied to clipboard! Share this link with your clients."
+      );
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+      // Fallback for older browsers or if clipboard API fails
+      const textArea = document.createElement("textarea");
+      textArea.value = `${window.location.origin}/book/${userId}`;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      success(
+        "Booking link copied to clipboard! Share this link with your clients."
+      );
+    }
   };
 
   return (
