@@ -11,7 +11,7 @@ export function useSnackbar() {
   // Custom warning toast with specific styling
   const warning = (message: string, options: SnackbarOptions = {}) => {
     const { duration, persistent } = options;
-    
+
     return toast(message, {
       ...options,
       duration: persistent ? Infinity : duration,
@@ -31,7 +31,6 @@ export function useSnackbar() {
     loading: toast.loading,
     dismiss: toast.dismiss,
     dismissAll: () => toast.dismiss(),
-    update: toast,
     // Custom warning implementation
     warning,
   };
