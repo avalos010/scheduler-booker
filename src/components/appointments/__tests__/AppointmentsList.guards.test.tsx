@@ -7,7 +7,6 @@ import { format } from "date-fns";
 global.fetch = jest.fn();
 
 describe("AppointmentsList guards and actions", () => {
-  const mockUserId = "test-user-id";
 
   beforeEach(() => {
     (fetch as jest.Mock).mockClear();
@@ -62,7 +61,7 @@ describe("AppointmentsList guards and actions", () => {
       }),
     });
 
-    render(<AppointmentsList userId={mockUserId} />);
+    render(<AppointmentsList />);
 
     // Wait for booking to load
     await waitFor(() =>
@@ -94,7 +93,7 @@ describe("AppointmentsList guards and actions", () => {
       }),
     });
 
-    render(<AppointmentsList userId={mockUserId} />);
+    render(<AppointmentsList />);
 
     await waitFor(() =>
       expect(screen.getByText(/Confirmed Appointments/)).toBeInTheDocument()
@@ -121,7 +120,7 @@ describe("AppointmentsList guards and actions", () => {
       }),
     });
 
-    render(<AppointmentsList userId={mockUserId} />);
+    render(<AppointmentsList />);
     await waitFor(() =>
       expect(screen.getByText(/Other Appointments/)).toBeInTheDocument()
     );

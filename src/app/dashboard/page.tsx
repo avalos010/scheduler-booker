@@ -43,20 +43,22 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
 
-  // Get session on server side
+  // Get user on server side
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  console.log("🔍 Dashboard: Session check:", {
-    hasSession: !!session,
-    userId: session?.user?.id,
+  console.log("🔍 Dashboard: User check:", {
+    hasUser: !!user,
+    userId: user?.id,
+    hasError: !!userError,
     timestamp: new Date().toISOString(),
     path: "/dashboard",
   });
 
-  if (!session) {
-    console.log("🔍 Dashboard: No session, redirecting to login");
+  if (userError || !user) {
+    console.log("🔍 Dashboard: No user, redirecting to login");
     redirect("/login");
   }
 
@@ -153,7 +155,7 @@ export default async function DashboardPage() {
             <ArrowRightIcon className="absolute right-4 top-4 h-5 w-5 text-blue-600/60 transition-transform group-hover:translate-x-0.5" />
           </Link>
 
-          <ShareBookingButton userId={session.user.id} />
+          <ShareBookingButton userId={user.id} />
         </div>
 
         {/* Next steps */}

@@ -34,7 +34,7 @@ import SettingsModal from "./SettingsModal";
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface AvailabilityCalendarProps {}
 
-export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
+export default function AvailabilityCalendarClient({}: AvailabilityCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showDayModal, setShowDayModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -223,40 +223,13 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
     await loadAvailability();
   }, [loadAvailability, setAvailability]);
 
-  const navigateMonth = useCallback(
-    async (direction: "prev" | "next") => {
-      const newMonth =
-        direction === "prev"
-          ? subMonths(currentMonth, 1)
-          : addMonths(currentMonth, 1);
-
-      setCurrentMonth(newMonth);
-
-      // Auto-refresh data for the new month
-      try {
-        await refreshCalendarForDate(newMonth);
-      } catch (error) {
-        console.warn(
-          "⚠️ Failed to auto-refresh calendar data for new month:",
-          error
-        );
-      }
-    },
-    [currentMonth, refreshCalendarForDate]
-  );
-
-  // Optional: Auto-refresh every 5 minutes to catch external changes
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        await refreshCalendarForDate(currentMonth);
-      } catch (error) {
-        console.warn("⚠️ Failed to auto-refresh calendar data:", error);
-      }
-    }, 5 * 60 * 1000); // 5 minutes
-
-    return () => clearInterval(interval);
-  }, [currentMonth, refreshCalendarForDate]);
+  const navigateMonth = (direction: "prev" | "next") => {
+    setCurrentMonth(
+      direction === "prev"
+        ? subMonths(currentMonth, 1)
+        : addMonths(currentMonth, 1)
+    );
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -310,7 +283,7 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
             </div>
             <button
               onClick={refreshCalendar}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
               title="Refresh calendar data"
             >
               <svg
@@ -472,11 +445,8 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
             {/* Mobile: Single column layout */}
             <div className="block sm:hidden space-y-3 p-4">
               {calendarDays
-                .filter((day) =>
-                  process.env.NODE_ENV === "test"
-                    ? true
-                    : isSameMonth(day, currentMonth)
-                )
+                .filter((day) => isSameMonth(day, currentMonth))
+                .filter((day) => !isBefore(day, startOfDay(new Date()))) // Filter out past days on mobile
                 .map((day) => {
                   const dateKeyLocal = format(day, "yyyy-MM-dd");
                   const dateKeyIso = day.toISOString().split("T")[0];
@@ -500,10 +470,7 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
                   const isSelected =
                     selectedDate && isSameDay(day, selectedDate);
                   const isCurrentDay = isToday(day);
-                  const isPastDay =
-                    process.env.NODE_ENV === "test"
-                      ? false
-                      : isBefore(day, startOfDay(new Date()));
+                  const isPastDay = isBefore(day, startOfDay(new Date()));
 
                   return (
                     <div
@@ -741,10 +708,7 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
                 const isCurrentMonth = isSameMonth(day, currentMonth);
                 const isSelected = selectedDate && isSameDay(day, selectedDate);
                 const isCurrentDay = isToday(day);
-                const isPastDay =
-                  process.env.NODE_ENV === "test"
-                    ? false
-                    : isBefore(day, startOfDay(new Date()));
+                const isPastDay = isBefore(day, startOfDay(new Date()));
 
                 return (
                   <div
@@ -762,10 +726,6 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
                       if (!isPastDay) {
                         setSelectedDate(day);
                         setShowDayModal(true);
-                      } else if (process.env.NODE_ENV === "test") {
-                        // In tests, allow opening modal for any day
-                        setSelectedDate(day);
-                        setShowDayModal(true);
                       }
                     }}
                     title={
@@ -778,10 +738,6 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
                       {/* Date header - Mobile optimized */}
                       <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4">
                         <div className="flex items-center space-x-1 sm:space-x-2">
-                          {/* Visually hidden full date for testing and accessibility */}
-                          <span className="sr-only">
-                            {format(day, "MMMM d, yyyy")}
-                          </span>
                           <span
                             className={`text-sm sm:text-base font-medium ${
                               isCurrentMonth

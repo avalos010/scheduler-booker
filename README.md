@@ -97,6 +97,7 @@ A modern, full-stack scheduling application built with Next.js 15, Supabase, and
    ```env
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
    ```
 
 4. **Database Setup**
@@ -234,10 +235,11 @@ npm run test:coverage   # Run tests with coverage
 
 ### Environment Variables
 
-| Variable                        | Description                 | Required |
-| ------------------------------- | --------------------------- | -------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Your Supabase project URL   | Yes      |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous key | Yes      |
+| Variable                        | Description                    | Required |
+| ------------------------------- | ------------------------------ | -------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Your Supabase project URL      | Yes      |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous key    | Yes      |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Your Supabase service role key | Yes      |
 
 ## 🧪 Test Results
 

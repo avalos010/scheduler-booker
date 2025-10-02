@@ -286,6 +286,12 @@ export class ClientAvailabilityService {
   static async updateTimeSlot(slotData: Omit<UserTimeSlot, "user_id">) {
     try {
       console.log("🔄 updateTimeSlot called with:", slotData);
+      console.log("🔄 Request body will be:", {
+        date: slotData.date,
+        start_time: slotData.start_time,
+        end_time: slotData.end_time,
+        is_available: slotData.is_available,
+      });
 
       const response = await fetch("/api/availability/time-slots", {
         method: "PUT",
@@ -300,13 +306,16 @@ export class ClientAvailabilityService {
         }),
       });
 
+      console.log("🔄 API response status:", response.status);
+      const responseData = await response.json();
+      console.log("🔄 API response data:", responseData);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update time slot");
+        throw new Error(responseData.error || "Failed to update time slot");
       }
 
       console.log("✅ updateTimeSlot successful");
-      return await response.json();
+      return responseData;
     } catch (error) {
       console.error("❌ updateTimeSlot failed:", error);
       throw error;

@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import { convertTimeToTimestamp } from "@/lib/utils/serverTimeFormat";
 
 export async function POST(request: Request) {
   try {
@@ -46,8 +47,8 @@ export async function POST(request: Request) {
         }) => ({
           user_id: user.id,
           date,
-          start_time: slot.start_time,
-          end_time: slot.end_time,
+          start_time: convertTimeToTimestamp(date, slot.start_time),
+          end_time: convertTimeToTimestamp(date, slot.end_time),
           is_available: slot.is_available,
           is_booked: slot.is_booked || false,
         })
@@ -97,17 +98,98 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Update the specific time slot
-    const { error: updateError } = await supabase
+    // Convert time strings to full timestamps for the query
+    const startTimestamp = convertTimeToTimestamp(date, start_time);
+    const endTimestamp = convertTimeToTimestamp(date, end_time);
+
+    console.log("🔥 PUT request - looking for existing slot:", {
+      date,
+      start_time,
+      end_time,
+      startTimestamp,
+      endTimestamp,
+    });
+
+    // First, let's see what's actually in the database for this date
+    const { data: allSlotsForDate } = await supabase
       .from("user_time_slots")
-      .update({ is_available })
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("date", date);
+
+    console.log("🔥 PUT request - all slots for date:", {
+      allSlotsForDate: allSlotsForDate?.map((slot) => ({
+        id: slot.id,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        is_available: slot.is_available,
+      })),
+    });
+
+    // First, try to find the existing time slot
+    const { data: existingSlot, error: findError } = await supabase
+      .from("user_time_slots")
+      .select("*")
       .eq("user_id", user.id)
       .eq("date", date)
-      .eq("start_time", start_time)
-      .eq("end_time", end_time);
+      .eq("start_time", startTimestamp)
+      .eq("end_time", endTimestamp)
+      .single();
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    console.log("🔥 PUT request - existing slot search result:", {
+      existingSlot,
+      findError: findError?.code,
+    });
+
+    if (findError && findError.code !== "PGRST116") {
+      // PGRST116 is "not found" error, which is expected if slot doesn't exist
+      return NextResponse.json({ error: findError.message }, { status: 500 });
+    }
+
+    if (existingSlot) {
+      // Update existing time slot
+      console.log("🔥 PUT request - updating existing slot:", existingSlot.id);
+      const { error: updateError } = await supabase
+        .from("user_time_slots")
+        .update({ is_available })
+        .eq("id", existingSlot.id);
+
+      if (updateError) {
+        console.log("🔥 PUT request - update error:", updateError);
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        );
+      }
+      console.log("🔥 PUT request - slot updated successfully");
+    } else {
+      // Create new time slot if it doesn't exist
+      console.log("🔥 PUT request - creating new slot:", {
+        user_id: user.id,
+        date,
+        start_time: startTimestamp,
+        end_time: endTimestamp,
+        is_available,
+      });
+      const { error: insertError } = await supabase
+        .from("user_time_slots")
+        .insert({
+          user_id: user.id,
+          date,
+          start_time: startTimestamp,
+          end_time: endTimestamp,
+          is_available,
+          is_booked: false,
+        });
+
+      if (insertError) {
+        console.log("🔥 PUT request - insert error:", insertError);
+        return NextResponse.json(
+          { error: insertError.message },
+          { status: 500 }
+        );
+      }
+      console.log("🔥 PUT request - slot created successfully");
     }
 
     return NextResponse.json({ success: true });

@@ -1,21 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import {
+  formatTime,
+  extractTimeFromTimestamp,
+  convertTimeToTimestamp,
+} from "@/lib/utils/serverTimeFormat";
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
 
-    // Get session to verify user is authenticated
+    // Get user to verify authentication
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (userError || !user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const {
-      userId,
+      timeSlotId,
       date,
       startTime,
       endTime,
@@ -25,90 +31,250 @@ export async function POST(request: NextRequest) {
       notes,
     } = await request.json();
 
-    // Verify the user is booking for themselves
-    if (session.user.id !== userId) {
-      return NextResponse.json(
-        { message: "Unauthorized to book for this user" },
-        { status: 403 }
-      );
-    }
+    console.log("🔥 Booking request received:", {
+      timeSlotId,
+      date,
+      startTime,
+      endTime,
+      clientName,
+      clientEmail,
+      clientPhone,
+      notes,
+    });
 
     // Validate required fields
-    if (!date || !startTime || !endTime || !clientName || !clientEmail) {
+    if (
+      !timeSlotId ||
+      !date ||
+      !startTime ||
+      !endTime ||
+      !clientName ||
+      !clientEmail
+    ) {
       return NextResponse.json(
         { message: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Ensure the time slot exists and is free; if missing, create it on-the-fly
-    const { data: fetchedTimeSlot, error: timeSlotFetchError } = await supabase
-      .from("user_time_slots")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("date", date)
-      .eq("start_time", startTime)
-      .eq("end_time", endTime)
-      .single();
+    // Try to parse the timeSlotId to extract date and time information
+    // Format: ${userId}-${date}-${startTime}-${endTime} or slot-${startTime}-${endTime}
+    const timeSlotParts: string[] = timeSlotId.split("-");
 
-    let timeSlot = fetchedTimeSlot;
+    console.log("🔥 Parsing timeSlotId:", {
+      timeSlotId,
+      timeSlotParts,
+      length: timeSlotParts.length,
+    });
 
-    if (timeSlotFetchError && timeSlotFetchError.code !== "PGRST116") {
-      // Unexpected fetch error
-      return NextResponse.json(
-        { message: "Error checking time slot availability" },
-        { status: 500 }
-      );
-    }
+    let timeSlot: Record<string, unknown> | null = null;
+    let timeSlotError: { code?: string; message?: string } | null = null;
 
-    if (!timeSlot) {
-      // Create the missing slot as available and unbooked
-      const { data: createdSlot, error: createSlotError } = await supabase
+    if (timeSlotId.startsWith("slot-") && timeSlotParts.length >= 3) {
+      // Format: slot-${startTime}-${endTime}
+      // Use the provided date from the request instead of hardcoding today's date
+      const slotStartTime = timeSlotParts[1];
+      const slotEndTime = timeSlotParts[2];
+
+      // Convert time strings to timestamps for database lookup
+      const startTimestamp = convertTimeToTimestamp(date, slotStartTime);
+      const endTimestamp = convertTimeToTimestamp(date, slotEndTime);
+
+      // Get the time slot details and verify it belongs to the user
+      const result = await supabase
         .from("user_time_slots")
-        .insert({
-          user_id: userId,
-          date,
-          start_time: startTime,
-          end_time: endTime,
-          is_available: true,
-          is_booked: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("date", date)
+        .eq("start_time", startTimestamp)
+        .eq("end_time", endTimestamp)
         .single();
 
-      if (createSlotError) {
-        // If unique violation, try to fetch again; otherwise fail
-        const { data: refetchedSlot } = await supabase
+      timeSlot = result.data;
+      timeSlotError = result.error;
+    } else if (timeSlotParts.length >= 6) {
+      // Format: ${userId}-${date}-${startTime}-${endTime}
+      // Parse from the end since we know the structure:
+      // - endTime is last part (HH:MM format)
+      // - startTime is second-to-last part (HH:MM format)
+      // - date is third-to-last part (YYYY-MM-DD format, so 3 parts when split)
+      // - everything before date is userId (UUID with hyphens)
+      const endTime = timeSlotParts[timeSlotParts.length - 1];
+      const startTime = timeSlotParts[timeSlotParts.length - 2];
+      const dateFromId = timeSlotParts.slice(-5, -2).join("-"); // Get the 3 parts for date
+      const userIdFromId = timeSlotParts.slice(0, -5).join("-"); // Everything before date (for debugging)
+
+      // Convert time strings to timestamps for database lookup
+      const startTimestamp = convertTimeToTimestamp(dateFromId, startTime);
+      const endTimestamp = convertTimeToTimestamp(dateFromId, endTime);
+
+      // Get the time slot details and verify it belongs to the user
+      const result = await supabase
+        .from("user_time_slots")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("date", dateFromId)
+        .eq("start_time", startTimestamp)
+        .eq("end_time", endTimestamp)
+        .single();
+
+      timeSlot = result.data;
+      timeSlotError = result.error;
+    } else {
+      // Fallback: try to find by ID directly (for test cases with simple IDs like "slot-1")
+      const result = await supabase
+        .from("user_time_slots")
+        .select("*")
+        .eq("id", timeSlotId)
+        .eq("user_id", user.id)
+        .single();
+
+      timeSlot = result.data;
+      timeSlotError = result.error;
+    }
+
+    if (timeSlotError || !timeSlot) {
+      // If the time slot doesn't exist, it might be a generated slot from working hours
+      // Let's try to create it if we can parse the timeSlotId
+      if (timeSlotId.startsWith("slot-") && timeSlotParts.length >= 3) {
+        // Format: slot-${startTime}-${endTime}
+        const slotStartTime = timeSlotParts[1];
+        const slotEndTime = timeSlotParts[2];
+        // Use the provided date from the request instead of hardcoding today's date
+
+        // Convert time strings to timestamps
+        const startTimestamp = convertTimeToTimestamp(date, slotStartTime);
+        const endTimestamp = convertTimeToTimestamp(date, slotEndTime);
+
+        // Create the time slot
+        const { data: newTimeSlot, error: createError } = await supabase
           .from("user_time_slots")
-          .select("*")
-          .eq("user_id", userId)
-          .eq("date", date)
-          .eq("start_time", startTime)
-          .eq("end_time", endTime)
+          .insert({
+            user_id: user.id,
+            date,
+            start_time: startTimestamp,
+            end_time: endTimestamp,
+            is_available: true,
+            is_booked: false,
+          })
+          .select()
           .single();
-        timeSlot = refetchedSlot || null;
+
+        if (createError || !newTimeSlot) {
+          console.error("Error creating time slot:", createError);
+          return NextResponse.json(
+            { message: "Time slot not found and could not be created" },
+            { status: 404 }
+          );
+        }
+
+        timeSlot = newTimeSlot;
+      } else if (timeSlotParts.length >= 6) {
+        // Format: ${userId}-${date}-${startTime}-${endTime}
+        // Parse from the end since we know the structure:
+        // - endTime is last part (HH:MM format)
+        // - startTime is second-to-last part (HH:MM format)
+        // - date is third-to-last part (YYYY-MM-DD format, so 3 parts when split)
+        // - everything before date is userId (UUID with hyphens)
+        const endTime = timeSlotParts[timeSlotParts.length - 1];
+        const startTime = timeSlotParts[timeSlotParts.length - 2];
+        const dateFromId = timeSlotParts.slice(-5, -2).join("-"); // Get the 3 parts for date
+        const userIdFromId = timeSlotParts.slice(0, -5).join("-"); // Everything before date (for debugging)
+
+        console.log("🔥 Parsed userId-date format:", {
+          date: dateFromId,
+          startTime,
+          endTime,
+          userId: userIdFromId,
+          originalTimeSlotId: timeSlotId,
+        });
+
+        // Convert time strings to timestamps
+        const startTimestamp = convertTimeToTimestamp(dateFromId, startTime);
+        const endTimestamp = convertTimeToTimestamp(dateFromId, endTime);
+
+        console.log("🔥 Converted timestamps (userId-date format):", {
+          startTimestamp,
+          endTimestamp,
+        });
+
+        // Create the time slot
+        console.log("🔥 Creating time slot (userId-date format) with data:", {
+          user_id: user.id,
+          date: dateFromId,
+          start_time: startTimestamp,
+          end_time: endTimestamp,
+          is_available: true,
+          is_booked: false,
+        });
+
+        const { data: newTimeSlot, error: createError } = await supabase
+          .from("user_time_slots")
+          .insert({
+            user_id: user.id,
+            date: dateFromId,
+            start_time: startTimestamp,
+            end_time: endTimestamp,
+            is_available: true,
+            is_booked: false,
+          })
+          .select()
+          .single();
+
+        console.log("🔥 Time slot creation result (userId-date format):", {
+          newTimeSlot,
+          createError,
+        });
+
+        if (createError || !newTimeSlot) {
+          console.error("Error creating time slot:", createError);
+          return NextResponse.json(
+            { message: "Time slot not found and could not be created" },
+            { status: 404 }
+          );
+        }
+
+        timeSlot = newTimeSlot;
       } else {
-        timeSlot = createdSlot;
+        return NextResponse.json(
+          { message: "Time slot not found or unauthorized" },
+          { status: 404 }
+        );
       }
     }
 
-    if (!timeSlot || timeSlot.is_booked || timeSlot.is_available === false) {
+    if (!timeSlot || !timeSlot.is_available || timeSlot.is_booked) {
+      return NextResponse.json(
+        { message: "Time slot is not available for booking" },
+        { status: 409 }
+      );
+    }
+
+    // First, try to atomically claim the slot by flipping is_booked only if still free
+    const { data: claimedSlot, error: claimError } = await supabase
+      .from("user_time_slots")
+      .update({ is_booked: true, updated_at: new Date().toISOString() })
+      .eq("id", timeSlot!.id)
+      .eq("is_booked", false)
+      .eq("is_available", true)
+      .select("id")
+      .single();
+
+    if (claimError || !claimedSlot) {
       return NextResponse.json(
         { message: "Time slot is no longer available" },
         { status: 409 }
       );
     }
 
-    // Create the booking record
+    // Proceed to create booking after successful claim
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .insert({
-        user_id: userId,
-        date,
-        start_time: startTime,
-        end_time: endTime,
+        user_id: user.id,
+        date: date, // Use the date from the request body
+        start_time: convertTimeToTimestamp(date, startTime),
+        end_time: convertTimeToTimestamp(date, endTime),
         client_name: clientName,
         client_email: clientEmail,
         client_phone: clientPhone || null,
@@ -120,26 +286,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (bookingError) {
-      console.error("Error creating booking:", bookingError);
+      // rollback claim on failure
+      await supabase
+        .from("user_time_slots")
+        .update({ is_booked: false, updated_at: new Date().toISOString() })
+        .eq("id", timeSlot!.id);
       return NextResponse.json(
         { message: "Error creating booking" },
         { status: 500 }
       );
-    }
-
-    // Update the time slot to mark it as booked
-    const { error: updateError } = await supabase
-      .from("user_time_slots")
-      .update({
-        is_booked: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", timeSlot.id);
-
-    if (updateError) {
-      console.error("Error updating time slot:", updateError);
-      // Note: We don't fail the request here as the booking was created
-      // The time slot will be updated in a background process if needed
     }
 
     return NextResponse.json({
@@ -155,31 +310,34 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createSupabaseServerClient();
 
-    // Get session to verify user is authenticated
+    // Get user to verify authentication
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (userError || !user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    // Fetch user's time format preference
+    const { data: userSettings } = await supabase
+      .from("user_availability_settings")
+      .select("time_format_12h")
+      .eq("user_id", user.id)
+      .single();
 
-    if (!userId || session.user.id !== userId) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
-    }
+    const shouldUse12HourFormat = userSettings?.time_format_12h || false;
 
     // Get all bookings for the user
     const { data: bookings, error } = await supabase
       .from("bookings")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .order("date", { ascending: false })
       .order("start_time", { ascending: true });
 
@@ -191,7 +349,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ bookings });
+    // Format the booking times based on user preference
+    const formattedBookings =
+      bookings?.map((booking) => {
+        // Extract time portion from timestamp (e.g., "2025-08-27T09:00:00+00:00" -> "09:00:00")
+        const startTime = extractTimeFromTimestamp(booking.start_time);
+        const endTime = extractTimeFromTimestamp(booking.end_time);
+
+        return {
+          ...booking,
+          startTimeDisplay: shouldUse12HourFormat
+            ? formatTime(startTime, false) // false = 12-hour format
+            : formatTime(startTime, true), // true = 24-hour format
+          endTimeDisplay: shouldUse12HourFormat
+            ? formatTime(endTime, false)
+            : formatTime(endTime, true),
+        };
+      }) || [];
+
+    return NextResponse.json({ bookings: formattedBookings });
   } catch (error) {
     console.error("Error in fetching bookings:", error);
     return NextResponse.json(
@@ -205,12 +381,13 @@ export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
 
-    // Get session to verify user is authenticated
+    // Get user to verify authentication
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (userError || !user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
@@ -237,7 +414,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    if (existingBooking.user_id !== session.user.id) {
+    if (existingBooking.user_id !== user.id) {
       return NextResponse.json(
         { message: "Unauthorized to modify this booking" },
         { status: 403 }
@@ -247,9 +424,8 @@ export async function PATCH(request: NextRequest) {
     // Prevent marking as no-show before the appointment start time + 15 minutes
     if (status === "no-show") {
       try {
-        const startDateTime = new Date(
-          `${existingBooking.date}T${existingBooking.start_time}`
-        );
+        // existingBooking.start_time is now a full timestamp, so we can use it directly
+        const startDateTime = new Date(existingBooking.start_time);
         const now = new Date();
         if (isNaN(startDateTime.getTime())) {
           return NextResponse.json(
@@ -281,9 +457,8 @@ export async function PATCH(request: NextRequest) {
     // Prevent marking as completed before the appointment start time
     if (status === "completed") {
       try {
-        const startDateTime = new Date(
-          `${existingBooking.date}T${existingBooking.start_time}`
-        );
+        // existingBooking.start_time is now a full timestamp, so we can use it directly
+        const startDateTime = new Date(existingBooking.start_time);
         const now = new Date();
         if (isNaN(startDateTime.getTime())) {
           return NextResponse.json(
@@ -335,7 +510,7 @@ export async function PATCH(request: NextRequest) {
           is_booked: true,
           updated_at: new Date().toISOString(),
         })
-        .eq("user_id", session.user.id)
+        .eq("user_id", user.id)
         .eq("date", updatedBooking.date)
         .eq("start_time", updatedBooking.start_time)
         .eq("end_time", updatedBooking.end_time);
@@ -354,7 +529,7 @@ export async function PATCH(request: NextRequest) {
           is_booked: false,
           updated_at: new Date().toISOString(),
         })
-        .eq("user_id", session.user.id)
+        .eq("user_id", user.id)
         .eq("date", updatedBooking.date)
         .eq("start_time", updatedBooking.start_time)
         .eq("end_time", updatedBooking.end_time);
@@ -383,10 +558,11 @@ export async function DELETE(request: NextRequest) {
     const supabase = await createSupabaseServerClient();
 
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (userError || !user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
@@ -414,7 +590,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    if (booking.user_id !== session.user.id) {
+    if (booking.user_id !== user.id) {
       return NextResponse.json(
         { message: "Unauthorized to delete this booking" },
         { status: 403 }
@@ -439,7 +615,7 @@ export async function DELETE(request: NextRequest) {
     const { error: slotUpdateError } = await supabase
       .from("user_time_slots")
       .update({ is_booked: false, updated_at: new Date().toISOString() })
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .eq("date", booking.date)
       .eq("start_time", booking.start_time)
       .eq("end_time", booking.end_time);

@@ -46,6 +46,10 @@ interface Builder {
   update: (updates: Partial<BookingRow & TimeSlotRow>) => Builder;
   insert: (row: Partial<BookingRow & TimeSlotRow>) => Builder;
   delete: () => Builder;
+  then: (
+    onFulfilled: (value: unknown) => unknown,
+    onRejected?: (reason: unknown) => unknown
+  ) => Promise<unknown>;
 }
 
 interface MockSupabaseClient extends SupabaseClient {
@@ -146,38 +150,6 @@ jest.mock("@/lib/supabase-server", () => {
         },
         eq(column: keyof (BookingRow & TimeSlotRow), value: unknown) {
           queryState.equalsFilters.push({ col: column, val: value });
-          // Support executing updates or deletes on eq() since real supabase executes on await
-          if (queryState.pendingUpdate) {
-            const rowsToUpdate = filterRows(
-              tableName,
-              queryState.equalsFilters,
-              queryState.inFilter
-            );
-            rowsToUpdate.forEach((row) =>
-              Object.assign(
-                row,
-                queryState.pendingUpdate as Partial<BookingRow & TimeSlotRow>
-              )
-            );
-            queryState.mutationResultRows = rowsToUpdate;
-          }
-          if (queryState.pendingDelete) {
-            const rowsToDelete = filterRows(
-              tableName,
-              queryState.equalsFilters,
-              queryState.inFilter
-            );
-            if (tableName === "bookings") {
-              tables.bookings = (tables.bookings as BookingRow[]).filter(
-                (row) => !rowsToDelete.includes(row)
-              );
-            } else {
-              tables.user_time_slots = (
-                tables.user_time_slots as TimeSlotRow[]
-              ).filter((row) => !rowsToDelete.includes(row));
-            }
-            queryState.mutationResultRows = rowsToDelete;
-          }
           return builder;
         },
         in(column: keyof (BookingRow & TimeSlotRow), values: unknown[]) {
@@ -188,6 +160,44 @@ jest.mock("@/lib/supabase-server", () => {
           return builder;
         },
         async single() {
+          if (queryState.pendingUpdate) {
+            // Apply conditional update - only update rows that match ALL conditions
+            console.log("🔥 Mock: Applying conditional update", {
+              tableName,
+              equalsFilters: queryState.equalsFilters,
+              pendingUpdate: queryState.pendingUpdate,
+            });
+
+            // Show all available rows before filtering
+            console.log("🔥 Mock: All available rows", tables[tableName]);
+
+            const rowsToUpdate = filterRows(
+              tableName,
+              queryState.equalsFilters,
+              queryState.inFilter
+            );
+
+            console.log("🔥 Mock: Rows to update", { rowsToUpdate });
+
+            if (rowsToUpdate.length === 0) {
+              // No rows match the conditions, return error
+              console.log("🔥 Mock: No rows match conditions");
+              return { data: null, error: { code: "PGRST116" } };
+            }
+
+            // Apply the update to matching rows
+            rowsToUpdate.forEach((row) =>
+              Object.assign(row, queryState.pendingUpdate)
+            );
+
+            // Clear the pending update
+            queryState.pendingUpdate = undefined;
+
+            // Return the first updated row
+            console.log("🔥 Mock: Returning updated row", rowsToUpdate[0]);
+            return { data: rowsToUpdate[0], error: null };
+          }
+
           const rows =
             queryState.mutationResultRows ??
             filterRows(
@@ -208,6 +218,32 @@ jest.mock("@/lib/supabase-server", () => {
           // Defer insert until select()/single() to mimic supabase chainability
           queryState.pendingInsert = row;
           return builder;
+        },
+        then(
+          onFulfilled: (value: unknown) => unknown,
+          onRejected?: (reason: unknown) => unknown
+        ) {
+          // Handle cases where update() is called but single() is not
+          if (queryState.pendingUpdate) {
+            const rowsToUpdate = filterRows(
+              tableName,
+              queryState.equalsFilters,
+              queryState.inFilter
+            );
+
+            rowsToUpdate.forEach((row) =>
+              Object.assign(row, queryState.pendingUpdate)
+            );
+
+            // Clear the pending update
+            queryState.pendingUpdate = undefined;
+          }
+
+          // Return a resolved promise
+          return Promise.resolve({ data: null, error: null }).then(
+            onFulfilled,
+            onRejected
+          );
         },
         delete() {
           // Defer delete and allow eq() calls to define filters
@@ -257,8 +293,8 @@ describe("/api/bookings route", () => {
       id: "slot-1",
       user_id: userId,
       date,
-      start_time: start,
-      end_time: end,
+      start_time: `${date}T${start}:00+00:00`,
+      end_time: `${date}T${end}:00+00:00`,
       is_available: true,
       is_booked: false,
     });
@@ -266,8 +302,8 @@ describe("/api/bookings route", () => {
 
   it("creates booking and marks slot booked", async () => {
     const req = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
+      timeSlotId: "slot-1",
+      date: date,
       startTime: start,
       endTime: end,
       clientName: "A",
@@ -289,8 +325,8 @@ describe("/api/bookings route", () => {
     // create booking first
     const createRes = await route.POST(
       makeRequest("POST", `${baseUrl}/api/bookings`, {
-        userId,
-        date,
+        timeSlotId: "slot-1",
+        date: date,
         startTime: start,
         endTime: end,
         clientName: "A",
@@ -318,8 +354,8 @@ describe("/api/bookings route", () => {
   it("cancels booking and frees slot", async () => {
     const createRes = await route.POST(
       makeRequest("POST", `${baseUrl}/api/bookings`, {
-        userId,
-        date,
+        timeSlotId: "slot-1",
+        date: date,
         startTime: start,
         endTime: end,
         clientName: "A",
@@ -349,8 +385,8 @@ describe("/api/bookings route", () => {
   it("deletes booking and frees slot", async () => {
     const createRes = await route.POST(
       makeRequest("POST", `${baseUrl}/api/bookings`, {
-        userId,
-        date,
+        timeSlotId: "slot-1",
+        date: date,
         startTime: start,
         endTime: end,
         clientName: "A",
@@ -374,6 +410,40 @@ describe("/api/bookings route", () => {
     expect(res.status).toBe(200);
     expect(mockSupabaseDelete.__tables().user_time_slots[0].is_booked).toBe(
       false
+    );
+  });
+
+  it("creates booking with slot-startTime-endTime format using provided date", async () => {
+    const testDate = "2025-02-15";
+    const testStartTime = "10:00";
+    const testEndTime = "11:00";
+
+    const req = makeRequest("POST", `${baseUrl}/api/bookings`, {
+      timeSlotId: `slot-${testStartTime}-${testEndTime}`,
+      date: testDate,
+      startTime: testStartTime,
+      endTime: testEndTime,
+      clientName: "Test Client",
+      clientEmail: "test@example.com",
+    });
+
+    const res = await route.POST(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+
+    const supabase = (
+      await import("@/lib/supabase-server")
+    ).createSupabaseServerClient();
+    const mockSupabase = (await supabase) as MockSupabaseClient;
+    const tables = mockSupabase.__tables();
+
+    // Verify booking was created with the correct date
+    expect(tables.bookings.length).toBe(1);
+    expect(tables.bookings[0].date).toBe(testDate);
+    expect(tables.bookings[0].start_time).toBe(
+      `${testDate}T${testStartTime}:00+00:00`
+    );
+    expect(tables.bookings[0].end_time).toBe(
+      `${testDate}T${testEndTime}:00+00:00`
     );
   });
 });

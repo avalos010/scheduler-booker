@@ -1,5 +1,3 @@
-import { notFound } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
 import PublicBookingForm from "@/components/bookings/PublicBookingForm";
 
 interface PublicBookingPageProps {
@@ -9,7 +7,6 @@ interface PublicBookingPageProps {
 export default async function PublicBookingPage({
   params,
 }: PublicBookingPageProps) {
-  const supabase = await createSupabaseServerClient();
   const { userId } = await params;
 
   // For now, always show the booking form and let it handle availability checking

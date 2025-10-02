@@ -6,7 +6,7 @@ export async function GET() {
     const supabase = await createSupabaseServerClient();
 
     // Test basic connection
-    const { data: testData, error: testError } = await supabase
+    const { error: testError } = await supabase
       .from("user_availability_settings")
       .select("count")
       .limit(1);

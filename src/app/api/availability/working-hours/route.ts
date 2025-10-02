@@ -1,5 +1,23 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import {
+  formatTime,
+  extractTimeFromTimestamp,
+} from "@/lib/utils/serverTimeFormat";
+
+type DatabaseWorkingHour = {
+  id: string;
+  user_id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  timezone: string;
+  is_working: boolean;
+  created_at: string;
+  updated_at: string;
+  start_time_display?: string;
+  end_time_display?: string;
+};
 
 export async function GET() {
   try {
@@ -23,6 +41,28 @@ export async function GET() {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Fetch user's time format preference from database
+    const { data: userSettings } = await supabase
+      .from("user_availability_settings")
+      .select("time_format_12h")
+      .eq("user_id", user.id)
+      .single();
+
+    const shouldUse12HourFormat = userSettings?.time_format_12h || false;
+
+    // Format display times if user prefers 12-hour format
+    if (shouldUse12HourFormat && data) {
+      const workingHours = data as DatabaseWorkingHour[];
+      workingHours.forEach((workingHour) => {
+        // Extract time portion from timestamp (e.g., "2025-09-04T09:00:00+00:00" -> "09:00:00")
+        const startTime = extractTimeFromTimestamp(workingHour.start_time);
+        const endTime = extractTimeFromTimestamp(workingHour.end_time);
+
+        workingHour.start_time_display = formatTime(startTime, false);
+        workingHour.end_time_display = formatTime(endTime, false);
+      });
     }
 
     return NextResponse.json({ workingHours: data });

@@ -4,7 +4,9 @@ import {
   ClientAvailabilityService,
   type UserWorkingHour,
 } from "../services/clientAvailabilityService";
-import { processMultipleDays, getUserIdFromServer } from "./availabilityUtils";
+import { processMultipleDays } from "./availabilityUtils";
+import { extractTimeFromTimestamp } from "../utils/serverTimeFormat";
+import { formatTime } from "../utils/clientTimeFormat";
 import type {
   TimeSlot,
   DayAvailability,
@@ -12,6 +14,12 @@ import type {
   AvailabilitySettings,
   LoadingSteps,
 } from "../types/availability";
+
+// Extended type for working hours with display formatting
+type UserWorkingHourWithDisplay = UserWorkingHour & {
+  start_time_display?: string;
+  end_time_display?: string;
+};
 
 interface UseAvailabilityDataProps {
   setWorkingHours: (hours: WorkingHours[]) => void;
@@ -40,21 +48,12 @@ export function useAvailabilityData({
 }: UseAvailabilityDataProps) {
   // Load availability data
   const loadAvailability = useCallback(async () => {
-    console.log("🔄 loadAvailability called");
-
     try {
-      console.log("📡 Loading working hours and settings...");
-
       // Load working hours and settings using the new client service
       const [workingHoursData, settingsData] = await Promise.all([
         ClientAvailabilityService.loadWorkingHours(),
         ClientAvailabilityService.loadSettings(),
       ]);
-
-      console.log("📥 Data loaded successfully:", {
-        workingHoursCount: workingHoursData?.length,
-        settings: settingsData,
-      });
 
       // Only set data if we actually received it from the database
       if (workingHoursData && workingHoursData.length > 0) {
@@ -72,6 +71,9 @@ export function useAvailabilityData({
             ][wh.day_of_week],
             startTime: wh.start_time,
             endTime: wh.end_time,
+            startTimeDisplay: (wh as UserWorkingHourWithDisplay)
+              .start_time_display,
+            endTimeDisplay: (wh as UserWorkingHourWithDisplay).end_time_display,
             isWorking: wh.is_working,
           })
         );
@@ -79,9 +81,6 @@ export function useAvailabilityData({
         setWorkingHours(convertedWorkingHours);
         setLoadingSteps((prev) => ({ ...prev, workingHours: true }));
       } else {
-        console.warn(
-          "⚠️ No working hours found in database, creating defaults"
-        );
         // Create default working hours if none exist
         await ClientAvailabilityService.createDefaultWorkingHours();
         // Reload the data
@@ -101,6 +100,10 @@ export function useAvailabilityData({
               ][wh.day_of_week],
               startTime: wh.start_time,
               endTime: wh.end_time,
+              startTimeDisplay: (wh as UserWorkingHourWithDisplay)
+                .start_time_display,
+              endTimeDisplay: (wh as UserWorkingHourWithDisplay)
+                .end_time_display,
               isWorking: wh.is_working,
             })
           );
@@ -115,12 +118,12 @@ export function useAvailabilityData({
           slotDuration: settingsData[0].slot_duration_minutes,
           breakDuration: settingsData[0].break_duration_minutes,
           advanceBookingDays: settingsData[0].advance_booking_days,
+          timeFormat12h: settingsData[0].time_format_12h || false,
         };
 
         setSettings(convertedSettings);
         setLoadingSteps((prev) => ({ ...prev, settings: true }));
       } else {
-        console.warn("⚠️ No settings found in database, creating defaults");
         // Create default settings if none exist
         await ClientAvailabilityService.createDefaultSettings();
         // Reload the data
@@ -130,6 +133,7 @@ export function useAvailabilityData({
             slotDuration: defaultSettings[0].slot_duration_minutes,
             breakDuration: defaultSettings[0].break_duration_minutes,
             advanceBookingDays: defaultSettings[0].advance_booking_days,
+            timeFormat12h: defaultSettings[0].time_format_12h || false,
           };
           setSettings(convertedSettings);
         }
@@ -142,9 +146,7 @@ export function useAvailabilityData({
         exceptions: true,
         timeSlots: true,
       }));
-    } catch (error) {
-      console.error("❌ Error loading availability data:", error);
-
+    } catch {
       // Don't set fallback data on error - let the UI show the error state
       setLoadingSteps({
         workingHours: true,
@@ -236,13 +238,24 @@ export function useAvailabilityData({
             if (!slotsMap.has(dateKey)) {
               slotsMap.set(dateKey, []);
             }
-            slotsMap.get(dateKey).push({
+            const startTime = extractTimeFromTimestamp(slot.start_time);
+            const endTime = extractTimeFromTimestamp(slot.end_time);
+
+            const timeSlot: TimeSlot = {
               id: slot.id,
-              startTime: slot.start_time,
-              endTime: slot.end_time,
+              startTime,
+              endTime,
               isAvailable: slot.is_available,
               isBooked: slot.is_booked,
-            });
+            };
+
+            // Apply time formatting if user prefers 12-hour format
+            if (settings.timeFormat12h) {
+              timeSlot.startTimeDisplay = formatTime(startTime, false);
+              timeSlot.endTimeDisplay = formatTime(endTime, false);
+            }
+
+            slotsMap.get(dateKey).push(timeSlot);
           }
         );
 
@@ -255,7 +268,7 @@ export function useAvailabilityData({
         };
       }
     },
-    []
+    [settings.timeFormat12h]
   );
 
   // Process multiple days with batched data
@@ -265,16 +278,12 @@ export function useAvailabilityData({
       exceptionsMap: Map<string, { is_available: boolean; reason?: string }>,
       slotsMap: Map<string, TimeSlot[]>
     ) => {
-      // Get userId for consistent slot ID generation from server
-      const userId = await getUserIdFromServer();
-
       const newAvailability = processMultipleDays(
         days,
         workingHours,
         settings,
         exceptionsMap,
-        slotsMap,
-        userId
+        slotsMap
       );
 
       // Update state with all processed days at once

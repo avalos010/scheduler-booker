@@ -36,20 +36,22 @@ export const metadata: Metadata = {
 export default async function AvailabilityPage() {
   const supabase = await createSupabaseServerClient();
 
-  // Get session on server side
+  // Get user on server side
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  console.log("🔍 Availability: Session check:", {
-    hasSession: !!session,
-    userId: session?.user?.id,
+  console.log("🔍 Availability: User check:", {
+    hasUser: !!user,
+    userId: user?.id,
+    hasError: !!userError,
     timestamp: new Date().toISOString(),
     path: "/dashboard/availability",
   });
 
-  if (!session) {
-    console.log("🔍 Availability: No session, redirecting to login");
+  if (userError || !user) {
+    console.log("🔍 Availability: No user, redirecting to login");
     redirect("/login");
   }
 
@@ -62,7 +64,7 @@ export default async function AvailabilityPage() {
 
   // Load availability data on the server
   const availabilityResult = await AvailabilityManager.loadAvailabilityData(
-    session.user.id,
+    user.id,
     true
   );
 
@@ -96,7 +98,7 @@ export default async function AvailabilityPage() {
     workingHoursLength: workingHours?.length,
     settings: settings,
     availabilityKeys: Object.keys(availability || {}).length,
-    userId: session.user.id,
+    userId: user.id,
     sampleWorkingHours: workingHours?.slice(0, 2),
     sampleAvailability: Object.entries(availability || {}).slice(0, 2),
     workingHoursData: workingHours,
@@ -157,7 +159,7 @@ export default async function AvailabilityPage() {
         <div className="rounded-2xl bg-white/70 p-6 shadow-lg ring-1 ring-gray-200/60 backdrop-blur">
           <h2 className="mb-4 text-xl font-semibold text-gray-900">Calendar</h2>
           <div className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <AvailabilityCalendar userId={session.user.id} />
+            <AvailabilityCalendar />
           </div>
         </div>
       </div>

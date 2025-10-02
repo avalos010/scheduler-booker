@@ -2,12 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { formatTime } from "@/lib/utils/clientTimeFormat";
 
 interface TimePickerProps {
   value: string;
   onChange: (time: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  use12HourFormat?: boolean;
 }
 
 export default function TimePicker({
@@ -15,6 +17,7 @@ export default function TimePicker({
   onChange,
   placeholder,
   disabled = false,
+  use12HourFormat = false,
 }: TimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -77,15 +80,6 @@ export default function TimePicker({
     time.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Format time for display (convert 24h to 12h format)
-  const formatTimeDisplay = (time: string) => {
-    const [hours, minutes] = time.split(":");
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
-
   // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -121,7 +115,11 @@ export default function TimePicker({
         <span
           className={`truncate ${value ? "text-gray-900" : "text-gray-500"}`}
         >
-          {value ? formatTimeDisplay(value) : placeholder}
+          {value
+            ? use12HourFormat
+              ? formatTime(value, false)
+              : value
+            : placeholder}
         </span>
         <ChevronDownIcon
           className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${
@@ -152,14 +150,13 @@ export default function TimePicker({
                   key={time}
                   onClick={() => handleSelect(time)}
                   className={`w-full px-3 py-2 sm:py-2.5 text-left text-sm hover:bg-blue-50 active:bg-blue-100 transition-colors ${
-                    value === time
+                    time === value
                       ? "bg-blue-100 text-blue-900"
                       : "text-gray-700"
                   }`}
                 >
-                  <span className="font-medium">{formatTimeDisplay(time)}</span>
-                  <span className="ml-2 text-gray-400 text-xs hidden sm:inline">
-                    {time}
+                  <span className="font-medium">
+                    {use12HourFormat ? formatTime(time, false) : time}
                   </span>
                 </button>
               ))

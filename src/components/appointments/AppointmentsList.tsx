@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
+
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -21,6 +22,8 @@ interface Booking {
   date: string;
   start_time: string;
   end_time: string;
+  startTimeDisplay?: string; // Server-formatted display time
+  endTimeDisplay?: string; // Server-formatted display time
   client_name: string;
   client_email: string;
   client_phone: string | null;
@@ -29,13 +32,12 @@ interface Booking {
   created_at: string;
 }
 
-interface AppointmentsListProps {
-  userId: string;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface AppointmentsListProps {}
 
 // Local config inside BookingCard handles display styling
 
-export default function AppointmentsList({ userId }: AppointmentsListProps) {
+export default function AppointmentsList({}: AppointmentsListProps) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
   );
   const [upcomingOnly, setUpcomingOnly] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
+
   const navigateToRebook = (date: string, start: string, end: string) => {
     const params = new URLSearchParams({ date, start, end });
     window.location.href = `/dashboard/bookings?${params.toString()}`;
@@ -54,7 +57,7 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
 
   const fetchBookings = useCallback(async () => {
     try {
-      const response = await fetch(`/api/bookings?userId=${userId}`);
+      const response = await fetch("/api/bookings");
       if (response.ok) {
         const data = await response.json();
         setBookings(data.bookings || []);
@@ -64,7 +67,7 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     fetchBookings();
@@ -173,7 +176,10 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
           </div>
         );
       case "confirmed": {
-        const startDateTime = new Date(`${booking.date}T${booking.start_time}`);
+        // Create date more explicitly for Node 18 compatibility
+        const startDateTime = new Date(
+          `${booking.date}T${booking.start_time}:00`
+        );
         const fifteenMinutesMs = 15 * 60 * 1000;
         const startWithGrace = new Date(
           startDateTime.getTime() + fifteenMinutesMs
@@ -318,7 +324,7 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
       ? b.client_name.toLowerCase().includes(normalizedQuery) ||
         b.client_email.toLowerCase().includes(normalizedQuery)
       : true;
-    const startDateTime = new Date(`${b.date}T${b.start_time}`);
+    const startDateTime = new Date(`${b.date}T${b.start_time}:00`);
     const matchesUpcoming = upcomingOnly ? startDateTime >= now : true;
     return matchesStatus && matchesQuery && matchesUpcoming;
   });
@@ -496,7 +502,8 @@ export default function AppointmentsList({ userId }: AppointmentsListProps) {
               </h3>
               <p className="mt-1 text-sm text-gray-600">
                 {format(new Date(modalBooking.date), "EEEE, MMMM d, yyyy")} ·{" "}
-                {modalBooking.start_time} - {modalBooking.end_time}
+                {modalBooking.startTimeDisplay || modalBooking.start_time} -{" "}
+                {modalBooking.endTimeDisplay || modalBooking.end_time}
               </p>
             </div>
             <div className="p-5 space-y-4">
@@ -606,7 +613,8 @@ function BookingCard({ booking, actions, updatingStatus }: BookingCardProps) {
           {/* Time */}
           <div className="mb-4">
             <p className="text-lg font-medium text-gray-900">
-              {booking.start_time} - {booking.end_time}
+              {booking.startTimeDisplay || booking.start_time} -{" "}
+              {booking.endTimeDisplay || booking.end_time}
             </p>
           </div>
 

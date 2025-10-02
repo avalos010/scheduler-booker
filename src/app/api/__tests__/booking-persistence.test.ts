@@ -98,6 +98,10 @@ jest.mock("@/lib/supabase-server", () => {
           error: null | { code: string };
         }>;
         update: (updates: Partial<BookingRow & TimeSlotRow>) => Builder;
+        then: (
+          onFulfilled: (value: unknown) => unknown,
+          onRejected?: (reason: unknown) => unknown
+        ) => Promise<unknown>;
         insert: (row: Partial<BookingRow & TimeSlotRow>) => Builder;
         delete: () => Builder;
       };
@@ -138,41 +142,36 @@ jest.mock("@/lib/supabase-server", () => {
         },
         eq(column: keyof (BookingRow & TimeSlotRow), value: unknown) {
           queryState.equalsFilters.push({ col: column, val: value });
-          if (queryState.pendingUpdate) {
-            const rowsToUpdate = filterRows(
-              tableName,
-              queryState.equalsFilters
-            );
-            rowsToUpdate.forEach((row) =>
-              Object.assign(
-                row,
-                queryState.pendingUpdate as Partial<BookingRow & TimeSlotRow>
-              )
-            );
-            queryState.mutationResultRows = rowsToUpdate;
-          }
-          if (queryState.pendingDelete) {
-            const rowsToDelete = filterRows(
-              tableName,
-              queryState.equalsFilters
-            );
-            if (tableName === "bookings") {
-              tables.bookings = (tables.bookings as BookingRow[]).filter(
-                (row) => !rowsToDelete.includes(row)
-              );
-            } else {
-              tables.user_time_slots = (
-                tables.user_time_slots as TimeSlotRow[]
-              ).filter((row) => !rowsToDelete.includes(row));
-            }
-            queryState.mutationResultRows = rowsToDelete;
-          }
           return builder;
         },
         order() {
           return builder;
         },
         async single() {
+          if (queryState.pendingUpdate) {
+            // Apply conditional update - only update rows that match ALL conditions
+            const rowsToUpdate = filterRows(
+              tableName,
+              queryState.equalsFilters
+            );
+
+            if (rowsToUpdate.length === 0) {
+              // No rows match the conditions, return error
+              return { data: null, error: { code: "PGRST116" } };
+            }
+
+            // Apply the update to matching rows
+            rowsToUpdate.forEach((row) =>
+              Object.assign(row, queryState.pendingUpdate)
+            );
+
+            // Clear the pending update
+            queryState.pendingUpdate = undefined;
+
+            // Return the first updated row
+            return { data: rowsToUpdate[0], error: null };
+          }
+
           const rows =
             queryState.mutationResultRows ??
             filterRows(tableName, queryState.equalsFilters);
@@ -187,6 +186,52 @@ jest.mock("@/lib/supabase-server", () => {
         insert(row: Partial<BookingRow & TimeSlotRow>) {
           queryState.pendingInsert = row;
           return builder;
+        },
+        then(
+          onFulfilled: (value: unknown) => unknown,
+          onRejected?: (reason: unknown) => unknown
+        ) {
+          // Handle cases where update() is called but single() is not
+          if (queryState.pendingUpdate) {
+            const rowsToUpdate = filterRows(
+              tableName,
+              queryState.equalsFilters
+            );
+
+            rowsToUpdate.forEach((row) =>
+              Object.assign(row, queryState.pendingUpdate)
+            );
+
+            // Clear the pending update
+            queryState.pendingUpdate = undefined;
+          }
+
+          // Handle cases where delete() is called but single() is not
+          if (queryState.pendingDelete) {
+            const rowsToDelete = filterRows(
+              tableName,
+              queryState.equalsFilters
+            );
+
+            if (tableName === "bookings") {
+              tables.bookings = (tables.bookings as BookingRow[]).filter(
+                (row) => !rowsToDelete.includes(row)
+              );
+            } else {
+              tables.user_time_slots = (
+                tables.user_time_slots as TimeSlotRow[]
+              ).filter((row) => !rowsToDelete.includes(row));
+            }
+
+            // Clear the pending delete
+            queryState.pendingDelete = false;
+          }
+
+          // Return a resolved promise
+          return Promise.resolve({ data: null, error: null }).then(
+            onFulfilled,
+            onRejected
+          );
         },
         delete() {
           queryState.pendingDelete = true;
@@ -239,8 +284,8 @@ describe("Booking Persistence & Data Integrity", () => {
       id: "slot-1",
       user_id: userId,
       date,
-      start_time: start,
-      end_time: end,
+      start_time: `${date}T${start}:00+00:00`,
+      end_time: `${date}T${end}:00+00:00`,
       is_available: true,
       is_booked: false,
     });
@@ -249,8 +294,8 @@ describe("Booking Persistence & Data Integrity", () => {
   it("persists booking data correctly across operations", async () => {
     // Step 1: Create a booking
     const createReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
+      timeSlotId: "slot-1",
+      date: date,
       startTime: start,
       endTime: end,
       clientName: "John Doe",
@@ -268,8 +313,8 @@ describe("Booking Persistence & Data Integrity", () => {
     expect(booking).toMatchObject({
       user_id: userId,
       date: date,
-      start_time: start,
-      end_time: end,
+      start_time: `${date}T${start}:00+00:00`,
+      end_time: `${date}T${end}:00+00:00`,
       client_name: "John Doe",
       client_email: "john@example.com",
       status: "pending",
@@ -284,8 +329,8 @@ describe("Booking Persistence & Data Integrity", () => {
   it("maintains data consistency during status changes", async () => {
     // Create initial booking
     const createReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
+      timeSlotId: "slot-1",
+      date: date,
       startTime: start,
       endTime: end,
       clientName: "Jane Smith",
@@ -332,8 +377,8 @@ describe("Booking Persistence & Data Integrity", () => {
   it("handles booking deletion with proper cleanup", async () => {
     // Create booking
     const createReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
+      timeSlotId: "slot-1",
+      date: date,
       startTime: start,
       endTime: end,
       clientName: "Delete Test",
@@ -369,8 +414,8 @@ describe("Booking Persistence & Data Integrity", () => {
   it("prevents booking conflicts and maintains slot integrity", async () => {
     // Create first booking
     const firstBookingReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
+      timeSlotId: "slot-1",
+      date: date,
       startTime: start,
       endTime: end,
       clientName: "First Client",
@@ -386,8 +431,8 @@ describe("Booking Persistence & Data Integrity", () => {
 
     // Try to book the same slot again (should fail due to lack of available slot)
     const conflictBookingReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
+      timeSlotId: "slot-1",
+      date: date,
       startTime: start,
       endTime: end,
       clientName: "Second Client",
@@ -409,27 +454,27 @@ describe("Booking Persistence & Data Integrity", () => {
       id: "slot-2",
       user_id: userId,
       date,
-      start_time: "10:00",
-      end_time: "11:00",
+      start_time: `${date}T10:00:00+00:00`,
+      end_time: `${date}T11:00:00+00:00`,
       is_available: true,
       is_booked: false,
     });
 
     // Create two bookings simultaneously
     const booking1Req = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
-      startTime: "09:00",
-      endTime: "10:00",
+      timeSlotId: "slot-1",
+      date: date,
+      startTime: start,
+      endTime: end,
       clientName: "Client A",
       clientEmail: "a@example.com",
     });
 
     const booking2Req = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
-      startTime: "10:00",
-      endTime: "11:00",
+      timeSlotId: "slot-2",
+      date: date,
+      startTime: start,
+      endTime: end,
       clientName: "Client B",
       clientEmail: "b@example.com",
     });
@@ -447,8 +492,12 @@ describe("Booking Persistence & Data Integrity", () => {
     expect(tables.bookings).toHaveLength(2);
 
     // Verify both time slots are booked
-    const slot1 = tables.user_time_slots.find((s) => s.start_time === "09:00");
-    const slot2 = tables.user_time_slots.find((s) => s.start_time === "10:00");
+    const slot1 = tables.user_time_slots.find(
+      (s) => s.start_time === `${date}T09:00:00+00:00`
+    );
+    const slot2 = tables.user_time_slots.find(
+      (s) => s.start_time === `${date}T10:00:00+00:00`
+    );
 
     expect(slot1?.is_booked).toBe(true);
     expect(slot2?.is_booked).toBe(true);
@@ -457,17 +506,19 @@ describe("Booking Persistence & Data Integrity", () => {
   it("preserves booking history through status transitions", async () => {
     // Create booking
     const createReq = makeRequest("POST", `${baseUrl}/api/bookings`, {
-      userId,
-      date,
+      timeSlotId: "slot-1",
+      date: date,
       startTime: start,
       endTime: end,
       clientName: "History Test",
       clientEmail: "history@example.com",
     });
 
-    await bookingsRoute.POST(createReq);
+    const createRes = await bookingsRoute.POST(createReq);
+    expect(createRes.status).toBe(200);
 
     const tables = supabase.__tables();
+    expect(tables.bookings).toHaveLength(1);
     const bookingId = tables.bookings[0].id;
     const originalCreatedAt = tables.bookings[0].created_at;
 

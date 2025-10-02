@@ -7,13 +7,14 @@ export async function GET() {
 
     // Get the current user
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const userId = user.id;
     console.log("🔍 Debug data for user:", userId);
 
     // Get current month data

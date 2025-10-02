@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { UserIcon } from "@heroicons/react/24/outline";
+
 import {
   bookingFormSchema,
   type BookingFormData,
@@ -16,6 +17,8 @@ interface TimeSlot {
   id: string;
   startTime: string;
   endTime: string;
+  startTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
+  endTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
   isAvailable: boolean;
   isBooked?: boolean;
 }
@@ -26,11 +29,7 @@ interface DayAvailability {
   isWorkingDay: boolean;
 }
 
-interface BookingFormProps {
-  userId: string;
-}
-
-export default function BookingForm({ userId }: BookingFormProps) {
+export default function BookingForm() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(
     null
@@ -92,25 +91,22 @@ export default function BookingForm({ userId }: BookingFormProps) {
     }
   }, [searchParams, dayAvailability, selectedTimeSlot]);
 
-  const fetchDayAvailability = useCallback(
-    async (date: Date) => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(
-          `/api/availability/day-details?date=${format(date, "yyyy-MM-dd")}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setDayAvailability(data);
-        }
-      } catch (error) {
-        console.error("Error fetching availability:", error);
-      } finally {
-        setIsLoading(false);
+  const fetchDayAvailability = useCallback(async (date: Date) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/availability/day-details?date=${format(date, "yyyy-MM-dd")}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setDayAvailability(data);
       }
-    },
-    [userId]
-  );
+    } catch (error) {
+      console.error("Error fetching availability:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   // Fetch availability for selected date
   useEffect(() => {
@@ -143,7 +139,7 @@ export default function BookingForm({ userId }: BookingFormProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId,
+          timeSlotId: selectedTimeSlot.id,
           date: format(selectedDate, "yyyy-MM-dd"),
           startTime: selectedTimeSlot.startTime,
           endTime: selectedTimeSlot.endTime,
@@ -309,7 +305,12 @@ export default function BookingForm({ userId }: BookingFormProps) {
                     Creating Booking...
                   </div>
                 ) : (
-                  `Book ${selectedTimeSlot.startTime} - ${selectedTimeSlot.endTime}`
+                  `Book ${
+                    selectedTimeSlot.startTimeDisplay ||
+                    selectedTimeSlot.startTime
+                  } - ${
+                    selectedTimeSlot.endTimeDisplay || selectedTimeSlot.endTime
+                  }`
                 )}
               </button>
             </div>

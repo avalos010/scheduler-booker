@@ -133,14 +133,14 @@ export default async function RootLayout({
 
   // Get session on server side
   const {
-    data: { session },
+    data: { user },
     error,
-  } = await supabase.auth.getSession();
-  const isAuthed = !!session;
+  } = await supabase.auth.getUser();
+  const isAuthed = !!user;
 
   console.log("🔍 Layout: Supabase auth result:", {
-    hasSession: !!session,
-    userId: session?.user?.id,
+    hasUser: !!user,
+    userId: user?.id,
     error: error?.message,
     timestamp: new Date().toISOString(),
   });

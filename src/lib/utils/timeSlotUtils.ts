@@ -4,6 +4,8 @@ import type {
   AvailabilitySettings,
   DayAvailability,
 } from "../types/availability";
+import { extractTimeFromTimestamp } from "./serverTimeFormat";
+import { formatTime } from "./clientTimeFormat";
 
 export class TimeSlotUtils {
   /**
@@ -19,14 +21,33 @@ export class TimeSlotUtils {
   ): TimeSlot[] {
     const slots: TimeSlot[] = [];
 
+    console.log("🔥 generateDefaultTimeSlots called with:", {
+      startTime,
+      endTime,
+      slotDuration,
+      breakDuration,
+      userId,
+      date,
+    });
+
     // Ensure time strings have proper format (add seconds if missing)
     const startTimeFormatted = startTime.includes(":")
       ? startTime
       : `${startTime}:00`;
     const endTimeFormatted = endTime.includes(":") ? endTime : `${endTime}:00`;
 
+    console.log("🔥 generateDefaultTimeSlots formatted times:", {
+      startTimeFormatted,
+      endTimeFormatted,
+    });
+
     let currentTime = new Date(`2000-01-01T${startTimeFormatted}`);
     const endDateTime = new Date(`2000-01-01T${endTimeFormatted}`);
+
+    console.log("🔥 generateDefaultTimeSlots Date objects:", {
+      currentTime: currentTime.toISOString(),
+      endDateTime: endDateTime.toISOString(),
+    });
 
     while (currentTime < endDateTime) {
       const slotEnd = new Date(currentTime.getTime() + slotDuration * 60000);
@@ -121,7 +142,8 @@ export class TimeSlotUtils {
       end_time: string;
       is_available: boolean;
       is_booked?: boolean;
-    }[]
+    }[],
+    settings?: AvailabilitySettings
   ): Map<string, TimeSlot[]> {
     const map = new Map();
     console.log("🔍 Creating slots map from data:", {
@@ -136,13 +158,22 @@ export class TimeSlotUtils {
           map.set(dateKey, []);
         }
 
+        const startTime = extractTimeFromTimestamp(slot.start_time);
+        const endTime = extractTimeFromTimestamp(slot.end_time);
+
         const timeSlot: TimeSlot = {
           id: slot.id,
-          startTime: slot.start_time,
-          endTime: slot.end_time,
+          startTime,
+          endTime,
           isAvailable: slot.is_available,
           isBooked: slot.is_booked || false,
         };
+
+        // Apply time formatting if user prefers 12-hour format
+        if (settings?.timeFormat12h) {
+          timeSlot.startTimeDisplay = formatTime(startTime, false);
+          timeSlot.endTimeDisplay = formatTime(endTime, false);
+        }
 
         map.get(dateKey).push(timeSlot);
       });
@@ -164,16 +195,17 @@ export class TimeSlotUtils {
     workingHours: WorkingHours[],
     settings: AvailabilitySettings,
     exception?: { is_available: boolean; reason?: string },
-    existingSlots: TimeSlot[] = [],
-    userId?: string
+    existingSlots: TimeSlot[] = []
   ): DayAvailability {
     const dateKey = this.formatDateKey(date);
 
+    const dayHours = this.getWorkingHoursForDate(date, workingHours);
     console.log(`🔍 Processing day ${dateKey}:`, {
       hasException: !!exception,
       exceptionIsAvailable: exception?.is_available,
       existingSlotsCount: existingSlots.length,
-      workingHours: this.getWorkingHoursForDate(date, workingHours),
+      workingHours: dayHours,
+      existingSlots: existingSlots.slice(0, 3), // Show first 3 slots for debugging
     });
 
     if (exception) {
@@ -195,7 +227,7 @@ export class TimeSlotUtils {
               dayHours.endTime,
               settings.slotDuration,
               settings.breakDuration,
-              userId,
+              undefined, // userId - no longer needed for client-side generation
               dateKey
             );
             console.log(
@@ -228,35 +260,59 @@ export class TimeSlotUtils {
       const dayHours = this.getWorkingHoursForDate(date, workingHours);
 
       if (dayHours && dayHours.isWorking) {
+        // Always generate fresh slots based on working hours
+        console.log(
+          `📅 Day ${dateKey}: Generating fresh slots with working hours:`,
+          {
+            startTime: dayHours.startTime,
+            endTime: dayHours.endTime,
+            slotDuration: settings.slotDuration,
+            breakDuration: settings.breakDuration,
+          }
+        );
+        const generatedSlots = this.generateDefaultTimeSlots(
+          dayHours.startTime,
+          dayHours.endTime,
+          settings.slotDuration,
+          settings.breakDuration,
+          undefined, // userId - no longer needed for client-side generation
+          dateKey
+        );
+        console.log(
+          `📅 Day ${dateKey}: Generated ${generatedSlots.length} fresh slots`
+        );
+
+        // Apply custom overrides from existing slots (preserves bookings and custom availability)
         if (existingSlots.length > 0) {
-          // Use existing slots (preserves bookings)
           console.log(
-            `📅 Day ${dateKey}: Using ${existingSlots.length} existing slots`
+            `📅 Day ${dateKey}: Applying ${existingSlots.length} custom overrides`
           );
-          return {
-            date,
-            timeSlots: existingSlots,
-            isWorkingDay: true,
-          };
-        } else {
-          // Generate new slots
-          const generatedSlots = this.generateDefaultTimeSlots(
-            dayHours.startTime,
-            dayHours.endTime,
-            settings.slotDuration,
-            settings.breakDuration,
-            userId,
-            dateKey
-          );
-          console.log(
-            `📅 Day ${dateKey}: Generated ${generatedSlots.length} new slots`
-          );
-          return {
-            date,
-            timeSlots: generatedSlots,
-            isWorkingDay: true,
-          };
+          existingSlots.forEach((existingSlot) => {
+            const slotIndex = generatedSlots.findIndex(
+              (slot) =>
+                slot.startTime === existingSlot.startTime &&
+                slot.endTime === existingSlot.endTime
+            );
+            if (slotIndex !== -1) {
+              // Apply custom availability and preserve booking status
+              generatedSlots[slotIndex].isAvailable = existingSlot.isAvailable;
+              generatedSlots[slotIndex].isBooked = existingSlot.isBooked;
+              console.log(
+                `📅 Day ${dateKey}: Applied override for ${
+                  existingSlot.startTime
+                }-${existingSlot.endTime}: ${
+                  existingSlot.isAvailable ? "available" : "unavailable"
+                }`
+              );
+            }
+          });
         }
+
+        return {
+          date,
+          timeSlots: generatedSlots,
+          isWorkingDay: true,
+        };
       } else {
         // Non-working day
         console.log(`📅 Day ${dateKey}: Non-working day`);

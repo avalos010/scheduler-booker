@@ -8,6 +8,8 @@ interface TimeSlot {
   id: string;
   startTime: string;
   endTime: string;
+  startTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
+  endTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
   isAvailable: boolean;
   isBooked?: boolean;
   bookingStatus?:
@@ -143,7 +145,7 @@ export default function SharedAvailabilityCalendar({
                     p-3 text-sm font-medium rounded-lg border transition-all
                     ${
                       slot.isBooked
-                        ? "bg-blue-50 text-blue-800 border-blue-300 cursor-not-allowed"
+                        ? "bg-gray-50 text-gray-800 border-gray-300 cursor-not-allowed"
                         : selectedTimeSlot?.id === slot.id
                         ? "bg-green-600 text-white border-green-600 shadow-lg"
                         : slot.isAvailable
@@ -165,14 +167,16 @@ export default function SharedAvailabilityCalendar({
                       : "Not available"
                   }
                 >
-                  <div className="font-semibold">{slot.startTime}</div>
+                  <div className="font-semibold">
+                    {slot.startTimeDisplay || slot.startTime}
+                  </div>
                   <div className="text-xs text-gray-500">
-                    to {slot.endTime}
+                    to {slot.endTimeDisplay || slot.endTime}
                     {slot.isBooked && showBookingDetails && (
                       <div className="mt-2 space-y-1.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-blue-600 text-xs">👤</span>
-                          <span className="text-xs font-medium text-blue-800">
+                          <span className="text-gray-600 text-xs">👤</span>
+                          <span className="text-xs font-medium text-gray-800">
                             {slot.bookingDetails?.clientName ||
                               "Unknown Client"}
                           </span>
@@ -194,7 +198,7 @@ export default function SharedAvailabilityCalendar({
                             </span>
                           )}
                           {slot.bookingDetails?.status === "completed" && (
-                            <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                            <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
                               ✓ Completed
                             </span>
                           )}
@@ -206,7 +210,7 @@ export default function SharedAvailabilityCalendar({
                         </div>
                         {slot.bookingDetails?.notes && (
                           <div className="flex items-start gap-1.5">
-                            <span className="text-blue-600 text-xs mt-0.5">
+                            <span className="text-gray-600 text-xs mt-0.5">
                               📝
                             </span>
                             <span className="text-xs text-gray-600 italic leading-tight">

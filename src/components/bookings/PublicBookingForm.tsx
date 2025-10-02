@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -15,6 +15,8 @@ interface TimeSlot {
   id: string;
   startTime: string;
   endTime: string;
+  startTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
+  endTimeDisplay?: string; // Formatted display time (when user prefers 12-hour format)
   isAvailable: boolean;
   isBooked?: boolean;
 }
@@ -52,32 +54,35 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
     },
   });
 
+  const fetchDayAvailability = useCallback(
+    async (date: Date) => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          `/api/availability/public?date=${format(
+            date,
+            "yyyy-MM-dd"
+          )}&userId=${userId}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setDayAvailability(data);
+        }
+      } catch (error) {
+        console.error("Error fetching availability:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [userId]
+  );
+
   // Fetch availability for selected date
   useEffect(() => {
     if (selectedDate) {
       fetchDayAvailability(selectedDate);
     }
-  }, [selectedDate, userId]);
-
-  const fetchDayAvailability = async (date: Date) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `/api/availability/public?date=${format(
-          date,
-          "yyyy-MM-dd"
-        )}&userId=${userId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setDayAvailability(data);
-      }
-    } catch (error) {
-      console.error("Error fetching availability:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [fetchDayAvailability, selectedDate, userId]);
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
@@ -269,7 +274,12 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
                     Submitting Request...
                   </div>
                 ) : (
-                  `Request ${selectedTimeSlot.startTime} - ${selectedTimeSlot.endTime}`
+                  `Request ${
+                    selectedTimeSlot.startTimeDisplay ||
+                    selectedTimeSlot.startTime
+                  } - ${
+                    selectedTimeSlot.endTimeDisplay || selectedTimeSlot.endTime
+                  }`
                 )}
               </button>
             </div>

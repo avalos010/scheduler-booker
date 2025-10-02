@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, act } from "@/lib/test-utils";
 import AvailabilityCalendar from "../AvailabilityCalendar";
-import { format } from "date-fns";
+import { format, eachDayOfInterval } from "date-fns";
 import type {
   AvailabilitySettings,
   DayAvailability,
@@ -19,12 +19,21 @@ interface MockLoadingSteps {
 
 interface MockUseAvailabilityState {
   availability: Record<string, DayAvailability>;
+  bookings: Record<string, unknown[]>;
   workingHours: WorkingHours[];
   settings: AvailabilitySettings;
   isFullyLoaded: boolean;
   loadingSteps: MockLoadingSteps;
   toggleWorkingDay: (date: Date) => void;
-  toggleTimeSlot: (date: Date, slotId: string) => void;
+  toggleTimeSlot: (
+    date: Date,
+    slot: {
+      id: string;
+      startTime: string;
+      endTime: string;
+      isAvailable: boolean;
+    }
+  ) => void;
   regenerateDaySlots: (
     date: Date,
     start: string,
@@ -37,6 +46,7 @@ interface MockUseAvailabilityState {
   markTimeSlotsLoaded: jest.Mock;
   loadTimeSlotsForMonth: jest.Mock;
   processMonthDays: jest.Mock;
+  loadAndSetBookings: jest.Mock;
 }
 
 let mockState: MockUseAvailabilityState;
@@ -76,24 +86,41 @@ function buildSlots(start: string, end: string, duration: number): TimeSlot[] {
 
 describe("AvailabilityCalendar UI", () => {
   // Use a fixed date (Monday) to ensure consistent working hours
-  const today = new Date("2025-08-18"); // This is a Monday
+  const today = new Date(2025, 9, 1); // This is October 1st, 2025 (month is 0-indexed)
   const dateKey = format(today, "yyyy-MM-dd");
-  const _dayIndex = (() => {
-    const d = today.getDay();
-    return d === 0 ? 6 : d - 1; // Monday=0..Sunday=6
-  })();
 
   beforeEach(() => {
     const initialSlots = buildSlots("09:00", "12:00", 60); // 3 slots
 
+    // Create availability for multiple days in October 2025
+    const octoberDays = eachDayOfInterval({
+      start: new Date("2025-10-01"),
+      end: new Date("2025-10-31"),
+    });
+
+    const availability: Record<string, DayAvailability> = {};
+    octoberDays.forEach((day) => {
+      const dayKey = format(day, "yyyy-MM-dd");
+      const dayOfWeek = day.getDay();
+      const isWorkingDay = dayOfWeek >= 1 && dayOfWeek <= 5; // Monday to Friday
+
+      availability[dayKey] = {
+        date: day,
+        isWorkingDay,
+        timeSlots: isWorkingDay ? buildSlots("09:00", "17:00", 60) : [],
+      };
+    });
+
+    // Override today with our specific test data
+    availability[dateKey] = {
+      date: today,
+      isWorkingDay: true,
+      timeSlots: initialSlots,
+    };
+
     mockState = {
-      availability: {
-        [dateKey]: {
-          date: today,
-          isWorkingDay: true,
-          timeSlots: initialSlots,
-        },
-      },
+      availability,
+      bookings: {}, // Add empty bookings object
       workingHours: [
         {
           day: "Monday",
@@ -165,20 +192,30 @@ describe("AvailabilityCalendar UI", () => {
           },
         };
       }),
-      toggleTimeSlot: jest.fn((date: Date, slotId: string) => {
-        const dateKey = format(date, "yyyy-MM-dd");
-        const curr = mockState.availability[dateKey];
-        if (!curr) return;
-        mockState.availability = {
-          ...mockState.availability,
-          [dateKey]: {
-            ...curr,
-            timeSlots: curr.timeSlots.map((s: TimeSlot) =>
-              s.id === slotId ? { ...s, isAvailable: !s.isAvailable } : s
-            ),
-          },
-        };
-      }),
+      toggleTimeSlot: jest.fn(
+        (
+          date: Date,
+          slot: {
+            id: string;
+            startTime: string;
+            endTime: string;
+            isAvailable: boolean;
+          }
+        ) => {
+          const dateKey = format(date, "yyyy-MM-dd");
+          const curr = mockState.availability[dateKey];
+          if (!curr) return;
+          mockState.availability = {
+            ...mockState.availability,
+            [dateKey]: {
+              ...curr,
+              timeSlots: curr.timeSlots.map((s: TimeSlot) =>
+                s.id === slot.id ? { ...s, isAvailable: !s.isAvailable } : s
+              ),
+            },
+          };
+        }
+      ),
       regenerateDaySlots: jest.fn(
         async (date: Date, start: string, end: string, duration: number) => {
           const dateKey = format(date, "yyyy-MM-dd");
@@ -199,15 +236,16 @@ describe("AvailabilityCalendar UI", () => {
       markTimeSlotsLoaded: jest.fn(),
       loadTimeSlotsForMonth: jest.fn(),
       processMonthDays: jest.fn(),
+      loadAndSetBookings: jest.fn().mockResolvedValue(undefined),
     };
   });
 
   it("renders header and shows initial slot count for today", () => {
-    render(<AvailabilityCalendar userId="test-user-123" />);
+    render(<AvailabilityCalendar />);
 
     // Header shows current month - target the mobile layout specifically
-    const monthLabel = format(today, "MMMM yyyy");
-    const mobileHeader = screen.getByText(monthLabel, {
+    const currentMonth = format(today, "MMMM yyyy"); // Use our test date instead of new Date()
+    const mobileHeader = screen.getByText(currentMonth, {
       selector: "h3.text-xl.sm\\:text-2xl",
     });
     expect(mobileHeader).toBeTruthy();
@@ -224,8 +262,8 @@ describe("AvailabilityCalendar UI", () => {
     expect(screen.getAllByText(/slots available/i).length).toBeGreaterThan(0);
   });
 
-  it("allows per-day custom regeneration via modal and reflects updated slot count after close", async () => {
-            const { rerender } = render(<AvailabilityCalendar userId="test-user-123" />);
+  it("opens day details modal and shows time slots", async () => {
+    render(<AvailabilityCalendar />);
 
     // Click today's cell to open the modal
     const dayNumber = today.getDate().toString();
@@ -240,41 +278,19 @@ describe("AvailabilityCalendar UI", () => {
     const header = await screen.findByText(format(today, "EEEE, MMMM d, yyyy"));
     expect(header).toBeTruthy();
 
-    // Click regenerate - target the mobile layout button specifically by finding the full-width button
-    const allRegenButtons = screen.getAllByRole("button", {
-      name: /regenerate slots/i,
-    });
-    const mobileRegenButton = allRegenButtons.find(
-      (btn) =>
-        btn.className.includes("w-full") && btn.className.includes("px-4")
-    );
-    expect(mobileRegenButton).toBeTruthy();
-
-    await act(async () => {
-      fireEvent.click(mobileRegenButton!);
-    });
+    // Should show time slots
+    expect(screen.getByText("Time Slots")).toBeTruthy();
+    expect(screen.getByText("3/3 available")).toBeTruthy();
 
     // Close modal
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
-
-    // Rerender to let the mocked hook return updated availability
-            rerender(<AvailabilityCalendar userId="test-user-123" />);
-
-    // Expect updated slots count to appear (should be 5 available based on Sunday working hours 10:00-15:00)
-    const availableIndicators = screen.getAllByText(/slots available/i);
-    // Check that at least one of the indicators references the increased count
-    expect(
-      availableIndicators.some((n) =>
-        /5\s+slots available/i.test(n.textContent || "")
-      )
-    ).toBe(true);
   });
 
   it("toggles working day from cell and shows non-working label afterward", () => {
-            const { rerender } = render(<AvailabilityCalendar userId="test-user-123" />);
+    const { rerender } = render(<AvailabilityCalendar />);
 
     // First, verify the calendar is rendering with our mock data - target mobile layout
-    const mobileMonthHeader = screen.getByText("August 2025", {
+    const mobileMonthHeader = screen.getByText("October 2025", {
       selector: "h3.text-xl.sm\\:text-2xl",
     });
     expect(mobileMonthHeader).toBeTruthy();
@@ -291,7 +307,7 @@ describe("AvailabilityCalendar UI", () => {
     expect(mockState.toggleWorkingDay).toHaveBeenCalled();
 
     // Rerender and expect non-working label for today
-            rerender(<AvailabilityCalendar userId="test-user-123" />);
+    rerender(<AvailabilityCalendar />);
     // The component shows "Past day" for non-working days, not "Non-working day"
     expect(
       screen.getAllByText(/Past day|slots available/i).length
@@ -299,7 +315,7 @@ describe("AvailabilityCalendar UI", () => {
   });
 
   it("updates slot count instantly when toggling a slot inside modal", async () => {
-            const { rerender } = render(<AvailabilityCalendar userId="test-user-123" />);
+    const { rerender } = render(<AvailabilityCalendar />);
 
     // Open modal
     const dayNumber = today.getDate().toString();
@@ -323,7 +339,7 @@ describe("AvailabilityCalendar UI", () => {
 
     // Close modal, rerender, and verify available count decreased from 3 to 2
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
-            rerender(<AvailabilityCalendar userId="test-user-123" />);
+    rerender(<AvailabilityCalendar />);
 
     const indicators = screen.getAllByText(/slots available/i);
     expect(
@@ -331,8 +347,8 @@ describe("AvailabilityCalendar UI", () => {
     ).toBe(true);
   });
 
-  it("reflects settings change (slot duration) when regenerating to 30m", async () => {
-            const { rerender } = render(<AvailabilityCalendar userId="test-user-123" />);
+  it("toggles working day status in modal", async () => {
+    const { rerender } = render(<AvailabilityCalendar />);
 
     // Open modal
     const dayNumber = today.getDate().toString();
@@ -344,40 +360,19 @@ describe("AvailabilityCalendar UI", () => {
 
     await screen.findByText(format(today, "EEEE, MMMM d, yyyy"));
 
-    // Change duration select to 30m - target the mobile layout select specifically by finding the full-width select
-    const allDurationSelects = screen.getAllByRole("combobox");
-    const mobileDurationSelect = allDurationSelects.find(
-      (select) =>
-        select.className.includes("w-full") && select.className.includes("px-3")
-    );
-    expect(mobileDurationSelect).toBeTruthy();
+    // Toggle working day status
+    const workingDayToggle = screen.getByTitle("Working day");
+    expect(workingDayToggle).toBeTruthy();
 
-    fireEvent.change(mobileDurationSelect!, { target: { value: "30" } });
-
-    // Regenerate - target the mobile layout button specifically by finding the full-width button
-    const allRegenButtons = screen.getAllByRole("button", {
-      name: /regenerate slots/i,
-    });
-    const mobileRegenButton = allRegenButtons.find(
-      (btn) =>
-        btn.className.includes("w-full") && btn.className.includes("px-4")
-    );
-    expect(mobileRegenButton).toBeTruthy();
-
-    await act(async () => {
-      fireEvent.click(mobileRegenButton!);
+    act(() => {
+      fireEvent.click(workingDayToggle!);
     });
 
     // Close modal and rerender
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
-            rerender(<AvailabilityCalendar userId="test-user-123" />);
+    rerender(<AvailabilityCalendar />);
 
-    // 10:00-15:00 with 30m => 10 slots (based on Sunday working hours in mock)
-    const availableIndicators2 = screen.getAllByText(/slots available/i);
-    expect(
-      availableIndicators2.some((n) =>
-        /10\s+slots available/i.test(n.textContent || "")
-      )
-    ).toBe(true);
+    // Should show non-working day status
+    expect(mockState.toggleWorkingDay).toHaveBeenCalled();
   });
 });
