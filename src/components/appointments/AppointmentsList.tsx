@@ -50,7 +50,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
   );
   const [upcomingOnly, setUpcomingOnly] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
-  const { success, error } = useSnackbar();
+  const { error } = useSnackbar();
 
   const navigateToRebook = (date: string, start: string, end: string) => {
     const params = new URLSearchParams({ date, start, end });

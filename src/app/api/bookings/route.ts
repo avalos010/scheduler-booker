@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       const endTime = timeSlotParts[timeSlotParts.length - 1];
       const startTime = timeSlotParts[timeSlotParts.length - 2];
       const dateFromId = timeSlotParts.slice(-5, -2).join("-"); // Get the 3 parts for date
-      const userIdFromId = timeSlotParts.slice(0, -5).join("-"); // Everything before date (for debugging)
+      // const userIdFromId = timeSlotParts.slice(0, -5).join("-"); // Everything before date (for debugging)
 
       // Convert time strings to timestamps for database lookup
       const startTimestamp = convertTimeToTimestamp(dateFromId, startTime);
