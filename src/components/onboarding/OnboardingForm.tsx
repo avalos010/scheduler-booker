@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +20,7 @@ const availabilitySchema = z.object({
   startTime: z.string().min(1, "Please select a start time"),
   endTime: z.string().min(1, "Please select an end time"),
   timeSlotDuration: z.number().min(15).max(120),
+  timeFormat12h: z.boolean(),
 });
 
 type UserTypeData = z.infer<typeof userTypeSchema>;
@@ -63,6 +63,7 @@ export default function OnboardingForm() {
     defaultValues: {
       workDays: ["monday", "tuesday", "wednesday", "thursday", "friday"],
       timeSlotDuration: 30,
+      timeFormat12h: true, // Default to 12-hour format
     },
   });
 
@@ -71,17 +72,30 @@ export default function OnboardingForm() {
     setStep(2);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const onAvailabilitySubmit = async (data: AvailabilityData) => {
     setIsLoading(true);
     try {
-      // Save a minimal onboarded flag in user metadata
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData?.user) {
-        await supabase.auth.updateUser({
-          data: { onboarded: true },
-        });
+      // Combine all form data
+      const allFormData = { ...formData, ...data };
+
+      // Save onboarding data to database via API
+      const response = await fetch("/api/user/onboarding", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(allFormData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error("Error saving onboarding data:", result.error);
+        // You might want to show an error message to the user here
+        return;
       }
+
+      // Redirect to dashboard on success
       window.location.href = "/dashboard";
     } catch (error) {
       console.error("Error saving onboarding data:", error);
@@ -305,6 +319,44 @@ export default function OnboardingForm() {
           )}
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-800 mb-3">
+            Time Format Preference
+          </label>
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <button
+              type="button"
+              onClick={() => availabilityForm.setValue("timeFormat12h", true)}
+              className={`p-3 border-2 rounded-lg text-left transition-colors duration-200 ease-out cursor-pointer ${
+                availabilityForm.watch("timeFormat12h") === true
+                  ? "border-emerald-500 bg-emerald-50"
+                  : "border-neutral-300 hover:border-neutral-400"
+              }`}
+            >
+              <div className="font-medium text-gray-900 mb-1">🕐 12-Hour</div>
+              <div className="text-gray-600 text-xs">9:00 AM - 5:00 PM</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => availabilityForm.setValue("timeFormat12h", false)}
+              className={`p-3 border-2 rounded-lg text-left transition-colors duration-200 ease-out cursor-pointer ${
+                availabilityForm.watch("timeFormat12h") === false
+                  ? "border-emerald-500 bg-emerald-50"
+                  : "border-neutral-300 hover:border-neutral-400"
+              }`}
+            >
+              <div className="font-medium text-gray-900 mb-1">🕘 24-Hour</div>
+              <div className="text-gray-600 text-xs">09:00 - 17:00</div>
+            </button>
+          </div>
+          {availabilityForm.formState.errors.timeFormat12h && (
+            <p className="mt-2 text-sm text-red-600">
+              {availabilityForm.formState.errors.timeFormat12h.message}
+            </p>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label
@@ -321,6 +373,7 @@ export default function OnboardingForm() {
                   value={field.value || ""}
                   onChange={field.onChange}
                   placeholder="Select start time"
+                  use12HourFormat={availabilityForm.watch("timeFormat12h")}
                 />
               )}
             />
@@ -346,6 +399,7 @@ export default function OnboardingForm() {
                   value={field.value || ""}
                   onChange={field.onChange}
                   placeholder="Select end time"
+                  use12HourFormat={availabilityForm.watch("timeFormat12h")}
                 />
               )}
             />
