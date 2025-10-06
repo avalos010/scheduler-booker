@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import RedirectIfAuthed from "@/components/auth/RedirectIfAuthed";
 import {
   CalendarDaysIcon,
@@ -55,7 +57,26 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Home() {
+export default async function Home() {
+  // Check authentication on server side for better performance
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    // User is authenticated, check if they need onboarding
+    const onboarded = Boolean(user.user_metadata?.onboarded);
+    
+    if (onboarded) {
+      // User is fully set up, redirect to dashboard
+      redirect("/dashboard");
+    } else {
+      // User needs to complete onboarding
+      redirect("/onboarding");
+    }
+  }
+
   return (
     <RedirectIfAuthed to="/dashboard">
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
