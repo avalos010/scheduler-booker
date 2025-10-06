@@ -30,8 +30,15 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
 
+  console.log("🔥 DAY-DETAILS API CALLED:", {
+    url: request.url,
+    date,
+    searchParams: Object.fromEntries(searchParams.entries()),
+  });
+
   try {
     if (!date) {
+      console.log("🔥 ERROR: Missing date parameter");
       return NextResponse.json(
         { message: "Missing required date parameter" },
         { status: 400 }
@@ -78,14 +85,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Get working hours for the day
-    const jsDayOfWeek = new Date(date).getDay();
+    // Parse the date as a local date to avoid timezone issues
+    const localDate = new Date(date + "T00:00:00");
+    const jsDayOfWeek = localDate.getDay();
     const dayOfWeek = jsDayOfWeek === 0 ? 7 : jsDayOfWeek;
 
     console.log("🔥 Working hours query:", {
       userId,
       date,
+      localDate: localDate.toISOString(),
       jsDayOfWeek,
       dayOfWeek,
+      originalDateObject: new Date(date),
+      originalDateString: new Date(date).toString(),
     });
 
     const { data: workingHours, error: workingHoursError } = await supabase
@@ -99,6 +111,8 @@ export async function GET(request: NextRequest) {
       workingHours,
       workingHoursError,
       isWorking: workingHours?.is_working,
+      startTime: workingHours?.start_time,
+      endTime: workingHours?.end_time,
     });
 
     // Check for custom time slots for this specific date
@@ -119,15 +133,35 @@ export async function GET(request: NextRequest) {
     let timeSlots: ApiTimeSlot[] = [];
 
     if (workingHoursError || !workingHours || !workingHours.is_working) {
-      console.log("🔥 NOT A WORKING DAY:", {
+      console.log("🔥 NOT A WORKING DAY OR NO WORKING HOURS FOUND:", {
         workingHoursError,
         workingHours,
         isWorking: workingHours?.is_working,
+        dayOfWeek,
+        userId,
       });
+
+      // If no working hours found, try to get all working hours to debug
+      const { data: allWorkingHours } = await supabase
+        .from("user_working_hours")
+        .select("*")
+        .eq("user_id", userId);
+
+      console.log("🔥 ALL WORKING HOURS FOR USER:", allWorkingHours);
+
       return NextResponse.json({
         date: new Date(date),
         timeSlots: [],
         isWorkingDay: false,
+        debug: {
+          requestedDayOfWeek: dayOfWeek,
+          allWorkingHours: allWorkingHours?.map((wh) => ({
+            day_of_week: wh.day_of_week,
+            is_working: wh.is_working,
+            start_time: wh.start_time,
+            end_time: wh.end_time,
+          })),
+        },
       });
     }
 
@@ -139,6 +173,12 @@ export async function GET(request: NextRequest) {
       .single();
 
     const slotDuration = settings?.slot_duration_minutes || 60;
+
+    console.log("🔥 Slot duration settings:", {
+      settings,
+      slotDuration,
+      userId,
+    });
 
     // Extract time portion from working hours (they might be stored as timestamps)
     const startTime = extractTimeFromTimestamp(workingHours.start_time);

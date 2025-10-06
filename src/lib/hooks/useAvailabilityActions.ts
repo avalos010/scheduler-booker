@@ -63,7 +63,6 @@ export function useAvailabilityActions({
               dayHours.startTime,
               dayHours.endTime,
               settings.slotDuration,
-              settings.breakDuration,
               undefined, // userId - no longer needed for client-side generation
               dateKey
             );
@@ -72,7 +71,6 @@ export function useAvailabilityActions({
               "09:00",
               "17:00",
               settings.slotDuration,
-              settings.breakDuration,
               undefined, // userId - no longer needed for client-side generation
               dateKey
             );
@@ -145,7 +143,6 @@ export function useAvailabilityActions({
               dayHours.startTime,
               dayHours.endTime,
               settings.slotDuration,
-              settings.breakDuration,
               undefined, // userId - no longer needed for client-side generation
               dateKey
             );
@@ -154,7 +151,6 @@ export function useAvailabilityActions({
               "09:00",
               "17:00",
               settings.slotDuration,
-              settings.breakDuration,
               undefined, // userId - no longer needed for client-side generation
               dateKey
             );
@@ -180,7 +176,6 @@ export function useAvailabilityActions({
                 dayHours.startTime,
                 dayHours.endTime,
                 settings.slotDuration,
-                settings.breakDuration,
                 undefined, // userId - no longer needed for client-side generation
                 dateKey
               );
@@ -189,7 +184,6 @@ export function useAvailabilityActions({
                 "09:00",
                 "17:00",
                 settings.slotDuration,
-                settings.breakDuration,
                 undefined, // userId - no longer needed for client-side generation
                 dateKey
               );
@@ -236,13 +230,7 @@ export function useAvailabilityActions({
         }
       }
     },
-    [
-      workingHours,
-      settings.slotDuration,
-      settings.breakDuration,
-      availability,
-      updateDayAvailability,
-    ]
+    [workingHours, settings.slotDuration, availability, updateDayAvailability]
   );
 
   // Toggle time slot availability

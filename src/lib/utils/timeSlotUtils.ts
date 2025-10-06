@@ -15,7 +15,6 @@ export class TimeSlotUtils {
     startTime: string,
     endTime: string,
     slotDuration: number,
-    breakDuration: number = 0,
     userId?: string,
     date?: string
   ): TimeSlot[] {
@@ -25,7 +24,6 @@ export class TimeSlotUtils {
       startTime,
       endTime,
       slotDuration,
-      breakDuration,
       userId,
       date,
     });
@@ -69,10 +67,8 @@ export class TimeSlotUtils {
         slots.push(slot);
       }
 
-      // Move to next slot (including break duration)
-      currentTime = new Date(
-        currentTime.getTime() + (slotDuration + breakDuration) * 60000
-      );
+      // Move to next slot
+      currentTime = new Date(currentTime.getTime() + slotDuration * 60000);
     }
 
     return slots;
@@ -226,7 +222,6 @@ export class TimeSlotUtils {
               dayHours.startTime,
               dayHours.endTime,
               settings.slotDuration,
-              settings.breakDuration,
               undefined, // userId - no longer needed for client-side generation
               dateKey
             );
@@ -267,14 +262,12 @@ export class TimeSlotUtils {
             startTime: dayHours.startTime,
             endTime: dayHours.endTime,
             slotDuration: settings.slotDuration,
-            breakDuration: settings.breakDuration,
           }
         );
         const generatedSlots = this.generateDefaultTimeSlots(
           dayHours.startTime,
           dayHours.endTime,
           settings.slotDuration,
-          settings.breakDuration,
           undefined, // userId - no longer needed for client-side generation
           dateKey
         );

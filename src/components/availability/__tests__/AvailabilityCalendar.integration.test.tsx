@@ -52,7 +52,6 @@ const mockUseAvailability = {
   ],
   settings: {
     slotDuration: 60,
-    breakDuration: 15,
     advanceBookingDays: 30,
   },
   isFullyLoaded: true,
@@ -242,7 +241,6 @@ interface TestOverrides {
   workingHours?: WorkingHours[];
   settings?: {
     slotDuration: number;
-    breakDuration: number;
     advanceBookingDays: number;
   };
   isFullyLoaded?: boolean;
@@ -264,7 +262,6 @@ const setupIntegrationTest = (overrides: TestOverrides = {}) => {
     workingHours: createMockWorkingHours(),
     settings: {
       slotDuration: 60,
-      breakDuration: 15,
       advanceBookingDays: 30,
     },
     isFullyLoaded: true,
@@ -291,7 +288,6 @@ const setupIntegrationTest = (overrides: TestOverrides = {}) => {
 };
 
 describe("AvailabilityCalendar Integration Tests", () => {
-
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset availability to empty before each test

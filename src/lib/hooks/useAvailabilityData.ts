@@ -116,7 +116,6 @@ export function useAvailabilityData({
         // Convert settings to the expected format
         const convertedSettings = {
           slotDuration: settingsData[0].slot_duration_minutes,
-          breakDuration: settingsData[0].break_duration_minutes,
           advanceBookingDays: settingsData[0].advance_booking_days,
           timeFormat12h: settingsData[0].time_format_12h || false,
         };
@@ -131,7 +130,6 @@ export function useAvailabilityData({
         if (defaultSettings && defaultSettings.length > 0) {
           const convertedSettings = {
             slotDuration: defaultSettings[0].slot_duration_minutes,
-            breakDuration: defaultSettings[0].break_duration_minutes,
             advanceBookingDays: defaultSettings[0].advance_booking_days,
             timeFormat12h: defaultSettings[0].time_format_12h || false,
           };

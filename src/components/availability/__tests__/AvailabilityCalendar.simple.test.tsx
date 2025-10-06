@@ -165,7 +165,7 @@ describe("AvailabilityCalendar UI", () => {
           isWorking: false,
         },
       ],
-      settings: { slotDuration: 60, breakDuration: 0, advanceBookingDays: 30 },
+      settings: { slotDuration: 60, advanceBookingDays: 30 },
       isFullyLoaded: true,
       loadingSteps: {
         workingHours: true,

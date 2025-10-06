@@ -102,7 +102,6 @@ describe("useAvailability", () => {
 
     // The hook starts with zero values and loads data asynchronously
     expect(result.current.settings.slotDuration).toBe(0);
-    expect(result.current.settings.breakDuration).toBe(0);
     expect(result.current.settings.advanceBookingDays).toBe(0);
     expect(result.current.isLoading).toBe(true);
   });
@@ -120,7 +119,6 @@ describe("useAvailability", () => {
 
     // Settings should remain unchanged due to the guard clause
     expect(result.current.settings.slotDuration).toBe(0);
-    expect(result.current.settings.breakDuration).toBe(0);
   });
 
   it("handles working hours updates when no data is loaded", () => {

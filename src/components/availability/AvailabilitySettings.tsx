@@ -199,28 +199,6 @@ export default function AvailabilitySettings() {
               <option value={120}>2 hours</option>
             </select>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Break Duration
-            </label>
-            <select
-              value={settings.breakDuration}
-              onChange={(e) =>
-                updateSettings({ breakDuration: Number(e.target.value) })
-              }
-              disabled={isLoading}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 ${
-                isLoading ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              <option value={0}>No break</option>
-              <option value={15}>15 minutes</option>
-              <option value={30}>30 minutes</option>
-              <option value={45}>45 minutes</option>
-              <option value={60}>1 hour</option>
-            </select>
-          </div>
         </div>
       </div>
 

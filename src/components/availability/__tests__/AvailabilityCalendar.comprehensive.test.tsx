@@ -24,7 +24,6 @@ const mockUseAvailability = {
   ],
   settings: {
     slotDuration: 60,
-    breakDuration: 0,
     advanceBookingDays: 30,
   },
   isFullyLoaded: true,
@@ -117,7 +116,6 @@ function createDayAvailability(
 }
 
 describe("AvailabilityCalendar", () => {
-
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset availability to empty before each test

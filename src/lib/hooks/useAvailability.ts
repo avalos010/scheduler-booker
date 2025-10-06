@@ -19,7 +19,6 @@ export function useAvailability() {
   const [workingHours, setWorkingHours] = useState<WorkingHours[]>([]);
   const [settings, setSettings] = useState<AvailabilitySettings>({
     slotDuration: 0,
-    breakDuration: 0,
     advanceBookingDays: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
