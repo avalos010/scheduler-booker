@@ -114,12 +114,14 @@ export default function OnboardingForm() {
 
   if (step === 1) {
     return (
-      <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
+      <div className="w-full max-w-2xl mx-auto p-8 bg-white/70 backdrop-blur ring-1 ring-gray-200/60 rounded-2xl shadow-lg">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-2">
-            Welcome to Scheduler Booker!
+            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Welcome to Scheduler Booker!
+            </span>
           </h2>
-          <p className="text-gray-800 text-center">
+          <p className="text-gray-700 text-center">
             Let&apos;s get you set up in just a few steps.
           </p>
         </div>
@@ -136,10 +138,10 @@ export default function OnboardingForm() {
               <button
                 type="button"
                 onClick={() => userTypeForm.setValue("userType", "business")}
-                className={`p-6 border-2 rounded-lg text-left transition-colors duration-200 ease-out cursor-pointer ${
+                className={`p-6 border-2 rounded-xl text-left transition-all duration-200 ease-out cursor-pointer shadow-sm hover:shadow-md ${
                   userTypeForm.watch("userType") === "business"
-                    ? "border-emerald-500 bg-emerald-50"
-                    : "border-neutral-300 hover:border-neutral-400"
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-300 hover:border-gray-400"
                 }`}
               >
                 <div className="font-semibold text-lg text-gray-900 mb-2">
@@ -153,10 +155,10 @@ export default function OnboardingForm() {
               <button
                 type="button"
                 onClick={() => userTypeForm.setValue("userType", "individual")}
-                className={`p-6 border-2 rounded-lg text-left transition-colors duration-200 ease-out cursor-pointer ${
+                className={`p-6 border-2 rounded-xl text-left transition-all duration-200 ease-out cursor-pointer shadow-sm hover:shadow-md ${
                   userTypeForm.watch("userType") === "individual"
-                    ? "border-emerald-500 bg-emerald-50"
-                    : "border-neutral-300 hover:border-neutral-400"
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-300 hover:border-gray-400"
                 }`}
               >
                 <div className="font-semibold text-lg text-gray-900 mb-2">
@@ -187,7 +189,7 @@ export default function OnboardingForm() {
                   {...userTypeForm.register("businessName")}
                   type="text"
                   id="businessName"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 shadow-sm"
                   placeholder="Enter your business name"
                 />
               </div>
@@ -202,7 +204,7 @@ export default function OnboardingForm() {
                 <select
                   {...userTypeForm.register("businessType")}
                   id="businessType"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 shadow-sm"
                 >
                   <option value="">Select business type</option>
                   <option value="consulting">Consulting</option>
@@ -230,7 +232,7 @@ export default function OnboardingForm() {
               {...userTypeForm.register("name")}
               type="text"
               id="name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 shadow-sm"
               placeholder="Enter your full name"
             />
             {userTypeForm.formState.errors.name && (
@@ -250,7 +252,7 @@ export default function OnboardingForm() {
             <select
               {...userTypeForm.register("timezone")}
               id="timezone"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 shadow-sm"
             >
               <option value="">Select your timezone</option>
               {timezones.map((tz) => (
@@ -268,7 +270,7 @@ export default function OnboardingForm() {
 
           <button
             type="submit"
-            className="w-full bg-emerald-600 text-white py-3 px-4 rounded-md hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 font-medium transition-colors duration-200 ease-out cursor-pointer active:scale-[0.98]"
+            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium transition-all duration-200 ease-out cursor-pointer active:scale-[0.98] shadow-sm hover:shadow-md"
           >
             Continue to Availability Setup
           </button>
@@ -278,12 +280,14 @@ export default function OnboardingForm() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
+    <div className="w-full max-w-2xl mx-auto p-8 bg-white/70 backdrop-blur ring-1 ring-gray-200/60 rounded-2xl shadow-lg">
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900 text-center mb-2">
-          Set Your Availability
+          <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            Set Your Availability
+          </span>
         </h2>
-        <p className="text-gray-800 text-center">
+        <p className="text-gray-700 text-center">
           Configure when you&apos;re available for appointments
         </p>
       </div>
@@ -302,10 +306,10 @@ export default function OnboardingForm() {
                 key={day.value}
                 type="button"
                 onClick={() => handleWorkDayToggle(day.value)}
-                className={`p-3 border-2 rounded-lg transition-colors duration-200 ease-out cursor-pointer ${
+                className={`p-3 border-2 rounded-xl transition-all duration-200 ease-out cursor-pointer shadow-sm hover:shadow-md ${
                   availabilityForm.watch("workDays").includes(day.value)
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                    : "border-neutral-300 hover:border-neutral-400"
+                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    : "border-gray-300 hover:border-gray-400"
                 }`}
               >
                 {day.label}
@@ -327,10 +331,10 @@ export default function OnboardingForm() {
             <button
               type="button"
               onClick={() => availabilityForm.setValue("timeFormat12h", true)}
-              className={`p-3 border-2 rounded-lg text-left transition-colors duration-200 ease-out cursor-pointer ${
+              className={`p-3 border-2 rounded-xl text-left transition-all duration-200 ease-out cursor-pointer shadow-sm hover:shadow-md ${
                 availabilityForm.watch("timeFormat12h") === true
-                  ? "border-emerald-500 bg-emerald-50"
-                  : "border-neutral-300 hover:border-neutral-400"
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-300 hover:border-gray-400"
               }`}
             >
               <div className="font-medium text-gray-900 mb-1">🕐 12-Hour</div>
@@ -340,10 +344,10 @@ export default function OnboardingForm() {
             <button
               type="button"
               onClick={() => availabilityForm.setValue("timeFormat12h", false)}
-              className={`p-3 border-2 rounded-lg text-left transition-colors duration-200 ease-out cursor-pointer ${
+              className={`p-3 border-2 rounded-xl text-left transition-all duration-200 ease-out cursor-pointer shadow-sm hover:shadow-md ${
                 availabilityForm.watch("timeFormat12h") === false
-                  ? "border-emerald-500 bg-emerald-50"
-                  : "border-neutral-300 hover:border-neutral-400"
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-300 hover:border-gray-400"
               }`}
             >
               <div className="font-medium text-gray-900 mb-1">🕘 24-Hour</div>
@@ -423,7 +427,7 @@ export default function OnboardingForm() {
               valueAsNumber: true,
             })}
             id="timeSlotDuration"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 shadow-sm"
           >
             <option value={15}>15 minutes</option>
             <option value={30}>30 minutes</option>
@@ -438,7 +442,7 @@ export default function OnboardingForm() {
           <button
             type="button"
             onClick={() => setStep(1)}
-            className="flex-1 border border-neutral-300 text-neutral-700 py-3 px-4 rounded-md hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 font-medium transition-[colors,transform] duration-200 ease-out cursor-pointer active:scale-[0.98]"
+            className="flex-1 border border-gray-300 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 font-medium transition-all duration-200 ease-out cursor-pointer active:scale-[0.98] shadow-sm hover:shadow-md"
           >
             Back
           </button>
@@ -446,7 +450,7 @@ export default function OnboardingForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="flex-1 bg-emerald-600 text-white py-3 px-4 rounded-md hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors duration-200 ease-out cursor-pointer active:scale-[0.98]"
+            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200 ease-out cursor-pointer active:scale-[0.98] shadow-sm hover:shadow-md"
           >
             {isLoading ? "Setting up..." : "Complete Setup"}
           </button>

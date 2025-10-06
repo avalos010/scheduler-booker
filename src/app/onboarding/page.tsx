@@ -56,8 +56,12 @@ export default async function OnboardingPage() {
   console.log("🔍 Onboarding: User not onboarded, showing onboarding form");
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <OnboardingForm />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200">
+      <div className="mx-auto max-w-7xl py-10 px-6 lg:px-8">
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <OnboardingForm />
+        </div>
+      </div>
     </div>
   );
 }
