@@ -63,7 +63,6 @@ export function useAvailabilityActions({
               dayHours.startTime,
               dayHours.endTime,
               settings.slotDuration,
-              undefined, // userId - no longer needed for client-side generation
               dateKey
             );
           } else {
@@ -71,7 +70,6 @@ export function useAvailabilityActions({
               "09:00",
               "17:00",
               settings.slotDuration,
-              undefined, // userId - no longer needed for client-side generation
               dateKey
             );
           }
@@ -143,7 +141,6 @@ export function useAvailabilityActions({
               dayHours.startTime,
               dayHours.endTime,
               settings.slotDuration,
-              undefined, // userId - no longer needed for client-side generation
               dateKey
             );
           } else {
@@ -151,7 +148,6 @@ export function useAvailabilityActions({
               "09:00",
               "17:00",
               settings.slotDuration,
-              undefined, // userId - no longer needed for client-side generation
               dateKey
             );
           }
@@ -176,7 +172,6 @@ export function useAvailabilityActions({
                 dayHours.startTime,
                 dayHours.endTime,
                 settings.slotDuration,
-                undefined, // userId - no longer needed for client-side generation
                 dateKey
               );
             } else {
@@ -184,7 +179,6 @@ export function useAvailabilityActions({
                 "09:00",
                 "17:00",
                 settings.slotDuration,
-                undefined, // userId - no longer needed for client-side generation
                 dateKey
               );
             }
@@ -320,8 +314,6 @@ export function useAvailabilityActions({
         startTime,
         endTime,
         slotDuration,
-        0, // breakDuration
-        undefined, // userId - no longer needed for client-side generation
         dateKey
       );
 

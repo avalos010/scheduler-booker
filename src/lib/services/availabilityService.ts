@@ -31,7 +31,6 @@ export interface UserAvailabilitySettings {
   id?: string;
   user_id: string;
   slot_duration_minutes: number;
-  break_duration_minutes: number;
   advance_booking_days: number;
 }
 

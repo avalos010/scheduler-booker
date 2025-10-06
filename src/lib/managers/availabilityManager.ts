@@ -54,7 +54,6 @@ export class AvailabilityManager {
 
         settings = {
           slotDuration: settingsToUse.slot_duration_minutes,
-          breakDuration: settingsToUse.break_duration_minutes,
           advanceBookingDays: settingsToUse.advance_booking_days,
         };
 
@@ -66,22 +65,23 @@ export class AvailabilityManager {
         );
         settings = {
           slotDuration: defaultSettings.slot_duration_minutes,
-          breakDuration: defaultSettings.break_duration_minutes,
           advanceBookingDays: defaultSettings.advance_booking_days,
         };
         console.log("✅ Default settings created:", settings);
-        
+
         // Save the default settings to the database so public API can access them
         try {
           await AvailabilityService.saveSettings({
             user_id: userId,
             slot_duration_minutes: defaultSettings.slot_duration_minutes,
-            break_duration_minutes: defaultSettings.break_duration_minutes,
             advance_booking_days: defaultSettings.advance_booking_days,
           });
           console.log("✅ Default settings saved to database");
         } catch (error) {
-          console.warn("⚠️ Could not save default settings to database:", error);
+          console.warn(
+            "⚠️ Could not save default settings to database:",
+            error
+          );
         }
       }
 
@@ -103,7 +103,7 @@ export class AvailabilityManager {
           defaultHours || []
         );
         console.log("✅ Default working hours created:", workingHours);
-        
+
         // Save the default working hours to the database so public API can access them
         try {
           if (defaultHours && defaultHours.length > 0) {
@@ -111,7 +111,10 @@ export class AvailabilityManager {
             console.log("✅ Default working hours saved to database");
           }
         } catch (error) {
-          console.warn("⚠️ Could not save default working hours to database:", error);
+          console.warn(
+            "⚠️ Could not save default working hours to database:",
+            error
+          );
         }
       }
 
@@ -251,7 +254,6 @@ export class AvailabilityManager {
       await AvailabilityService.saveSettings({
         user_id: userId,
         slot_duration_minutes: settings.slotDuration,
-        break_duration_minutes: settings.breakDuration,
         advance_booking_days: settings.advanceBookingDays,
       });
 
@@ -552,8 +554,7 @@ export class AvailabilityManager {
         const slots = TimeSlotUtils.generateDefaultTimeSlots(
           dayHours.startTime,
           dayHours.endTime,
-          settings.slotDuration,
-          settings.breakDuration
+          settings.slotDuration
         );
 
         availability[dateKey] = {

@@ -15,7 +15,6 @@ export class TimeSlotUtils {
     startTime: string,
     endTime: string,
     slotDuration: number,
-    userId?: string,
     date?: string
   ): TimeSlot[] {
     const slots: TimeSlot[] = [];
@@ -24,7 +23,6 @@ export class TimeSlotUtils {
       startTime,
       endTime,
       slotDuration,
-      userId,
       date,
     });
 
@@ -55,10 +53,9 @@ export class TimeSlotUtils {
 
         // Generate consistent IDs that match the public API format
         const slot = {
-          id:
-            userId && date
-              ? `${userId}-${date}-${slotStart}-${slotEndTime}`
-              : `slot-${slotStart}-${slotEndTime}`,
+          id: date
+            ? `slot-${date}-${slotStart}-${slotEndTime}`
+            : `slot-${slotStart}-${slotEndTime}`,
           startTime: slotStart,
           endTime: slotEndTime,
           isAvailable: true,
@@ -222,7 +219,6 @@ export class TimeSlotUtils {
               dayHours.startTime,
               dayHours.endTime,
               settings.slotDuration,
-              undefined, // userId - no longer needed for client-side generation
               dateKey
             );
             console.log(
@@ -268,7 +264,6 @@ export class TimeSlotUtils {
           dayHours.startTime,
           dayHours.endTime,
           settings.slotDuration,
-          undefined, // userId - no longer needed for client-side generation
           dateKey
         );
         console.log(

@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS user_availability_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   slot_duration_minutes INTEGER DEFAULT 60,
-  break_duration_minutes INTEGER DEFAULT 60,
   advance_booking_days INTEGER DEFAULT 30,
   time_format_12h BOOLEAN DEFAULT false,
   timezone VARCHAR(50) DEFAULT 'UTC', -- User's primary timezone
