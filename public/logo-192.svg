@@ -1,0 +1,33 @@
+<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with gradient -->
+  <circle cx="96" cy="96" r="96" fill="url(#gradient)"/>
+  
+  <!-- Calendar icon -->
+  <rect x="48" y="36" width="96" height="108" rx="12" fill="white" stroke="white" stroke-width="6"/>
+  
+  <!-- Calendar header -->
+  <rect x="48" y="36" width="96" height="24" rx="12" fill="#2563eb"/>
+  
+  <!-- Calendar rings -->
+  <rect x="60" y="24" width="12" height="18" rx="6" fill="#2563eb"/>
+  <rect x="120" y="24" width="12" height="18" rx="6" fill="#2563eb"/>
+  
+  <!-- Calendar grid lines -->
+  <line x1="60" y1="84" x2="132" y2="84" stroke="#e5e7eb" stroke-width="3"/>
+  <line x1="60" y1="108" x2="132" y2="108" stroke="#e5e7eb" stroke-width="3"/>
+  <line x1="60" y1="132" x2="132" y2="132" stroke="#e5e7eb" stroke-width="3"/>
+  <line x1="84" y1="60" x2="84" y2="144" stroke="#e5e7eb" stroke-width="3"/>
+  <line x1="108" y1="60" x2="108" y2="144" stroke="#e5e7eb" stroke-width="3"/>
+  
+  <!-- Booked slot indicators -->
+  <circle cx="78" cy="96" r="9" fill="#2563eb"/>
+  <circle cx="102" cy="120" r="9" fill="#2563eb"/>
+  
+  <!-- Gradient definition -->
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>

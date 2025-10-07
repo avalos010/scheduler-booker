@@ -168,8 +168,8 @@ export default async function RootLayout({
 
         {/* Manifest and icons */}
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/logo-192.svg" />
         <link
           rel="icon"
           type="image/png"
