@@ -30,9 +30,9 @@ export async function GET(request: NextRequest) {
     const shouldUse12HourFormat = userSettings?.time_format_12h || false;
 
     // Get working hours for the day
-    // Note: getDay() returns 0-6 (Sunday-Saturday), but our database uses 1-7 (Monday-Sunday)
+    // Note: getDay() returns 0-6 (Sunday-Saturday), and our database uses 0-6 (Sunday-Saturday)
     const jsDayOfWeek = new Date(date).getDay();
-    const dayOfWeek = jsDayOfWeek === 0 ? 7 : jsDayOfWeek; // Convert Sunday=0 to Sunday=7
+    const dayOfWeek = jsDayOfWeek; // No conversion needed - both use 0-6
 
     console.log(
       `🔍 Checking availability for user ${userId}, date ${date}, JS day: ${jsDayOfWeek}, DB day: ${dayOfWeek}`
@@ -78,19 +78,97 @@ export async function GET(request: NextRequest) {
       count: customTimeSlots?.length || 0,
     });
 
-    // Note: Do not early-return with custom slots. We'll first generate slots
-    // from working hours and then overlay custom slots to match private endpoint behavior.
+    // Note: Do not early-return with custom slots. Prefer to show custom/one-off slots
+    // even when the default working hours mark the day as non-working.
 
-    // If no working hours found or not a working day, return empty slots
+    // If default working hours are missing or non-working, but there are custom slots,
+    // build the response from custom slots only.
     if (workingHoursError || !workingHours || !workingHours.is_working) {
+      if (customTimeSlots && customTimeSlots.length > 0) {
+        console.log(
+          `🔍 No/default non-working hours for day ${dayOfWeek}, but found custom slots. Building from custom slots.`
+        );
+
+        const customOnlySlots: Array<{
+          id: string;
+          startTime: string;
+          endTime: string;
+          startTimeDisplay?: string;
+          endTimeDisplay?: string;
+          isAvailable: boolean;
+          isBooked: boolean;
+        }> = customTimeSlots.map((customSlot) => {
+          const startTime = extractTimeFromTimestamp(customSlot.start_time);
+          const endTime = extractTimeFromTimestamp(customSlot.end_time);
+          const slot = {
+            id: `${userId}-${date}-${startTime}-${endTime}`,
+            startTime,
+            endTime,
+            isAvailable:
+              customSlot.is_available !== false && !customSlot.is_booked,
+            isBooked: customSlot.is_booked || false,
+          } as {
+            id: string;
+            startTime: string;
+            endTime: string;
+            startTimeDisplay?: string;
+            endTimeDisplay?: string;
+            isAvailable: boolean;
+            isBooked: boolean;
+          };
+
+          if (shouldUse12HourFormat) {
+            slot.startTimeDisplay = formatTime(startTime, false);
+            slot.endTimeDisplay = formatTime(endTime, false);
+          }
+          return slot;
+        });
+
+        // Check for existing bookings and mark slots as unavailable
+        const { data: existingBookings } = await supabase
+          .from("bookings")
+          .select(
+            "start_time, end_time, status, client_name, client_email, notes"
+          )
+          .eq("user_id", userId)
+          .eq("date", date)
+          .in("status", ["confirmed", "pending"]);
+
+        if (existingBookings) {
+          customOnlySlots.forEach((slot) => {
+            const booking = existingBookings.find((b) => {
+              const bookingStartTime = extractTimeFromTimestamp(b.start_time);
+              const bookingEndTime = extractTimeFromTimestamp(b.end_time);
+              return (
+                bookingStartTime === slot.startTime &&
+                bookingEndTime === slot.endTime
+              );
+            });
+            if (booking) {
+              slot.isAvailable = false;
+              slot.isBooked = true;
+            }
+          });
+        }
+
+        return NextResponse.json({
+          date: new Date(date),
+          timeSlots: customOnlySlots,
+          // Treat as working day since there are explicit available slots
+          isWorkingDay: true,
+          message: "Using custom time slots for non-working day",
+        });
+      }
+
+      // No working hours and no custom slots → empty
       console.log(
-        `🔍 No working hours for day ${dayOfWeek}, returning empty slots`
+        `🔍 No working hours and no custom slots for day ${dayOfWeek}, returning empty slots`
       );
       return NextResponse.json({
         date: new Date(date),
         timeSlots: [],
         isWorkingDay: false,
-        message: "No working hours configured for this day",
+        message: "No working hours or custom slots configured for this day",
       });
     }
 
@@ -212,14 +290,6 @@ export async function GET(request: NextRequest) {
         if (booking) {
           slot.isAvailable = false;
           slot.isBooked = true;
-          // DO NOT include booking details in the public response
-          // slot.bookingStatus = booking.status;
-          // slot.bookingDetails = {
-          //   clientName: booking.client_name,
-          //   clientEmail: booking.client_email,
-          //   notes: booking.notes,
-          //   status: booking.status,
-          // };
         }
       });
     }

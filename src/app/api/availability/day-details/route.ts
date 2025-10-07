@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     // Parse the date as a local date to avoid timezone issues
     const localDate = new Date(date + "T00:00:00");
     const jsDayOfWeek = localDate.getDay();
-    const dayOfWeek = jsDayOfWeek === 0 ? 7 : jsDayOfWeek;
+    const dayOfWeek = jsDayOfWeek; // No conversion needed - both use 0-6
 
     console.log("🔥 Working hours query:", {
       userId,
@@ -113,6 +113,8 @@ export async function GET(request: NextRequest) {
       isWorking: workingHours?.is_working,
       startTime: workingHours?.start_time,
       endTime: workingHours?.end_time,
+      dayOfWeek,
+      jsDayOfWeek,
     });
 
     // Check for custom time slots for this specific date
@@ -141,6 +143,68 @@ export async function GET(request: NextRequest) {
         userId,
       });
 
+      // If there are custom slots for this date, return those instead of empty
+      if (customTimeSlots && customTimeSlots.length > 0) {
+        console.log(
+          "🔥 Using custom slots for non-working day or missing working hours"
+        );
+
+        const customOnly: ApiTimeSlot[] = customTimeSlots.map((customSlot) => {
+          const startTime = extractTimeFromTimestamp(customSlot.start_time);
+          const endTime = extractTimeFromTimestamp(customSlot.end_time);
+          return {
+            id: `${userId}-${date}-${startTime}-${endTime}`,
+            startTime,
+            endTime,
+            isAvailable: customSlot.is_available,
+            isBooked: customSlot.is_booked || false,
+          };
+        });
+
+        // Merge booking info
+        const { data: existingBookings } = await supabase
+          .from("bookings")
+          .select(
+            "start_time, end_time, status, client_name, client_email, notes"
+          )
+          .eq("user_id", userId)
+          .eq("date", date);
+
+        if (existingBookings) {
+          customOnly.forEach((slot) => {
+            const booking = existingBookings.find((b) => {
+              const bookingStartTime = extractTimeFromTimestamp(b.start_time);
+              const bookingEndTime = extractTimeFromTimestamp(b.end_time);
+              return (
+                bookingStartTime === slot.startTime &&
+                bookingEndTime === slot.endTime
+              );
+            });
+            if (booking) {
+              const blocksSlot =
+                booking.status === "pending" || booking.status === "confirmed";
+              if (blocksSlot) {
+                slot.isAvailable = false;
+                slot.isBooked = true;
+              }
+              slot.bookingDetails = {
+                clientName: booking.client_name,
+                clientEmail: booking.client_email,
+                notes: booking.notes,
+                status: booking.status,
+              };
+            }
+          });
+        }
+
+        return NextResponse.json({
+          date: new Date(date),
+          timeSlots: customOnly,
+          isWorkingDay: true, // Treat as working because there are explicit slots
+        });
+      }
+
+      // Fall back to empty when no custom slots exist
       // If no working hours found, try to get all working hours to debug
       const { data: allWorkingHours } = await supabase
         .from("user_working_hours")
@@ -240,6 +304,7 @@ export async function GET(request: NextRequest) {
     // Now apply any custom overrides from the database
     if (customTimeSlots && customTimeSlots.length > 0) {
       console.log("🔥 APPLYING CUSTOM TIME SLOT OVERRIDES");
+      console.log("🔥 Custom time slots found:", customTimeSlots.length);
       customTimeSlots.forEach((customSlot) => {
         const startTime = extractTimeFromTimestamp(customSlot.start_time);
         const endTime = extractTimeFromTimestamp(customSlot.end_time);
@@ -268,6 +333,11 @@ export async function GET(request: NextRequest) {
             customSlot.is_available
           );
           timeSlots[existingSlotIndex].isAvailable = customSlot.is_available;
+          console.log("🔥 Slot after update:", {
+            startTime: timeSlots[existingSlotIndex].startTime,
+            endTime: timeSlots[existingSlotIndex].endTime,
+            isAvailable: timeSlots[existingSlotIndex].isAvailable,
+          });
         } else {
           // Add a new custom slot if it doesn't exist in the generated set
           console.log("🔥 Adding new custom slot:", {
