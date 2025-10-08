@@ -19,7 +19,7 @@ export default function Navbar({ isAuthed }: NavbarProps) {
 
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-6 py-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Link
@@ -29,7 +29,7 @@ export default function Navbar({ isAuthed }: NavbarProps) {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm ring-1 ring-blue-400/40">
                 <CalendarDaysIcon className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">
+              <span className="text-lg sm:text-xl font-bold text-gray-900 whitespace-nowrap">
                 Scheduler Booker
               </span>
             </Link>
@@ -59,7 +59,7 @@ export default function Navbar({ isAuthed }: NavbarProps) {
             )}
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {isAuthed ? (
               !isAuthRoute ? (
                 <>
@@ -71,13 +71,13 @@ export default function Navbar({ isAuthed }: NavbarProps) {
                 <>
                   <Link
                     href="/login"
-                    className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                    className="text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm sm:text-base whitespace-nowrap"
                   >
                     Sign In
                   </Link>
                   <Link
                     href="/signup"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+                    className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm text-sm sm:text-base whitespace-nowrap"
                   >
                     Get Started
                   </Link>

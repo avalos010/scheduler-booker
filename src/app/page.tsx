@@ -81,31 +81,31 @@ export default async function Home() {
     <RedirectIfAuthed to="/dashboard">
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         {/* Hero Section */}
-        <div className="px-6 py-20">
+        <div className="px-6 py-16 sm:py-20">
           <div className="max-w-7xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
               Simplify Your
               <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 {" "}
                 Scheduling
               </span>
             </h1>
-            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-3xl mx-auto px-4">
               Streamline your appointment booking with our intelligent
               scheduling platform. Manage availability, automate bookings, and
               focus on what matters most.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto sm:max-w-none">
               <Link
                 href="/signup"
-                className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:-translate-y-1 shadow-lg hover:shadow-xl"
+                className="inline-flex items-center justify-center px-8 py-4 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-base sm:text-lg font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:-translate-y-1 shadow-lg hover:shadow-xl active:scale-95"
               >
                 Get Started
                 <ArrowRightIcon className="w-5 h-5 ml-2" />
               </Link>
               <Link
                 href="/login"
-                className="inline-flex items-center px-8 py-4 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
+                className="inline-flex items-center justify-center px-8 py-4 sm:py-3 border-2 border-gray-300 text-gray-700 text-base sm:text-lg font-semibold rounded-xl hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 active:scale-95"
               >
                 Sign In
               </Link>
@@ -227,15 +227,15 @@ export default async function Home() {
         {/* CTA Section */}
         <div className="px-6 py-20 bg-gradient-to-r from-blue-600 to-indigo-600">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
               Ready to transform your scheduling?
             </h2>
-            <p className="text-blue-100 mb-8 text-lg">
+            <p className="text-blue-100 mb-8 text-base sm:text-lg">
               Get started today and experience the difference
             </p>
             <Link
               href="/signup"
-              className="inline-flex items-center px-8 py-4 bg-white text-blue-600 font-semibold rounded-xl hover:bg-gray-50 transition-all duration-200 transform hover:-translate-y-1 shadow-lg"
+              className="inline-flex items-center justify-center px-8 py-4 sm:py-3 bg-white text-blue-600 text-base sm:text-lg font-semibold rounded-xl hover:bg-gray-50 transition-all duration-200 transform hover:-translate-y-1 shadow-lg active:scale-95 max-w-xs mx-auto sm:max-w-none"
             >
               Get Started
               <ArrowRightIcon className="w-5 h-5 ml-2" />
