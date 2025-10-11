@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/common/Navbar";
 import { SnackbarProvider } from "@/components/snackbar";
-import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 const geistSans = Geist({
@@ -100,51 +99,17 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-
-  // Debug: Log all cookies to see what's available
-  const allCookies = cookieStore.getAll();
-  console.log(
-    "🔍 Layout: All cookies:",
-    allCookies.map((c) => ({
-      name: c.name,
-      value: c.value.substring(0, 50) + "...",
-    }))
-  );
-
-  // Look specifically for Supabase auth cookies
-  const supabaseCookies = allCookies.filter((c) => c.name.includes("sb-"));
-  console.log(
-    "🔍 Layout: Supabase cookies:",
-    supabaseCookies.map((c) => ({
-      name: c.name,
-      value: c.value.substring(0, 50) + "...",
-    }))
-  );
-
-  // Debug: Check environment variables
-  console.log("🔍 Layout: Environment check:", {
-    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    hasSupabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    supabaseUrlLength: process.env.NEXT_PUBLIC_SUPABASE_URL?.length,
-    supabaseKeyLength: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length,
-  });
-
-  const supabase = await createSupabaseServerClient();
-
-  // Get session on server side
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  const isAuthed = !!user;
-
-  console.log("🔍 Layout: Supabase auth result:", {
-    hasUser: !!user,
-    userId: user?.id,
-    error: error?.message,
-    timestamp: new Date().toISOString(),
-  });
+  // Check auth on server side - only pass boolean to client
+  // Use getSession() which checks locally without API call
+  let isAuthed = false;
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getSession();
+    isAuthed = !!data.session;
+  } catch {
+    // Invalid tokens - treat as not authenticated
+    isAuthed = false;
+  }
 
   return (
     <html lang="en">

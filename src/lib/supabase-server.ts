@@ -30,6 +30,11 @@ export async function getSupabaseServerClient() {
         }
       },
     },
+    auth: {
+      // Prevent auto-refresh errors from bubbling up for invalid tokens
+      detectSessionInUrl: false,
+      flowType: "pkce",
+    },
   });
 }
 

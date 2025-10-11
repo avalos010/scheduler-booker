@@ -2,31 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseMiddlewareClient } from "@/lib/supabase-server";
 
 export async function middleware(request: NextRequest) {
-  console.log(
-    "🔍 Middleware: Processing request for",
-    request.nextUrl.pathname
-  );
-
-  // Debug: Log all cookies from the request
-  const allCookies = request.cookies.getAll();
-  console.log(
-    "🔍 Middleware: All request cookies:",
-    allCookies.map((c) => ({
-      name: c.name,
-      value: c.value.substring(0, 50) + "...",
-    }))
-  );
-
-  // Look specifically for Supabase auth cookies
-  const supabaseCookies = allCookies.filter((c) => c.name.includes("sb-"));
-  console.log(
-    "🔍 Middleware: Supabase cookies:",
-    supabaseCookies.map((c) => ({
-      name: c.name,
-      value: c.value.substring(0, 50) + "...",
-    }))
-  );
-
   const response = NextResponse.next({
     request,
   });
@@ -43,21 +18,38 @@ export async function middleware(request: NextRequest) {
 
   const supabase = createSupabaseMiddlewareClient(request.cookies);
 
-  // Refresh session if expired
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
+  // Refresh session if expired - handle auth errors gracefully
+  let session = null;
+  let hasAuthError = false;
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    session = data.session;
+    // Detect invalid token errors
+    if (
+      error?.message?.includes("refresh_token_not_found") ||
+      error?.message?.includes("Invalid Refresh Token")
+    ) {
+      hasAuthError = true;
+      session = null;
+    }
+  } catch {
+    // Invalid/expired tokens - treat as no session
+    hasAuthError = true;
+    session = null;
+  }
 
-  console.log("🔍 Middleware: Supabase auth result:", {
-    hasSession: !!session,
-    userId: session?.user?.id,
-    error: error?.message,
-  });
+  // Clear invalid auth cookies if detected
+  if (hasAuthError) {
+    const authCookies = request.cookies
+      .getAll()
+      .filter((c) => c.name.includes("sb-"));
+    authCookies.forEach((cookie) => {
+      response.cookies.delete(cookie.name);
+    });
+  }
 
   // If accessing protected routes without session, redirect to login
   if (!session && request.nextUrl.pathname.startsWith("/dashboard")) {
-    console.log("🔍 Middleware: No session, redirecting to login");
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -67,7 +59,6 @@ export async function middleware(request: NextRequest) {
     (request.nextUrl.pathname === "/login" ||
       request.nextUrl.pathname === "/signup")
   ) {
-    console.log("🔍 Middleware: Has session, redirecting to dashboard");
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -77,9 +68,6 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname === "/onboarding" &&
     session.user?.user_metadata?.onboarded
   ) {
-    console.log(
-      "🔍 Middleware: User already onboarded, redirecting to dashboard"
-    );
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -87,5 +75,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/signup", "/onboarding"],
+  matcher: ["/", "/dashboard/:path*", "/login", "/signup", "/onboarding"],
 };
