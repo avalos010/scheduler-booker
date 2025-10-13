@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { Dialog, DialogPanel } from "@headlessui/react";
 import AvailabilitySettings from "./AvailabilitySettings";
 
 interface SettingsModalProps {
@@ -10,38 +10,14 @@ interface SettingsModalProps {
 }
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  // Close modal on escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      document.body.style.overflow = "hidden";
-    }
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
 
-      {/* Modal - Mobile responsive with proper spacing */}
-      <div className="flex min-h-full items-start justify-center p-2 sm:p-4 pt-4 sm:pt-8 pb-4 sm:pb-8">
-        <div className="relative w-full max-w-4xl bg-white rounded-xl sm:rounded-2xl shadow-2xl my-2 sm:my-8">
+      {/* Modal Container */}
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <DialogPanel className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
           {/* Header - Mobile responsive */}
           <div className="sticky top-0 z-10 flex items-center justify-between p-3 sm:p-6 border-b border-gray-200 bg-white rounded-t-xl sm:rounded-t-2xl">
             <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
@@ -55,8 +31,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </button>
           </div>
 
-          {/* Content - Mobile responsive padding */}
-          <div className="p-3 sm:p-6">
+          {/* Content - Mobile responsive padding with scroll */}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
             <AvailabilitySettings />
           </div>
 
@@ -69,8 +45,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               Close
             </button>
           </div>
-        </div>
+        </DialogPanel>
       </div>
-    </div>
+    </Dialog>
   );
 }
