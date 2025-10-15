@@ -5,6 +5,7 @@ import Navbar from "@/components/common/Navbar";
 import { SnackbarProvider } from "@/components/snackbar";
 import { Analytics } from "@vercel/analytics/next";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import QueryProvider from "@/lib/providers/QueryProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -187,10 +188,12 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Analytics />
-        <SnackbarProvider>
-          <Navbar isAuthed={isAuthed} />
-          {children}
-        </SnackbarProvider>
+        <QueryProvider>
+          <SnackbarProvider>
+            <Navbar isAuthed={isAuthed} />
+            {children}
+          </SnackbarProvider>
+        </QueryProvider>
       </body>
     </html>
   );

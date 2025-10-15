@@ -47,6 +47,8 @@ export interface Booking {
   date: string;
   start_time: string;
   end_time: string;
+  startTimeDisplay?: string; // Server-formatted display time
+  endTimeDisplay?: string; // Server-formatted display time
   client_name: string;
   client_email: string;
   client_phone?: string;

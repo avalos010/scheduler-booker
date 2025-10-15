@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { useSnackbar } from "@/components/snackbar";
+import { useBookings, useUpdateBookingStatus } from "@/lib/hooks/queries";
+import type { Booking } from "@/lib/types/availability";
 
 import {
   CheckCircleIcon,
@@ -18,20 +20,7 @@ import {
 // Normalize YYYY-MM-DD dates to local timezone to avoid off-by-one when formatting
 const toLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
 
-interface Booking {
-  id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  startTimeDisplay?: string; // Server-formatted display time
-  endTimeDisplay?: string; // Server-formatted display time
-  client_name: string;
-  client_email: string;
-  client_phone: string | null;
-  notes: string | null;
-  status: "pending" | "confirmed" | "cancelled" | "completed" | "no-show";
-  created_at: string;
-}
+// Booking type is now imported from types/availability
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface AppointmentsListProps {}
@@ -39,9 +28,8 @@ interface AppointmentsListProps {}
 // Local config inside BookingCard handles display styling
 
 export default function AppointmentsList({}: AppointmentsListProps) {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const { data: bookingsData, isLoading, error: fetchError } = useBookings();
+  const updateBookingStatusMutation = useUpdateBookingStatus();
   const [showDidShowModal, setShowDidShowModal] = useState(false);
   const [modalBooking, setModalBooking] = useState<Booking | null>(null);
   const [query, setQuery] = useState("");
@@ -52,73 +40,40 @@ export default function AppointmentsList({}: AppointmentsListProps) {
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const { success, error } = useSnackbar();
 
+  const bookings = bookingsData?.bookings || [];
+
+  // Handle fetch error
+  if (fetchError) {
+    console.error("Error fetching bookings:", fetchError);
+  }
+
   const navigateToRebook = (date: string, start: string, end: string) => {
     const params = new URLSearchParams({ date, start, end });
     window.location.href = `/dashboard/bookings?${params.toString()}`;
   };
 
-  const fetchBookings = useCallback(async () => {
-    try {
-      const response = await fetch("/api/bookings");
-      if (response.ok) {
-        const data = await response.json();
-        setBookings(data.bookings || []);
-      }
-    } catch (error) {
-      console.error("Error fetching bookings:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
-
   const updateBookingStatus = async (bookingId: string, newStatus: string) => {
-    setUpdatingStatus(bookingId);
     try {
-      const response = await fetch("/api/bookings", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          bookingId,
-          status: newStatus,
-        }),
+      await updateBookingStatusMutation.mutateAsync({
+        bookingId,
+        status: newStatus,
       });
-
-      if (response.ok) {
-        // Update the local state
-        setBookings((prev) =>
-          prev.map((booking) =>
-            booking.id === bookingId
-              ? { ...booking, status: newStatus as Booking["status"] }
-              : booking
-          )
-        );
-      } else {
-        const errorData = await response.json();
-        error(`Error updating booking: ${errorData.message}`);
-      }
+      success("Booking status updated successfully");
     } catch (err) {
       console.error("Error updating booking status:", err);
       error("Error updating booking status. Please try again.");
-    } finally {
-      setUpdatingStatus(null);
     }
   };
 
   const deleteBooking = async (bookingId: string) => {
     if (!window.confirm("Delete this booking? This cannot be undone.")) return;
-    setUpdatingStatus(bookingId);
     try {
       const response = await fetch(`/api/bookings?bookingId=${bookingId}`, {
         method: "DELETE",
       });
       if (response.ok) {
-        setBookings((prev) => prev.filter((b) => b.id !== bookingId));
+        // The bookings query will automatically refetch and update the UI
+        success("Booking deleted successfully");
       } else {
         const errorData = await response.json();
         error(`Error deleting booking: ${errorData.message}`);
@@ -126,8 +81,6 @@ export default function AppointmentsList({}: AppointmentsListProps) {
     } catch (err) {
       console.error("Error deleting booking:", err);
       error("Error deleting booking. Please try again.");
-    } finally {
-      setUpdatingStatus(null);
     }
   };
 
@@ -138,7 +91,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
           <div className="flex gap-2">
             <button
               onClick={() => updateBookingStatus(booking.id, "confirmed")}
-              disabled={updatingStatus === booking.id}
+              disabled={updateBookingStatusMutation.isPending}
               className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
             >
               <CheckCircleIcon className="h-4 w-4" />
@@ -146,7 +99,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
             </button>
             <button
               onClick={() => updateBookingStatus(booking.id, "cancelled")}
-              disabled={updatingStatus === booking.id}
+              disabled={updateBookingStatusMutation.isPending}
               className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
             >
               <XCircleIcon className="h-4 w-4" />
@@ -168,7 +121,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
             </button>
             <button
               onClick={() => deleteBooking(booking.id)}
-              disabled={updatingStatus === booking.id}
+              disabled={updateBookingStatusMutation.isPending}
               className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               title="Delete booking"
             >
@@ -195,7 +148,9 @@ export default function AppointmentsList({}: AppointmentsListProps) {
             <div className="flex gap-2">
               <button
                 onClick={() => updateBookingStatus(booking.id, "completed")}
-                disabled={updatingStatus === booking.id || isBeforeStart}
+                disabled={
+                  updateBookingStatusMutation.isPending || isBeforeStart
+                }
                 className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 <CheckCircleIcon className="h-4 w-4" />
@@ -203,7 +158,9 @@ export default function AppointmentsList({}: AppointmentsListProps) {
               </button>
               <button
                 onClick={() => updateBookingStatus(booking.id, "no-show")}
-                disabled={updatingStatus === booking.id || isBeforeGrace}
+                disabled={
+                  updateBookingStatusMutation.isPending || isBeforeGrace
+                }
                 title={
                   isBeforeGrace
                     ? "You can only mark no-show 15 minutes after start time"
@@ -230,7 +187,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
               </button>
               <button
                 onClick={() => deleteBooking(booking.id)}
-                disabled={updatingStatus === booking.id}
+                disabled={updateBookingStatusMutation.isPending}
                 className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                 title="Delete booking"
               >
@@ -275,7 +232,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
             )}
             <button
               onClick={() => deleteBooking(booking.id)}
-              disabled={updatingStatus === booking.id}
+              disabled={updateBookingStatusMutation.isPending}
               className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               title="Delete booking"
             >
@@ -443,7 +400,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
                 key={booking.id}
                 booking={booking}
                 actions={getStatusActions(booking)}
-                updatingStatus={updatingStatus === booking.id}
+                updatingStatus={updateBookingStatusMutation.isPending}
               />
             ))}
           </div>
@@ -463,7 +420,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
                 key={booking.id}
                 booking={booking}
                 actions={getStatusActions(booking)}
-                updatingStatus={updatingStatus === booking.id}
+                updatingStatus={updateBookingStatusMutation.isPending}
               />
             ))}
           </div>
@@ -483,7 +440,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
                 key={booking.id}
                 booking={booking}
                 actions={getStatusActions(booking)}
-                updatingStatus={updatingStatus === booking.id}
+                updatingStatus={updateBookingStatusMutation.isPending}
               />
             ))}
           </div>
@@ -526,7 +483,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
                     setShowDidShowModal(false);
                     setModalBooking(null);
                   }}
-                  disabled={updatingStatus === modalBooking.id}
+                  disabled={updateBookingStatusMutation.isPending}
                   className="inline-flex items-center gap-2 rounded-lg bg-gray-700 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
                 >
                   No, mark No Show
@@ -538,7 +495,7 @@ export default function AppointmentsList({}: AppointmentsListProps) {
                     setShowDidShowModal(false);
                     setModalBooking(null);
                   }}
-                  disabled={updatingStatus === modalBooking.id}
+                  disabled={updateBookingStatusMutation.isPending}
                   className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   Yes, mark Completed
@@ -615,8 +572,8 @@ function BookingCard({ booking, actions, updatingStatus }: BookingCardProps) {
           {/* Time */}
           <div className="mb-4">
             <p className="text-lg font-medium text-gray-900">
-              {booking.startTimeDisplay || booking.start_time} -{" "}
-              {booking.endTimeDisplay || booking.end_time}
+              {booking?.startTimeDisplay || booking.start_time} -{" "}
+              {booking?.endTimeDisplay || booking.end_time}
             </p>
           </div>
 

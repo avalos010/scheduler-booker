@@ -1,7 +1,7 @@
 "use client";
 
 import { format, parse } from "date-fns";
-import { useState, useEffect } from "react";
+import { useTimeFormat, useUpdateTimeFormat } from "@/lib/hooks/queries";
 
 /**
  * Formats time according to specified format (12-hour AM/PM or 24-hour)
@@ -88,70 +88,38 @@ export function formatTime(timeString: string, is24Hour: boolean): string {
 
 /**
  * Hook for managing time format preference (client-side only)
- * Syncs with database via API
+ * Now uses TanStack Query for better caching and error handling
  */
 export function useTimeFormatPreference() {
-  const [is24Hour, setIs24Hour] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { data: timeFormatData, isLoading, error } = useTimeFormat();
+  const updateTimeFormatMutation = useUpdateTimeFormat();
 
-  // Load preference from API on mount
-  useEffect(() => {
-    const loadPreference = async () => {
-      try {
-        const response = await fetch("/api/user/time-format");
-        if (response.ok) {
-          const data = await response.json();
-          const format24h = !data.time_format_12h; // Invert because API stores 12h preference
-          setIs24Hour(format24h);
-          localStorage.setItem("timeFormat24h", format24h.toString());
-        } else {
-          // Fallback to localStorage if API fails
-          const saved = localStorage.getItem("timeFormat24h");
-          if (saved !== null) {
-            setIs24Hour(saved === "true");
-          }
-        }
-      } catch (error) {
-        console.error("Error loading time format preference:", error);
-        // Fallback to localStorage
-        const saved = localStorage.getItem("timeFormat24h");
-        if (saved !== null) {
-          setIs24Hour(saved === "true");
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Get the current format preference
+  const is24Hour = timeFormatData ? !timeFormatData.time_format_12h : false;
 
-    loadPreference();
-  }, []);
+  // Fallback to localStorage if API fails
+  const getLocalStorageFormat = () => {
+    const saved = localStorage.getItem("timeFormat24h");
+    return saved !== null ? saved === "true" : false;
+  };
+
+  // Use localStorage fallback if there's an error
+  const finalIs24Hour = error ? getLocalStorageFormat() : is24Hour;
 
   const setTimeFormat = async (format24h: boolean) => {
-    setIs24Hour(format24h);
+    // Update localStorage immediately for UI responsiveness
     localStorage.setItem("timeFormat24h", format24h.toString());
 
-    // Save to database via API
     try {
-      const response = await fetch("/api/user/time-format", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          time_format_12h: !format24h, // Invert because API stores 12h preference
-        }),
-      });
-
-      if (!response.ok) {
-        console.error("Failed to save time format preference to database");
-      }
+      // Update via mutation (inverts because API stores 12h preference)
+      await updateTimeFormatMutation.mutateAsync(!format24h);
     } catch (error) {
       console.error("Error saving time format preference:", error);
     }
   };
 
   return {
-    is24Hour,
+    is24Hour: finalIs24Hour,
     setIs24Hour: setTimeFormat,
     isLoading,
   };
