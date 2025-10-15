@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@/lib/test-utils";
+import { render, screen, fireEvent, act, waitFor } from "@/lib/test-utils";
 import AvailabilityCalendar from "../AvailabilityCalendar";
 import { format, eachDayOfInterval } from "date-fns";
 import type {
@@ -280,7 +280,11 @@ describe("AvailabilityCalendar UI", () => {
 
     // Should show time slots
     expect(screen.getByText("Time Slots")).toBeTruthy();
-    expect(screen.getByText("3/3 available")).toBeTruthy();
+
+    // Wait for loading to complete and then check for available slots count
+    await waitFor(() => {
+      expect(screen.getByText("3/3 available")).toBeTruthy();
+    });
 
     // Close modal
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
@@ -327,11 +331,14 @@ describe("AvailabilityCalendar UI", () => {
 
     await screen.findByText(format(today, "EEEE, MMMM d, yyyy"));
 
-    // Click the first slot to toggle availability off
-    const firstSlotButton = screen
-      .getAllByRole("button")
-      .find((b) => /\d{2}:\d{2}\s-\s\d{2}:\d{2}/.test(b.textContent || ""));
-    expect(firstSlotButton).toBeTruthy();
+    // Wait for loading to complete and then find the first slot button
+    const firstSlotButton = await waitFor(() => {
+      const button = screen
+        .getAllByRole("button")
+        .find((b) => /\d{2}:\d{2}\s-\s\d{2}:\d{2}/.test(b.textContent || ""));
+      expect(button).toBeTruthy();
+      return button;
+    });
 
     act(() => {
       fireEvent.click(firstSlotButton!);
