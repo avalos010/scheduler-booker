@@ -70,8 +70,8 @@ describe("LoginForm", () => {
     const passwordInput = screen.getByLabelText(/password/i);
     const submitButton = screen.getByRole("button", { name: /sign in/i });
 
-    await user.type(emailInput, TEST_USER.email);
-    await user.type(passwordInput, TEST_USER.password);
+    await user.type(emailInput, TEST_USER.email!);
+    await user.type(passwordInput, TEST_USER.password!);
     await user.click(submitButton);
 
     await waitFor(() => {

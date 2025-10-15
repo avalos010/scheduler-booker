@@ -1,8 +1,8 @@
 // Test configuration for automated testing
 export const TEST_CONFIG = {
   user: {
-    email: process.env.TEST_USER_EMAIL,
-    password: process.env.TEST_USER_PASSWORD,
+    email: process.env.TEST_USER_EMAIL || "example@example.com",
+    password: process.env.TEST_USER_PASSWORD || "password1234",
     name: "Test User",
   },
   business: {

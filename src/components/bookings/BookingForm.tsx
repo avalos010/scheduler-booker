@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { UserIcon } from "@heroicons/react/24/outline";
 import { useSnackbar } from "@/components/snackbar";
+import { useDayAvailability } from "@/lib/hooks/queries";
 
 import {
   bookingFormSchema,
@@ -35,11 +36,12 @@ export default function BookingForm() {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(
     null
   );
-  const [dayAvailability, setDayAvailability] =
-    useState<DayAvailability | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
   const { success, error, warning } = useSnackbar();
+
+  // Use TanStack Query for day availability
+  const dateString = format(selectedDate, "yyyy-MM-dd");
+  const { data: dayAvailability, isLoading } = useDayAvailability(dateString);
   const {
     register,
     handleSubmit,
@@ -93,30 +95,6 @@ export default function BookingForm() {
     }
   }, [searchParams, dayAvailability, selectedTimeSlot]);
 
-  const fetchDayAvailability = useCallback(async (date: Date) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `/api/availability/day-details?date=${format(date, "yyyy-MM-dd")}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setDayAvailability(data);
-      }
-    } catch (error) {
-      console.error("Error fetching availability:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Fetch availability for selected date
-  useEffect(() => {
-    if (selectedDate) {
-      fetchDayAvailability(selectedDate);
-    }
-  }, [selectedDate, fetchDayAvailability]);
-
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
     setSelectedTimeSlot(null);
@@ -159,8 +137,7 @@ export default function BookingForm() {
         // Reset form
         reset();
         setSelectedTimeSlot(null);
-        // Refresh availability
-        fetchDayAvailability(selectedDate);
+        // Availability will automatically refresh via TanStack Query cache invalidation
       } else {
         const errorData = await response.json();
         error(`Error creating booking: ${errorData.message}`);
@@ -178,7 +155,9 @@ export default function BookingForm() {
         onTimeSlotSelect={handleTimeSlotSelect}
         selectedDate={selectedDate}
         selectedTimeSlot={selectedTimeSlot}
-        dayAvailability={dayAvailability}
+        dayAvailability={
+          dayAvailability ? { ...dayAvailability, date: selectedDate } : null
+        }
         isLoading={isLoading}
         showBookingDetails={true}
       />

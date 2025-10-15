@@ -1,4 +1,4 @@
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act } from "@/lib/test-utils";
 import "@testing-library/jest-dom";
 import BookingForm from "../BookingForm";
 
@@ -6,7 +6,6 @@ import BookingForm from "../BookingForm";
 global.fetch = jest.fn();
 
 describe("BookingForm", () => {
-
   beforeEach(() => {
     (fetch as jest.Mock).mockClear();
   });

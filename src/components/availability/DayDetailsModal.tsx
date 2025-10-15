@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { format } from "date-fns";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { Dialog, DialogPanel } from "@headlessui/react";
+import { useDayDetails } from "@/lib/hooks/queries";
+import { useQueryClient } from "@tanstack/react-query";
 
 import type {
   DayAvailability,
@@ -53,61 +55,26 @@ export default function DayDetailsModal({
   >({});
   const [apiTimeSlots, setApiTimeSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState<Set<string>>(new Set());
-  const [isLoadingBookingDetails, setIsLoadingBookingDetails] = useState(false);
 
-  // Function to refresh the modal data
+  // Use TanStack Query for day details
+  const dateString = selectedDate ? format(selectedDate, "yyyy-MM-dd") : null;
+  const { data: dayDetailsData, isLoading: isLoadingBookingDetails } =
+    useDayDetails(dateString);
+  const queryClient = useQueryClient();
+
+  // Function to refresh the modal data using TanStack Query
   const refreshModalData = useCallback(async () => {
     if (!selectedDate) return;
 
-    try {
-      const response = await fetch(
-        `/api/availability/day-details?date=${format(
-          selectedDate,
-          "yyyy-MM-dd"
-        )}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        if (data.timeSlots) {
-          const details: Record<
-            string,
-            {
-              clientName: string;
-              clientEmail: string;
-              notes?: string;
-              status: string;
-            }
-          > = {};
-
-          data.timeSlots.forEach(
-            (slot: {
-              id: string;
-              startTime: string;
-              endTime: string;
-              startTimeDisplay?: string;
-              endTimeDisplay?: string;
-              isBooked: boolean;
-              bookingDetails?: {
-                clientName: string;
-                clientEmail: string;
-                notes?: string;
-                status: string;
-              };
-            }) => {
-              if (slot.isBooked && slot.bookingDetails) {
-                details[slot.id] = slot.bookingDetails;
-              }
-            }
-          );
-
-          setBookingDetails(details);
-          setApiTimeSlots(data.timeSlots || []);
-        }
-      }
-    } catch (error) {
-      console.error("Error refreshing modal data:", error);
-    }
-  }, [selectedDate]);
+    // Invalidate and refetch the day details query
+    await queryClient.invalidateQueries({
+      queryKey: [
+        "availability",
+        "dayDetails",
+        format(selectedDate, "yyyy-MM-dd"),
+      ],
+    });
+  }, [selectedDate, queryClient]);
 
   // Close modal on escape key
   useEffect(() => {
@@ -140,93 +107,41 @@ export default function DayDetailsModal({
     }
   }, [selectedDate, workingHours]);
 
-  // Fetch booking details when modal opens or date changes
+  // Process booking details when TanStack Query data changes
   useEffect(() => {
-    if (!isOpen || !selectedDate) {
+    if (!dayDetailsData?.timeSlots) {
       return;
     }
 
-    const fetchBookingDetails = async () => {
-      setIsLoadingBookingDetails(true);
-      try {
-        const dateKey = format(selectedDate, "yyyy-MM-dd");
-
-        // Skip fetch in test environment if fetch is not properly mocked
-        if (
-          process.env.NODE_ENV === "test" &&
-          typeof global.fetch === "undefined"
-        ) {
-          return;
-        }
-
-        // Fetch booking details for this date using the secure, authenticated endpoint
-        const response = await fetch(
-          `/api/availability/day-details?date=${dateKey}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          console.log("🔍 DayDetailsModal: API response:", {
-            timeSlots: data.timeSlots?.slice(0, 2), // Show first 2 slots for debugging
-            hasDisplayFields: data.timeSlots?.some(
-              (slot: { startTimeDisplay?: string }) =>
-                slot.startTimeDisplay !== undefined
-            ),
-            userPreference: "server-formatted",
-          });
-          if (data.timeSlots) {
-            const details: Record<
-              string,
-              {
-                clientName: string;
-                clientEmail: string;
-                notes?: string;
-                status: string;
-              }
-            > = {};
-
-            data.timeSlots.forEach(
-              (slot: {
-                id: string;
-                startTime: string;
-                endTime: string;
-                startTimeDisplay?: string;
-                endTimeDisplay?: string;
-                isBooked: boolean;
-                bookingDetails?: {
-                  clientName: string;
-                  clientEmail: string;
-                  notes?: string;
-                  status: string;
-                };
-              }) => {
-                if (slot.isBooked && slot.bookingDetails) {
-                  details[slot.id] = slot.bookingDetails;
-                }
-              }
-            );
-
-            console.log("🔍 DayDetailsModal: API data fetched:", {
-              apiSlots: data.timeSlots,
-              hasDisplayFields: data.timeSlots?.some(
-                (slot: TimeSlot) => slot.startTimeDisplay
-              ),
-              mappedDetails: details,
-              detailsCount: Object.keys(details).length,
-              availabilitySlots: dayAvailability?.timeSlots || [],
-            });
-            setBookingDetails(details);
-            setApiTimeSlots(data.timeSlots || []);
-          }
-        }
-      } catch {
-        // Error fetching booking details - silently fail in tests
-      } finally {
-        setIsLoadingBookingDetails(false);
+    const details: Record<
+      string,
+      {
+        clientName: string;
+        clientEmail: string;
+        notes?: string;
+        status: string;
       }
-    };
+    > = {};
 
-    fetchBookingDetails();
-  }, [isOpen, selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
+    dayDetailsData.timeSlots.forEach((slot: TimeSlot) => {
+      if (slot.isBooked && slot.bookingDetails) {
+        details[slot.id] = slot.bookingDetails;
+      }
+    });
+
+    console.log("🔍 DayDetailsModal: API data fetched:", {
+      apiSlots: dayDetailsData.timeSlots,
+      hasDisplayFields: dayDetailsData.timeSlots?.some(
+        (slot: TimeSlot) => slot.startTimeDisplay
+      ),
+      mappedDetails: details,
+      detailsCount: Object.keys(details).length,
+      availabilitySlots: dayAvailability?.timeSlots || [],
+    });
+    setBookingDetails(details);
+    setApiTimeSlots(dayDetailsData.timeSlots || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayDetailsData]);
 
   // Early return if modal is not open or no date selected
   if (!isOpen || !selectedDate) return null;

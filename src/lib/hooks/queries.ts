@@ -104,6 +104,38 @@ const api = {
     return { isOnboarded: data.isOnboarded };
   },
 
+  // Day availability for booking forms
+  async fetchDayAvailability(date: string): Promise<{
+    timeSlots: TimeSlot[];
+    isWorkingDay: boolean;
+  }> {
+    const response = await fetch(`/api/availability/day-details?date=${date}`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch day availability");
+    }
+    const data = await response.json();
+    return {
+      timeSlots: data.timeSlots || [],
+      isWorkingDay: data.isWorkingDay || false,
+    };
+  },
+
+  async fetchPublicDayAvailability(
+    date: string,
+    userId: string
+  ): Promise<{
+    timeSlots: TimeSlot[];
+    isWorkingDay: boolean;
+  }> {
+    const response = await fetch(
+      `/api/availability/public?date=${date}&userId=${userId}`
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch public day availability");
+    }
+    return response.json();
+  },
+
   // User preferences
   async fetchTimeFormat(): Promise<{ time_format_12h: boolean }> {
     const response = await fetch("/api/user/time-format");
@@ -223,12 +255,36 @@ export function useUpdateTimeFormat() {
     mutationFn: (is12Hour: boolean) => api.updateTimeFormat(is12Hour),
     onSuccess: () => {
       // Update the cache immediately
-      const currentData = queryClient.getQueryData(queryKeys.user.timeFormat) as { time_format_12h: boolean } | undefined;
+      const currentData = queryClient.getQueryData(
+        queryKeys.user.timeFormat
+      ) as { time_format_12h: boolean } | undefined;
       queryClient.setQueryData(queryKeys.user.timeFormat, {
         time_format_12h: !currentData?.time_format_12h,
       });
       // Also invalidate to refetch from server
       queryClient.invalidateQueries({ queryKey: queryKeys.user.timeFormat });
     },
+  });
+}
+
+// Day availability for booking forms
+export function useDayAvailability(date: string | null) {
+  return useQuery({
+    queryKey: ["availability", "day", date],
+    queryFn: () => api.fetchDayAvailability(date!),
+    enabled: !!date,
+    staleTime: 30 * 1000, // 30 seconds
+  });
+}
+
+export function usePublicDayAvailability(
+  date: string | null,
+  userId: string | null
+) {
+  return useQuery({
+    queryKey: ["availability", "public", "day", date, userId],
+    queryFn: () => api.fetchPublicDayAvailability(date!, userId!),
+    enabled: !!date && !!userId,
+    staleTime: 30 * 1000, // 30 seconds
   });
 }

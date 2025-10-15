@@ -4,7 +4,7 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@/lib/test-utils";
 import { format, addDays } from "date-fns";
 import AvailabilityCalendar from "../AvailabilityCalendar";
 import type { TimeSlot, DayAvailability } from "@/lib/types/availability";
