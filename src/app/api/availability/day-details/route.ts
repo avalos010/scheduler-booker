@@ -152,13 +152,21 @@ export async function GET(request: NextRequest) {
         const customOnly: ApiTimeSlot[] = customTimeSlots.map((customSlot) => {
           const startTime = extractTimeFromTimestamp(customSlot.start_time);
           const endTime = extractTimeFromTimestamp(customSlot.end_time);
-          return {
+          const slot: ApiTimeSlot = {
             id: `${userId}-${date}-${startTime}-${endTime}`,
             startTime,
             endTime,
             isAvailable: customSlot.is_available,
             isBooked: customSlot.is_booked || false,
           };
+
+          // Add display formatting if user prefers 12-hour format
+          if (shouldUse12HourFormat) {
+            slot.startTimeDisplay = formatTime(startTime, false); // false = 12-hour format
+            slot.endTimeDisplay = formatTime(endTime, false);
+          }
+
+          return slot;
         });
 
         // Merge booking info
@@ -275,13 +283,21 @@ export async function GET(request: NextRequest) {
         .slice(0, 5);
 
       if (new Date(`2000-01-01T${slotEnd}`) <= endTimeDate) {
-        slots.push({
+        const slot: ApiTimeSlot = {
           id: `${userId}-${date}-${slotStart}-${slotEnd}`,
           startTime: slotStart,
           endTime: slotEnd,
           isAvailable: true, // Default to available
           isBooked: false,
-        });
+        };
+
+        // Add display formatting if user prefers 12-hour format
+        if (shouldUse12HourFormat) {
+          slot.startTimeDisplay = formatTime(slotStart, false); // false = 12-hour format
+          slot.endTimeDisplay = formatTime(slotEnd, false);
+        }
+
+        slots.push(slot);
         console.log("🔥 Generated slot:", { slotStart, slotEnd });
       }
 
@@ -345,13 +361,21 @@ export async function GET(request: NextRequest) {
             endTime,
             isAvailable: customSlot.is_available,
           });
-          timeSlots.push({
+          const newSlot: ApiTimeSlot = {
             id: `${userId}-${date}-${startTime}-${endTime}`,
             startTime,
             endTime,
             isAvailable: customSlot.is_available,
             isBooked: false,
-          });
+          };
+
+          // Add display formatting if user prefers 12-hour format
+          if (shouldUse12HourFormat) {
+            newSlot.startTimeDisplay = formatTime(startTime, false); // false = 12-hour format
+            newSlot.endTimeDisplay = formatTime(endTime, false);
+          }
+
+          timeSlots.push(newSlot);
         }
       });
     }

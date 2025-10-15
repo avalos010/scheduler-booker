@@ -53,6 +53,7 @@ export default function DayDetailsModal({
   >({});
   const [apiTimeSlots, setApiTimeSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState<Set<string>>(new Set());
+  const [isLoadingBookingDetails, setIsLoadingBookingDetails] = useState(false);
 
   // Function to refresh the modal data
   const refreshModalData = useCallback(async () => {
@@ -146,6 +147,7 @@ export default function DayDetailsModal({
     }
 
     const fetchBookingDetails = async () => {
+      setIsLoadingBookingDetails(true);
       try {
         const dateKey = format(selectedDate, "yyyy-MM-dd");
 
@@ -218,6 +220,8 @@ export default function DayDetailsModal({
         }
       } catch {
         // Error fetching booking details - silently fail in tests
+      } finally {
+        setIsLoadingBookingDetails(false);
       }
     };
 
@@ -312,18 +316,32 @@ export default function DayDetailsModal({
                     <h3 className="text-base sm:text-lg font-medium text-gray-800">
                       Time Slots
                     </h3>
-                    <span className="ml-2 text-xs sm:text-sm text-gray-500">
-                      {
-                        displayTimeSlots.filter(
-                          (slotDuration) =>
-                            slotDuration.isAvailable && !slotDuration.isBooked
-                        ).length
-                      }
-                      /{displayTimeSlots.length} available
-                    </span>
+                    {!isLoadingBookingDetails && (
+                      <span className="ml-2 text-xs sm:text-sm text-gray-500">
+                        {
+                          displayTimeSlots.filter(
+                            (slotDuration) =>
+                              slotDuration.isAvailable && !slotDuration.isBooked
+                          ).length
+                        }
+                        /{displayTimeSlots.length} available
+                      </span>
+                    )}
                   </div>
 
-                  {displayTimeSlots.length > 0 ? (
+                  {isLoadingBookingDetails ? (
+                    <div className="rounded-lg border border-gray-200 p-2 sm:p-3 bg-white">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        {[...Array(8)].map((_, i) => (
+                          <div key={i} className="space-y-2">
+                            <div className="animate-pulse">
+                              <div className="h-12 sm:h-14 bg-gray-200 rounded-md"></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : displayTimeSlots.length > 0 ? (
                     <div className="rounded-lg border border-gray-200 p-2 sm:p-3 bg-white">
                       {/* Two columns with expanded rows for booking details */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
