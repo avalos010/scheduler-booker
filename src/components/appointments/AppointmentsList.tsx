@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { useSnackbar } from "@/components/snackbar";
-import { useBookings, useUpdateBookingStatus } from "@/lib/hooks/queries";
+import { useBookings, useUpdateBookingStatus, useDeleteBooking } from "@/lib/hooks/queries";
 import type { Booking } from "@/lib/types/availability";
 
 import {
@@ -30,6 +30,7 @@ interface AppointmentsListProps {}
 export default function AppointmentsList({}: AppointmentsListProps) {
   const { data: bookingsData, isLoading, error: fetchError } = useBookings();
   const updateBookingStatusMutation = useUpdateBookingStatus();
+  const deleteBookingMutation = useDeleteBooking();
   const [showDidShowModal, setShowDidShowModal] = useState(false);
   const [modalBooking, setModalBooking] = useState<Booking | null>(null);
   const [query, setQuery] = useState("");
@@ -68,19 +69,12 @@ export default function AppointmentsList({}: AppointmentsListProps) {
   const deleteBooking = async (bookingId: string) => {
     if (!window.confirm("Delete this booking? This cannot be undone.")) return;
     try {
-      const response = await fetch(`/api/bookings?bookingId=${bookingId}`, {
-        method: "DELETE",
-      });
-      if (response.ok) {
-        // The bookings query will automatically refetch and update the UI
-        success("Booking deleted successfully");
-      } else {
-        const errorData = await response.json();
-        error(`Error deleting booking: ${errorData.message}`);
-      }
+      await deleteBookingMutation.mutateAsync(bookingId);
+      // The bookings query will automatically refetch and update the UI
+      success("Booking deleted successfully");
     } catch (err) {
       console.error("Error deleting booking:", err);
-      error("Error deleting booking. Please try again.");
+      error(err instanceof Error ? err.message : "Error deleting booking. Please try again.");
     }
   };
 

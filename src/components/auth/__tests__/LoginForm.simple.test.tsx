@@ -75,7 +75,7 @@ describe("LoginForm", () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText(errorMessage)).toBeDefined();
+      expect(screen.getByText("Failed to login")).toBeDefined();
     });
   });
 

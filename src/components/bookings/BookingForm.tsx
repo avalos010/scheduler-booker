@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { UserIcon } from "@heroicons/react/24/outline";
 import { useSnackbar } from "@/components/snackbar";
-import { useDayAvailability } from "@/lib/hooks/queries";
+import { useDayAvailability, useCreateBooking } from "@/lib/hooks/queries";
 
 import {
   bookingFormSchema,
@@ -42,6 +42,7 @@ export default function BookingForm() {
   // Use TanStack Query for day availability
   const dateString = format(selectedDate, "yyyy-MM-dd");
   const { data: dayAvailability, isLoading } = useDayAvailability(dateString);
+  const createBookingMutation = useCreateBooking();
   const {
     register,
     handleSubmit,
@@ -113,38 +114,31 @@ export default function BookingForm() {
     }
 
     try {
-      const response = await fetch("/api/bookings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          timeSlotId: selectedTimeSlot.id,
-          date: format(selectedDate, "yyyy-MM-dd"),
-          startTime: selectedTimeSlot.startTime,
-          endTime: selectedTimeSlot.endTime,
-          clientName: data.clientName,
-          clientEmail: data.clientEmail,
-          clientPhone: data.clientPhone,
-          notes: data.notes,
-        }),
+      await createBookingMutation.mutateAsync({
+        timeSlotId: selectedTimeSlot.id,
+        date: format(selectedDate, "yyyy-MM-dd"),
+        startTime: selectedTimeSlot.startTime,
+        endTime: selectedTimeSlot.endTime,
+        clientName: data.clientName,
+        clientEmail: data.clientEmail,
+        clientPhone: data.clientPhone,
+        notes: data.notes,
       });
 
-      if (response.ok) {
-        success(
-          "Booking created successfully! It's now pending your approval. You can review and accept it from the Appointments tab."
-        );
-        // Reset form
-        reset();
-        setSelectedTimeSlot(null);
-        // Availability will automatically refresh via TanStack Query cache invalidation
-      } else {
-        const errorData = await response.json();
-        error(`Error creating booking: ${errorData.message}`);
-      }
+      success(
+        "Booking created successfully! It's now pending your approval. You can review and accept it from the Appointments tab."
+      );
+      // Reset form
+      reset();
+      setSelectedTimeSlot(null);
+      // Availability will automatically refresh via TanStack Query cache invalidation
     } catch (err) {
       console.error("Error creating booking:", err);
-      error("Error creating booking. Please try again.");
+      error(
+        err instanceof Error
+          ? err.message
+          : "Error creating booking. Please try again."
+      );
     }
   };
 

@@ -6,7 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { UserIcon } from "@heroicons/react/24/outline";
 import { useSnackbar } from "@/components/snackbar";
-import { usePublicDayAvailability } from "@/lib/hooks/queries";
+import {
+  usePublicDayAvailability,
+  useCreatePublicBooking,
+} from "@/lib/hooks/queries";
 import {
   publicBookingFormSchema,
   type PublicBookingFormData,
@@ -40,6 +43,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
     dateString,
     userId
   );
+  const createPublicBookingMutation = useCreatePublicBooking();
   const {
     register,
     handleSubmit,
@@ -73,38 +77,31 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
     }
 
     try {
-      const response = await fetch("/api/bookings/public-create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          date: format(selectedDate, "yyyy-MM-dd"),
-          startTime: selectedTimeSlot.startTime,
-          endTime: selectedTimeSlot.endTime,
-          clientName: data.clientName,
-          clientEmail: data.clientEmail,
-          clientPhone: data.clientPhone,
-          notes: data.notes,
-        }),
+      await createPublicBookingMutation.mutateAsync({
+        userId,
+        date: format(selectedDate, "yyyy-MM-dd"),
+        startTime: selectedTimeSlot.startTime,
+        endTime: selectedTimeSlot.endTime,
+        clientName: data.clientName,
+        clientEmail: data.clientEmail,
+        clientPhone: data.clientPhone,
+        notes: data.notes,
       });
 
-      if (response.ok) {
-        success(
-          "Booking request submitted successfully! We'll review your request and confirm your appointment soon. You'll receive an email confirmation once approved."
-        );
-        // Reset form
-        reset();
-        setSelectedTimeSlot(null);
-        // Availability will automatically refresh via TanStack Query cache invalidation
-      } else {
-        const errorData = await response.json();
-        error(`Error submitting booking: ${errorData.message}`);
-      }
+      success(
+        "Booking request submitted successfully! We'll review your request and confirm your appointment soon. You'll receive an email confirmation once approved."
+      );
+      // Reset form
+      reset();
+      setSelectedTimeSlot(null);
+      // Availability will automatically refresh via TanStack Query cache invalidation
     } catch (err) {
       console.error("Error submitting booking:", err);
-      error("Error submitting booking. Please try again.");
+      error(
+        err instanceof Error
+          ? err.message
+          : "Error submitting booking. Please try again."
+      );
     }
   };
 
