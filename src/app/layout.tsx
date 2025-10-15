@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/common/Navbar";
 import { SnackbarProvider } from "@/components/snackbar";
+import { Analytics } from "@vercel/analytics/next";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 const geistSans = Geist({
@@ -185,6 +186,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Analytics />
         <SnackbarProvider>
           <Navbar isAuthed={isAuthed} />
           {children}
