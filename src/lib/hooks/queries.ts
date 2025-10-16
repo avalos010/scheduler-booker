@@ -128,7 +128,8 @@ const api = {
       body: JSON.stringify({ bookingId, status }),
     });
     if (!response.ok) {
-      throw new Error("Failed to update booking status");
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to update booking status");
     }
   },
 
@@ -762,6 +763,30 @@ export function useSaveException() {
       queryClient.invalidateQueries({
         queryKey: ["availability", "day", variables.date],
       });
+    },
+  });
+}
+
+// Rebook Mutation - deletes old booking and creates new one
+export function useRebookAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      oldBookingId: string;
+      newBooking: CreateBooking;
+    }) => {
+      // First create the new booking
+      const newBooking = await api.createBooking(data.newBooking);
+      // Then delete the old booking
+      await api.deleteBooking(data.oldBookingId);
+      return newBooking;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch bookings
+      queryClient.invalidateQueries({ queryKey: queryKeys.bookings });
+      // Also invalidate day availability since bookings affect availability
+      queryClient.invalidateQueries({ queryKey: ["availability"] });
     },
   });
 }
