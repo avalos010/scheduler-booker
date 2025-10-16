@@ -4,10 +4,36 @@ import userEvent from "@testing-library/user-event";
 import LoginForm from "../LoginForm";
 import { TEST_USER } from "@/lib/test-utils";
 
+// Mock the useSnackbar hook
+const mockSuccess = jest.fn();
+const mockError = jest.fn();
+
+jest.mock("@/components/snackbar", () => ({
+  useSnackbar: () => ({
+    success: mockSuccess,
+    error: mockError,
+    info: jest.fn(),
+    warning: jest.fn(),
+    loading: jest.fn(),
+    dismiss: jest.fn(),
+    dismissAll: jest.fn(),
+  }),
+}));
+
+// Mock the useLogin hook
+const mockMutateAsync = jest.fn();
+jest.mock("@/lib/hooks/queries", () => ({
+  useLogin: () => ({
+    mutateAsync: mockMutateAsync,
+  }),
+}));
+
 describe("LoginForm", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (global.fetch as jest.Mock).mockClear();
+    mockSuccess.mockClear();
+    mockError.mockClear();
+    mockMutateAsync.mockClear();
   });
 
   it("renders login form with all fields", () => {
@@ -20,11 +46,8 @@ describe("LoginForm", () => {
   it("handles successful login", async () => {
     const user = userEvent.setup();
 
-    // Mock successful API response
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ success: true }),
-    });
+    // Mock successful mutation response
+    mockMutateAsync.mockResolvedValueOnce({ success: true });
 
     render(<LoginForm />);
 
@@ -37,20 +60,14 @@ describe("LoginForm", () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: TEST_USER.email,
-          password: TEST_USER.password,
-        }),
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        email: TEST_USER.email,
+        password: TEST_USER.password,
       });
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/login successful/i)).toBeDefined();
+      expect(mockSuccess).toHaveBeenCalledWith("Login successful!");
     });
   });
 
@@ -58,11 +75,8 @@ describe("LoginForm", () => {
     const user = userEvent.setup();
     const errorMessage = "Invalid email or password";
 
-    // Mock failed API response
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({ error: errorMessage }),
-    });
+    // Mock failed mutation response
+    mockMutateAsync.mockRejectedValueOnce(new Error(errorMessage));
 
     render(<LoginForm />);
 
@@ -75,7 +89,7 @@ describe("LoginForm", () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to login")).toBeDefined();
+      expect(mockError).toHaveBeenCalledWith(errorMessage);
     });
   });
 
