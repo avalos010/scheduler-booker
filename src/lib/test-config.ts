@@ -1,8 +1,8 @@
 // Test configuration for automated testing
 export const TEST_CONFIG = {
   user: {
-    email: process.env.TEST_USER_EMAIL || "test@example.com",
-    password: process.env.TEST_USER_PASSWORD || "testpassword123",
+    email: process.env.TEST_USER_EMAIL || "example@example.com",
+    password: process.env.TEST_USER_PASSWORD || "password1234",
     name: "Test User",
   },
   business: {
@@ -18,7 +18,7 @@ export const TEST_CONFIG = {
     timeSlotDuration: 30,
   },
   supabase: {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "https://test.supabase.co",
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "test-anon-key",
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   },
 };

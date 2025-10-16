@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@/lib/test-utils";
 import "@testing-library/jest-dom";
 import AppointmentsList from "../AppointmentsList";
 import { format } from "date-fns";
@@ -7,7 +7,6 @@ import { format } from "date-fns";
 global.fetch = jest.fn();
 
 describe("AppointmentsList guards and actions", () => {
-
   beforeEach(() => {
     (fetch as jest.Mock).mockClear();
   });

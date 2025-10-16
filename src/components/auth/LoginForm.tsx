@@ -14,6 +14,7 @@ import {
   HydrationSafeInput,
   HydrationSafeButton,
 } from "@/components/common/HydrationSafeElement";
+import { useLogin } from "@/lib/hooks/queries";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -28,6 +29,7 @@ export default function LoginForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  const loginMutation = useLogin();
   const {
     register,
     handleSubmit,
@@ -42,30 +44,20 @@ export default function LoginForm() {
     setMessage(null);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-        }),
+      const result = await loginMutation.mutateAsync({
+        email: data.email,
+        password: data.password,
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        setError(result.error || "Login failed");
-      } else {
-        setMessage("Login successful!");
-        // Redirect to onboarding or dashboard
-        setTimeout(() => {
-          window.location.href = "/onboarding";
-        }, 1000);
-      }
-    } catch {
-      setError("An unexpected error occurred");
+      setMessage("Login successful!");
+      // Redirect to onboarding or dashboard
+      setTimeout(() => {
+        window.location.href = "/onboarding";
+      }, 1000);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      );
     } finally {
       setIsLoading(false);
     }

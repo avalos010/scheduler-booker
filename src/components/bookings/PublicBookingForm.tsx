@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { UserIcon } from "@heroicons/react/24/outline";
 import { useSnackbar } from "@/components/snackbar";
+import {
+  usePublicDayAvailability,
+  useCreatePublicBooking,
+} from "@/lib/hooks/queries";
 import {
   publicBookingFormSchema,
   type PublicBookingFormData,
@@ -22,12 +26,6 @@ interface TimeSlot {
   isBooked?: boolean;
 }
 
-interface DayAvailability {
-  date: Date;
-  timeSlots: TimeSlot[];
-  isWorkingDay: boolean;
-}
-
 interface PublicBookingFormProps {
   userId: string;
 }
@@ -37,10 +35,15 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(
     null
   );
-  const [dayAvailability, setDayAvailability] =
-    useState<DayAvailability | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const { success, error, warning } = useSnackbar();
+
+  // Use TanStack Query for public day availability
+  const dateString = format(selectedDate, "yyyy-MM-dd");
+  const { data: dayAvailability, isLoading } = usePublicDayAvailability(
+    dateString,
+    userId
+  );
+  const createPublicBookingMutation = useCreatePublicBooking();
   const {
     register,
     handleSubmit,
@@ -55,36 +58,6 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
       notes: "",
     },
   });
-
-  const fetchDayAvailability = useCallback(
-    async (date: Date) => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(
-          `/api/availability/public?date=${format(
-            date,
-            "yyyy-MM-dd"
-          )}&userId=${userId}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setDayAvailability(data);
-        }
-      } catch (error) {
-        console.error("Error fetching availability:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [userId]
-  );
-
-  // Fetch availability for selected date
-  useEffect(() => {
-    if (selectedDate) {
-      fetchDayAvailability(selectedDate);
-    }
-  }, [fetchDayAvailability, selectedDate, userId]);
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
@@ -104,39 +77,31 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
     }
 
     try {
-      const response = await fetch("/api/bookings/public-create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          date: format(selectedDate, "yyyy-MM-dd"),
-          startTime: selectedTimeSlot.startTime,
-          endTime: selectedTimeSlot.endTime,
-          clientName: data.clientName,
-          clientEmail: data.clientEmail,
-          clientPhone: data.clientPhone,
-          notes: data.notes,
-        }),
+      await createPublicBookingMutation.mutateAsync({
+        userId,
+        date: format(selectedDate, "yyyy-MM-dd"),
+        startTime: selectedTimeSlot.startTime,
+        endTime: selectedTimeSlot.endTime,
+        clientName: data.clientName,
+        clientEmail: data.clientEmail,
+        clientPhone: data.clientPhone,
+        notes: data.notes,
       });
 
-      if (response.ok) {
-        success(
-          "Booking request submitted successfully! We'll review your request and confirm your appointment soon. You'll receive an email confirmation once approved."
-        );
-        // Reset form
-        reset();
-        setSelectedTimeSlot(null);
-        // Refresh availability
-        fetchDayAvailability(selectedDate);
-      } else {
-        const errorData = await response.json();
-        error(`Error submitting booking: ${errorData.message}`);
-      }
+      success(
+        "Booking request submitted successfully! We'll review your request and confirm your appointment soon. You'll receive an email confirmation once approved."
+      );
+      // Reset form
+      reset();
+      setSelectedTimeSlot(null);
+      // Availability will automatically refresh via TanStack Query cache invalidation
     } catch (err) {
       console.error("Error submitting booking:", err);
-      error("Error submitting booking. Please try again.");
+      error(
+        err instanceof Error
+          ? err.message
+          : "Error submitting booking. Please try again."
+      );
     }
   };
 
@@ -147,7 +112,9 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
         onTimeSlotSelect={handleTimeSlotSelect}
         selectedDate={selectedDate}
         selectedTimeSlot={selectedTimeSlot}
-        dayAvailability={dayAvailability}
+        dayAvailability={
+          dayAvailability ? { ...dayAvailability, date: selectedDate } : null
+        }
         isLoading={isLoading}
         showBookingDetails={false}
       />

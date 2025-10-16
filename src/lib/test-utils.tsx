@@ -1,5 +1,6 @@
 import React from "react";
 import { render, RenderOptions } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TEST_CONFIG } from "./test-config";
 
 // Test user data
@@ -27,7 +28,21 @@ export const TEST_ONBOARDING_DATA = {
 
 // Custom render function that includes providers
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
-  return <>{children}</>;
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false, // Disable retries in tests
+        // Removed cacheTime as it's not a known property here
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+
+  return (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
 };
 
 const customRender = (

@@ -4,13 +4,7 @@
  */
 
 import React from "react";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  cleanup,
-} from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup } from "@/lib/test-utils";
 import {
   format,
   addDays,
