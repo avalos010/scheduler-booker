@@ -14,7 +14,30 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      // Map Supabase error messages to user-friendly messages
+      let userFriendlyMessage = "Login failed. Please try again.";
+
+      switch (true) {
+        case error.message.includes("Invalid login credentials"):
+        case error.message.includes("User not found"):
+        case error.message.includes("Invalid email"):
+        case error.message.includes("Password"):
+          userFriendlyMessage =
+            "Invalid email or password. Please check your credentials and try again.";
+          break;
+        case error.message.includes("Email not confirmed"):
+          userFriendlyMessage =
+            "Please check your email and click the confirmation link before signing in.";
+          break;
+        case error.message.includes("Too many requests"):
+          userFriendlyMessage =
+            "Too many login attempts. Please wait a few minutes before trying again.";
+          break;
+        default:
+          userFriendlyMessage = "Login failed. Please try again.";
+      }
+
+      return NextResponse.json({ error: userFriendlyMessage }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -24,7 +47,7 @@ export async function POST(request: Request) {
     });
   } catch {
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "An unexpected error occurred. Please try again later." },
       { status: 500 }
     );
   }
