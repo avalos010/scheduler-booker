@@ -4,10 +4,28 @@ import userEvent from "@testing-library/user-event";
 import SignupForm from "../SignupForm";
 import { TEST_USER } from "@/lib/test-utils";
 
+// Mock the useSnackbar hook
+const mockSuccess = jest.fn();
+const mockError = jest.fn();
+
+jest.mock("@/components/snackbar", () => ({
+  useSnackbar: () => ({
+    success: mockSuccess,
+    error: mockError,
+    info: jest.fn(),
+    warning: jest.fn(),
+    loading: jest.fn(),
+    dismiss: jest.fn(),
+    dismissAll: jest.fn(),
+  }),
+}));
+
 describe("SignupForm", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockClear();
+    mockSuccess.mockClear();
+    mockError.mockClear();
   });
 
   it("renders signup form with all fields", () => {
@@ -93,7 +111,7 @@ describe("SignupForm", () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText(errorMessage)).toBeDefined();
+      expect(mockError).toHaveBeenCalledWith(errorMessage);
     });
   });
 

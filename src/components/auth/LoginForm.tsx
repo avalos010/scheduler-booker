@@ -15,6 +15,7 @@ import {
   HydrationSafeButton,
 } from "@/components/common/HydrationSafeElement";
 import { useLogin } from "@/lib/hooks/queries";
+import { useSnackbar } from "@/components/snackbar";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -25,11 +26,10 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
   const loginMutation = useLogin();
+  const { success, error } = useSnackbar();
   const {
     register,
     handleSubmit,
@@ -40,8 +40,6 @@ export default function LoginForm() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
-    setError(null);
-    setMessage(null);
 
     try {
       const result = await loginMutation.mutateAsync({
@@ -49,13 +47,13 @@ export default function LoginForm() {
         password: data.password,
       });
 
-      setMessage("Login successful!");
+      success("Login successful!");
       // Redirect to onboarding or dashboard
       setTimeout(() => {
         window.location.href = "/onboarding";
       }, 1000);
     } catch (err) {
-      setError(
+      error(
         err instanceof Error ? err.message : "An unexpected error occurred"
       );
     } finally {
@@ -65,20 +63,6 @@ export default function LoginForm() {
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center">
-          <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
-          {error}
-        </div>
-      )}
-
-      {message && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm flex items-center">
-          <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-          {message}
-        </div>
-      )}
-
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
           <label

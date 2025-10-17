@@ -292,7 +292,7 @@ const api = {
     });
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to login");
+      throw new Error(errorData.error || "Failed to login");
     }
     return response.json();
   },
@@ -305,7 +305,7 @@ const api = {
     });
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to sign up");
+      throw new Error(errorData.error || "Failed to sign up");
     }
     return response.json();
   },

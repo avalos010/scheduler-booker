@@ -9,12 +9,12 @@ import {
   LockClosedIcon,
   EyeIcon,
   EyeSlashIcon,
-  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import {
   HydrationSafeInput,
   HydrationSafeButton,
 } from "@/components/common/HydrationSafeElement";
+import { useSnackbar } from "@/components/snackbar";
 
 const signupSchema = z
   .object({
@@ -31,10 +31,10 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 export default function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const { success, error } = useSnackbar();
 
   const {
     register,
@@ -46,8 +46,6 @@ export default function SignupForm() {
 
   const onSubmit = async (data: SignupFormData) => {
     setIsLoading(true);
-    setError(null);
-    setMessage(null);
 
     try {
       const response = await fetch("/api/auth/signup", {
@@ -64,18 +62,16 @@ export default function SignupForm() {
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Signup failed");
+        error(result.error || "Signup failed");
       } else {
-        setMessage(
-          "Signup successful! Please check your email for verification."
-        );
+        success("Signup successful! Please check your email for verification.");
         // Redirect to onboarding
         setTimeout(() => {
           window.location.href = "/onboarding";
         }, 1000);
       }
     } catch {
-      setError("An unexpected error occurred");
+      error("An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -83,20 +79,6 @@ export default function SignupForm() {
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center">
-          <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
-          {error}
-        </div>
-      )}
-
-      {message && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm flex items-center">
-          <CheckCircleIcon className="w-5 h-5 mr-2 text-green-600" />
-          {message}
-        </div>
-      )}
-
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
           <label
