@@ -30,6 +30,11 @@ interface DayAvailability {
   date: Date;
   timeSlots: TimeSlot[];
   isWorkingDay: boolean;
+  holiday?: {
+    name: string;
+    type: string;
+    country: string;
+  };
 }
 
 interface SharedAvailabilityCalendarProps {
@@ -95,7 +100,7 @@ export default function SharedAvailabilityCalendar({
               onClick={() => handleDateSelect(date)}
               disabled={isDateDisabled(date)}
               className={`
-                p-3 text-sm font-medium rounded-lg transition-all
+                p-3 text-sm font-medium rounded-lg transition-all relative
                 ${
                   selectedDate &&
                   format(selectedDate, "yyyy-MM-dd") ===
@@ -111,6 +116,7 @@ export default function SharedAvailabilityCalendar({
                 {format(date, "EEE")}
               </div>
               <div className="text-lg">{format(date, "d")}</div>
+              {/* Holiday indicator - we'll need to pass holiday info from parent */}
             </button>
           ))}
         </div>
@@ -123,6 +129,11 @@ export default function SharedAvailabilityCalendar({
             <ClockIcon className="h-5 w-5 text-green-600" />
             Available Time Slots for{" "}
             {format(selectedDate, "EEEE, MMMM d, yyyy")}
+            {dayAvailability?.holiday && (
+              <span className="text-red-600 text-sm font-normal">
+                🎉 {dayAvailability.holiday.name}
+              </span>
+            )}
           </h3>
 
           {isLoading ? (

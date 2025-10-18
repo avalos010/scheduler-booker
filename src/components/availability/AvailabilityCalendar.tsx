@@ -437,6 +437,10 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
             <div className="w-3 h-3 rounded-full bg-orange-400"></div>
             <span className="text-gray-600">Pending Meetings</span>
           </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-red-600 text-lg">🎉</span>
+            <span className="text-gray-600">Holidays</span>
+          </div>
         </div>
       </div>
 
@@ -541,6 +545,11 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
                             <div className="text-sm text-gray-500">
                               {format(day, "MMMM d, yyyy")}
                             </div>
+                            {dayAvailability.holiday && (
+                              <div className="text-xs font-medium text-red-600 mt-1">
+                                🎉 {dayAvailability.holiday.name}
+                              </div>
+                            )}
                           </div>
                           {isCurrentDay && (
                             <span className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
@@ -782,17 +791,24 @@ export default function AvailabilityCalendar({}: AvailabilityCalendarProps) {
                           <span className="sr-only">
                             {format(day, "MMMM d, yyyy")}
                           </span>
-                          <span
-                            className={`text-sm sm:text-base font-medium ${
-                              isCurrentMonth
-                                ? isCurrentDay
-                                  ? "text-blue-600 font-bold"
-                                  : "text-gray-900"
-                                : "text-gray-400"
-                            }`}
-                          >
-                            {format(day, "d")}
-                          </span>
+                          <div className="flex flex-col">
+                            <span
+                              className={`text-sm sm:text-base font-medium ${
+                                isCurrentMonth
+                                  ? isCurrentDay
+                                    ? "text-blue-600 font-bold"
+                                    : "text-gray-900"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {format(day, "d")}
+                            </span>
+                            {dayAvailability.holiday && (
+                              <span className="text-xs text-red-600 font-medium">
+                                🎉
+                              </span>
+                            )}
+                          </div>
                           {isCurrentDay && (
                             <span className="text-xs text-blue-600 font-medium hidden sm:inline">
                               Today

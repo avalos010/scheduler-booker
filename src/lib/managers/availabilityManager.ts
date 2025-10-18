@@ -1,6 +1,7 @@
 import { AvailabilityService } from "../services/availabilityService";
 // import { CacheService } from "../services/cacheService";
 import { TimeSlotUtils } from "../utils/timeSlotUtils";
+import { HolidayService } from "../services/holidayService";
 import type {
   TimeSlot,
   DayAvailability,
@@ -535,6 +536,19 @@ export class AvailabilityManager {
     const availability: Record<string, DayAvailability> = {};
     const daysInMonth = [];
 
+    // Initialize holiday service if holiday settings are configured
+    let holidayService: HolidayService | null = null;
+    if (
+      settings.holidaySettings?.showHolidays &&
+      settings.holidaySettings.country
+    ) {
+      holidayService = new HolidayService({
+        country: settings.holidaySettings.country,
+        state: settings.holidaySettings.state,
+        region: settings.holidaySettings.region,
+      });
+    }
+
     for (
       let d = new Date(monthStart);
       d <= monthEnd;
@@ -549,6 +563,19 @@ export class AvailabilityManager {
       const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       const dayHours = workingHours[dayIndex];
 
+      // Check for holidays
+      let holidayInfo = null;
+      if (holidayService) {
+        const holiday = holidayService.getHolidayInfo(day);
+        if (holiday) {
+          holidayInfo = {
+            name: holiday.name,
+            type: holiday.type,
+            country: holiday.country,
+          };
+        }
+      }
+
       if (dayHours?.isWorking) {
         // Generate time slots for working days
         const slots = TimeSlotUtils.generateDefaultTimeSlots(
@@ -561,10 +588,15 @@ export class AvailabilityManager {
           date: day,
           timeSlots: slots,
           isWorkingDay: true,
+          holiday: holidayInfo || undefined,
         };
 
         console.log(
-          `📅 Generated ${slots.length} slots for ${dateKey} (${dayHours.startTime}-${dayHours.endTime})`
+          `📅 Generated ${slots.length} slots for ${dateKey} (${
+            dayHours.startTime
+          }-${dayHours.endTime})${
+            holidayInfo ? ` - Holiday: ${holidayInfo.name}` : ""
+          }`
         );
       } else {
         // Non-working day
@@ -572,6 +604,7 @@ export class AvailabilityManager {
           date: day,
           timeSlots: [],
           isWorkingDay: false,
+          holiday: holidayInfo || undefined,
         };
       }
     });
@@ -583,6 +616,8 @@ export class AvailabilityManager {
       daysWithSlots: Object.values(availability).filter(
         (day) => day.timeSlots.length > 0
       ).length,
+      holidaysDetected: Object.values(availability).filter((day) => day.holiday)
+        .length,
     });
 
     return availability;

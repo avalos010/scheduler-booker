@@ -24,6 +24,11 @@ export interface DayAvailability {
   date: Date;
   timeSlots: TimeSlot[];
   isWorkingDay: boolean;
+  holiday?: {
+    name: string;
+    type: string;
+    country: string;
+  };
 }
 
 export interface WorkingHours {
@@ -39,6 +44,12 @@ export interface AvailabilitySettings {
   slotDuration: number;
   advanceBookingDays: number;
   timeFormat12h?: boolean;
+  holidaySettings?: {
+    country: string;
+    state?: string;
+    region?: string;
+    showHolidays: boolean;
+  };
 }
 
 export interface Booking {
