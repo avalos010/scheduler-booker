@@ -38,19 +38,23 @@ export async function POST(request: NextRequest) {
 
     // Since we are using the service role, we can bypass RLS to insert the booking.
     // This is safe because we are on the server and have validated the input.
-    const { data, error } = await supabase.from("bookings").insert([
-      {
-        user_id: userId,
-        date,
-        start_time: startTimestamp,
-        end_time: endTimestamp,
-        client_name: clientName,
-        client_email: clientEmail,
-        client_phone: clientPhone,
-        notes,
-        status: "pending", // All public bookings are pending by default
-      },
-    ]);
+    const { data, error } = await supabase
+      .from("bookings")
+      .insert([
+        {
+          user_id: userId,
+          date,
+          start_time: startTimestamp,
+          end_time: endTimestamp,
+          client_name: clientName,
+          client_email: clientEmail,
+          client_phone: clientPhone,
+          notes,
+          status: "pending", // All public bookings are pending by default
+        },
+      ])
+      .select()
+      .single();
 
     if (error) {
       console.error("Error creating booking:", error);
@@ -61,7 +65,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { message: "Booking created successfully", data },
+      {
+        message: "Booking created successfully",
+        booking: data,
+        accessToken: data.access_token, // Return access token for secure link
+      },
       { status: 201 }
     );
   } catch (error) {
