@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -31,6 +32,7 @@ interface PublicBookingFormProps {
 }
 
 export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(
     null
@@ -48,7 +50,6 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset,
   } = useForm<PublicBookingFormData>({
     resolver: zodResolver(publicBookingFormSchema),
     defaultValues: {
@@ -77,7 +78,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
     }
 
     try {
-      await createPublicBookingMutation.mutateAsync({
+      const result = await createPublicBookingMutation.mutateAsync({
         userId,
         date: format(selectedDate, "yyyy-MM-dd"),
         startTime: selectedTimeSlot.startTime,
@@ -88,13 +89,17 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
         notes: data.notes,
       });
 
-      success(
-        "Booking request submitted successfully! We'll review your request and confirm your appointment soon. You'll receive an email confirmation once approved."
-      );
-      // Reset form
-      reset();
-      setSelectedTimeSlot(null);
-      // Availability will automatically refresh via TanStack Query cache invalidation
+      // Redirect to booking details page with access token
+      if (result.accessToken) {
+        success(
+          "Booking created successfully! Redirecting to your booking details..."
+        );
+
+        // Small delay to show the success message, then redirect
+        setTimeout(() => {
+          router.push(`/booking/${result.accessToken}`);
+        }, 1000);
+      }
     } catch (err) {
       console.error("Error submitting booking:", err);
       error(
