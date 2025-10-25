@@ -54,6 +54,7 @@ export interface Booking {
   client_phone?: string;
   notes?: string;
   status: "pending" | "confirmed" | "cancelled" | "completed" | "no-show";
+  access_token?: string; // Secure token for public access (not always returned)
   created_at: string;
   updated_at: string;
 }

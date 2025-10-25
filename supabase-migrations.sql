@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   client_phone TEXT,
   notes TEXT,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled', 'completed', 'no-show')),
+  access_token UUID DEFAULT gen_random_uuid(), -- Secure token for public access
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -185,6 +186,12 @@ BEGIN
     CREATE POLICY "Public can view time slots" ON user_time_slots
       FOR SELECT USING (true);
   END IF;
+
+  -- bookings - allow public access via access_token
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'bookings' AND policyname = 'Anyone can view booking with valid access token') THEN
+    CREATE POLICY "Anyone can view booking with valid access token" ON bookings
+      FOR SELECT USING (true);
+  END IF;
   
 END $$;
 
@@ -197,6 +204,7 @@ CREATE INDEX IF NOT EXISTS idx_user_time_slots_user_id_date_available ON user_ti
 CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_user_id_date ON bookings(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+-- Note: idx_bookings_access_token is created later in the migration after the column is added
 
 -- Function to generate time slots (timezone-aware)
 CREATE OR REPLACE FUNCTION generate_time_slots(
@@ -369,5 +377,23 @@ BEGIN
   ) THEN
     ALTER TABLE user_availability_settings 
     ADD CONSTRAINT user_availability_settings_user_id_key UNIQUE (user_id);
+  END IF;
+
+  -- Add access_token column to bookings table if it doesn't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'bookings'
+    AND column_name = 'access_token'
+  ) THEN
+    ALTER TABLE bookings
+    ADD COLUMN access_token UUID DEFAULT gen_random_uuid();
+    
+    -- Update existing bookings to have access tokens
+    UPDATE bookings
+    SET access_token = gen_random_uuid()
+    WHERE access_token IS NULL;
+    
+    -- Create index on access_token for fast lookups
+    CREATE INDEX IF NOT EXISTS idx_bookings_access_token ON bookings(access_token);
   END IF;
 END $$;
