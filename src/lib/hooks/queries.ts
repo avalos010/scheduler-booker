@@ -260,7 +260,7 @@ const api = {
 
   async createPublicBooking(
     data: CreatePublicBooking
-  ): Promise<{ success: boolean; bookingId: string }> {
+  ): Promise<{ message: string; booking: Booking; accessToken: string }> {
     const response = await fetch("/api/bookings/public-create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -414,6 +414,46 @@ const api = {
       const errorData = await response.json();
       throw new Error(errorData.message || "Failed to save exception");
     }
+  },
+
+  // Public Booking Access by Token
+  async fetchBookingByToken(token: string): Promise<{ booking: Booking }> {
+    const response = await fetch(`/api/bookings/public-view?token=${token}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to fetch booking");
+    }
+    return response.json();
+  },
+
+  async updateBookingByToken(data: {
+    token: string;
+    clientName: string;
+    clientEmail: string;
+    clientPhone?: string;
+    notes?: string;
+  }): Promise<{ message: string; booking: Booking }> {
+    const response = await fetch("/api/bookings/public-view", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to update booking");
+    }
+    return response.json();
+  },
+
+  async cancelBookingByToken(token: string): Promise<{ message: string }> {
+    const response = await fetch(`/api/bookings/public-view?token=${token}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to cancel booking");
+    }
+    return response.json();
   },
 };
 
@@ -787,6 +827,51 @@ export function useRebookAppointment() {
       queryClient.invalidateQueries({ queryKey: queryKeys.bookings });
       // Also invalidate day availability since bookings affect availability
       queryClient.invalidateQueries({ queryKey: ["availability"] });
+    },
+  });
+}
+
+// Public Booking Access by Token (no auth required)
+export function useBookingByToken(token: string | null) {
+  return useQuery({
+    queryKey: ["booking", "token", token],
+    queryFn: () => api.fetchBookingByToken(token!),
+    enabled: !!token,
+    staleTime: 30 * 1000, // 30 seconds
+    retry: 1, // Only retry once for token-based access
+  });
+}
+
+export function useUpdateBookingByToken() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      token: string;
+      clientName: string;
+      clientEmail: string;
+      clientPhone?: string;
+      notes?: string;
+    }) => api.updateBookingByToken(data),
+    onSuccess: (_, variables) => {
+      // Invalidate the specific booking query
+      queryClient.invalidateQueries({
+        queryKey: ["booking", "token", variables.token],
+      });
+    },
+  });
+}
+
+export function useCancelBookingByToken() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (token: string) => api.cancelBookingByToken(token),
+    onSuccess: (_, token) => {
+      // Invalidate the specific booking query to show updated status
+      queryClient.invalidateQueries({
+        queryKey: ["booking", "token", token],
+      });
     },
   });
 }
