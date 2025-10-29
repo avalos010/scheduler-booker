@@ -316,7 +316,11 @@ export class AvailabilityManager {
 
       // Create lookup maps for fast access
       const exceptionsMap = TimeSlotUtils.createExceptionsMap(
-        exceptionsData || []
+        (exceptionsData || []).map((ex) => ({
+          date: ex.date,
+          is_available: ex.is_available,
+          reason: ex.reason ?? undefined,
+        }))
       );
       const slotsMap = TimeSlotUtils.createSlotsMap(slotsData || []);
 

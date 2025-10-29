@@ -397,3 +397,88 @@ BEGIN
     CREATE INDEX IF NOT EXISTS idx_bookings_access_token ON bookings(access_token);
   END IF;
 END $$;
+
+-- Add NOT NULL constraints to columns with DEFAULT values
+-- This ensures TypeScript types match the actual database constraints
+
+-- Address any NULL values first (safety check - set defaults for any NULLs)
+UPDATE bookings 
+SET status = 'pending' 
+WHERE status IS NULL;
+
+UPDATE bookings 
+SET created_at = NOW() 
+WHERE created_at IS NULL;
+
+UPDATE bookings 
+SET updated_at = NOW() 
+WHERE updated_at IS NULL;
+
+UPDATE user_time_slots 
+SET is_available = true 
+WHERE is_available IS NULL;
+
+UPDATE user_time_slots 
+SET is_booked = false 
+WHERE is_booked IS NULL;
+
+UPDATE user_availability_settings 
+SET slot_duration_minutes = 60 
+WHERE slot_duration_minutes IS NULL;
+
+UPDATE user_availability_settings 
+SET advance_booking_days = 30 
+WHERE advance_booking_days IS NULL;
+
+-- Now add NOT NULL constraints
+ALTER TABLE bookings 
+  ALTER COLUMN status SET NOT NULL,
+  ALTER COLUMN created_at SET NOT NULL,
+  ALTER COLUMN updated_at SET NOT NULL;
+
+ALTER TABLE user_time_slots 
+  ALTER COLUMN is_available SET NOT NULL,
+  ALTER COLUMN is_booked SET NOT NULL;
+
+ALTER TABLE user_availability_settings 
+  ALTER COLUMN slot_duration_minutes SET NOT NULL,
+  ALTER COLUMN advance_booking_days SET NOT NULL;
+
+-- Fix user_working_hours nullable fields
+UPDATE user_working_hours 
+SET day_of_week = 0 
+WHERE day_of_week IS NULL;
+
+UPDATE user_working_hours 
+SET is_working = true 
+WHERE is_working IS NULL;
+
+-- Note: user_id should already be NOT NULL from foreign key, but ensure it
+UPDATE user_working_hours 
+SET user_id = (SELECT id FROM auth.users LIMIT 1)
+WHERE user_id IS NULL AND EXISTS (SELECT 1 FROM auth.users);
+
+ALTER TABLE user_working_hours 
+  ALTER COLUMN day_of_week SET NOT NULL,
+  ALTER COLUMN is_working SET NOT NULL;
+
+-- Fix user_availability_exceptions nullable fields
+UPDATE user_availability_exceptions 
+SET is_available = true 
+WHERE is_available IS NULL;
+
+-- Note: user_id should already be NOT NULL from foreign key, but ensure it
+UPDATE user_availability_exceptions 
+SET user_id = (SELECT id FROM auth.users LIMIT 1)
+WHERE user_id IS NULL AND EXISTS (SELECT 1 FROM auth.users);
+
+ALTER TABLE user_availability_exceptions 
+  ALTER COLUMN is_available SET NOT NULL;
+
+-- Fix user_id nullable fields (foreign keys don't enforce NOT NULL, so we need to do it explicitly)
+-- Since user_id is part of foreign keys, any NULL values would fail, so we can safely add NOT NULL
+ALTER TABLE user_working_hours 
+  ALTER COLUMN user_id SET NOT NULL;
+
+ALTER TABLE user_availability_exceptions 
+  ALTER COLUMN user_id SET NOT NULL;

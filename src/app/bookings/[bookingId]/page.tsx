@@ -41,9 +41,9 @@ export const metadata: Metadata = {
 export default async function BookingDetailsPage({
   params,
 }: {
-  params: { bookingId: string };
+  params: Promise<{ bookingId: string }>;
 }) {
-  const { bookingId } = params;
+  const { bookingId } = await params;
   const supabase = await createSupabaseServerClient();
   // Get user on server side
   const {

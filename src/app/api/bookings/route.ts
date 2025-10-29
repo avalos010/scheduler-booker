@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
     const { data: claimedSlot, error: claimError } = await supabase
       .from("user_time_slots")
       .update({ is_booked: true, updated_at: new Date().toISOString() })
-      .eq("id", timeSlot!.id)
+      .eq("id", String(timeSlot!.id))
       .eq("is_booked", false)
       .eq("is_available", true)
       .select("id")
@@ -290,7 +290,7 @@ export async function POST(request: NextRequest) {
       await supabase
         .from("user_time_slots")
         .update({ is_booked: false, updated_at: new Date().toISOString() })
-        .eq("id", timeSlot!.id);
+        .eq("id", String(timeSlot!.id));
       return NextResponse.json(
         { message: "Error creating booking" },
         { status: 500 }
