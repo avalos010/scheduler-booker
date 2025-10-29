@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import Link from "next/link";
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -6,6 +7,7 @@ import {
   EnvelopeIcon,
   PhoneIcon,
   ChatBubbleLeftIcon,
+  LinkIcon,
 } from "@heroicons/react/24/outline";
 import type { Booking } from "@/lib/types/availability";
 
@@ -103,6 +105,21 @@ export default function BookingCard({
             <div className="flex items-start gap-2 text-sm text-gray-600">
               <ChatBubbleLeftIcon className="h-4 w-4 mt-0.5" />
               <p>{booking.notes}</p>
+            </div>
+          )}
+
+          {/* Booking Details Link */}
+          {booking.access_token && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <Link
+                href={`/booking/${booking.access_token}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+              >
+                <LinkIcon className="h-4 w-4" />
+                View Booking Details public link
+              </Link>
             </div>
           )}
         </div>
