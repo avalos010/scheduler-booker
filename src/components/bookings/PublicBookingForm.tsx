@@ -145,7 +145,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
                   type="text"
                   id="clientName"
                   {...register("clientName")}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
                     errors.clientName ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Enter your full name"
@@ -168,7 +168,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
                   type="email"
                   id="clientEmail"
                   {...register("clientEmail")}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
                     errors.clientEmail ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Enter your email"
@@ -193,7 +193,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
                   type="tel"
                   id="clientPhone"
                   {...register("clientPhone")}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
                     errors.clientPhone ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Enter your phone number"
@@ -216,7 +216,7 @@ export default function PublicBookingForm({ userId }: PublicBookingFormProps) {
                   type="text"
                   id="notes"
                   {...register("notes")}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
                     errors.notes ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Any special requirements"

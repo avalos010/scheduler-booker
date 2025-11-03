@@ -192,7 +192,7 @@ export default function RebookForm({ bookingId }: RebookFormProps) {
               </label>
               <input
                 {...register("clientName")}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 border-gray-300"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 border-gray-300 text-gray-900"
                 placeholder="Enter client name"
               />
               {errors.clientName && (
@@ -209,7 +209,7 @@ export default function RebookForm({ bookingId }: RebookFormProps) {
               <input
                 {...register("clientEmail")}
                 type="email"
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 border-gray-300"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 border-gray-300 text-gray-900"
                 placeholder="Enter email address"
               />
               {errors.clientEmail && (
@@ -225,7 +225,7 @@ export default function RebookForm({ bookingId }: RebookFormProps) {
               </label>
               <input
                 {...register("clientPhone")}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 border-gray-300"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 border-gray-300 text-gray-900"
                 placeholder="Enter phone number"
               />
               {errors.clientPhone && (
@@ -242,7 +242,7 @@ export default function RebookForm({ bookingId }: RebookFormProps) {
               <textarea
                 {...register("notes")}
                 rows={3}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 border-gray-300"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 border-gray-300 text-gray-900"
                 placeholder="Additional notes or requirements"
               />
               {errors.notes && (

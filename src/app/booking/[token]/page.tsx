@@ -303,7 +303,7 @@ export default function PublicBookingDetailsPage() {
                       id="clientName"
                       type="text"
                       {...register("clientName")}
-                      className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 ${
                         errors.clientName ? "border-red-500" : "border-gray-300"
                       }`}
                       placeholder="Enter your name"
@@ -326,7 +326,7 @@ export default function PublicBookingDetailsPage() {
                       id="clientEmail"
                       type="email"
                       {...register("clientEmail")}
-                      className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 ${
                         errors.clientEmail
                           ? "border-red-500"
                           : "border-gray-300"
@@ -353,7 +353,7 @@ export default function PublicBookingDetailsPage() {
                       id="clientPhone"
                       type="tel"
                       {...register("clientPhone")}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900"
                       placeholder="Enter your phone"
                     />
                   </div>
@@ -369,7 +369,7 @@ export default function PublicBookingDetailsPage() {
                       id="notes"
                       type="text"
                       {...register("notes")}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900"
                       placeholder="Any special requirements"
                     />
                   </div>
