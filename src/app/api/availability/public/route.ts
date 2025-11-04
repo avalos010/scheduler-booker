@@ -4,6 +4,7 @@ import {
   extractTimeFromTimestamp,
   formatTime,
 } from "@/lib/utils/serverTimeFormat";
+import * as Sentry from "@sentry/nextjs";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -300,6 +301,9 @@ export async function GET(request: NextRequest) {
       isWorkingDay: true,
     });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/public/GET", type: "server" },
+    });
     console.error("Error in public availability:", error);
     console.error("Request params:", { date, userId });
     return NextResponse.json(

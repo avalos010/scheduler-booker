@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,11 +64,7 @@ export async function POST(request: NextRequest) {
       );
 
     if (settingsError) {
-      console.error("Error saving availability settings:", settingsError);
-      return NextResponse.json(
-        { error: "Failed to save availability settings" },
-        { status: 500 }
-      );
+      throw settingsError;
     }
 
     // Convert work days to day_of_week format (0=Sunday, 1=Monday, etc.)
@@ -98,11 +95,7 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id);
 
     if (deleteError) {
-      console.error("Error deleting existing working hours:", deleteError);
-      return NextResponse.json(
-        { error: "Failed to update working hours" },
-        { status: 500 }
-      );
+      throw deleteError;
     }
 
     // Insert new working hours
@@ -112,11 +105,7 @@ export async function POST(request: NextRequest) {
         .insert(workingHours);
 
       if (insertError) {
-        console.error("Error inserting working hours:", insertError);
-        return NextResponse.json(
-          { error: "Failed to save working hours" },
-          { status: 500 }
-        );
+        throw insertError;
       }
     }
 
@@ -132,15 +121,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (metadataError) {
-      console.error("Error updating user metadata:", metadataError);
-      return NextResponse.json(
-        { error: "Failed to update user profile" },
-        { status: 500 }
-      );
+      throw metadataError;
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "user/onboarding/POST", type: "server" },
+    });
     console.error("Error in onboarding API:", error);
     return NextResponse.json(
       { error: "Internal server error" },

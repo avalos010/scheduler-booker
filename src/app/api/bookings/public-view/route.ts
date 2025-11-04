@@ -4,7 +4,7 @@ import {
   formatTime,
   extractTimeFromTimestamp,
 } from "@/lib/utils/serverTimeFormat";
-
+import * as Sentry from "@sentry/nextjs";
 /**
  * Public endpoint to view booking details using access token
  * This allows clients to view/edit their bookings from email links
@@ -65,6 +65,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ booking: formattedBooking }, { status: 200 });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "bookings/public-view/GET", type: "server" },
+    });
     console.error("Internal server error:", error);
     return NextResponse.json(
       { message: "Internal server error" },
@@ -98,10 +101,7 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (fetchError || !existingBooking) {
-      return NextResponse.json(
-        { message: "Booking not found or invalid access token" },
-        { status: 404 }
-      );
+      throw fetchError || new Error("Booking not found or invalid access token");
     }
 
     // Don't allow updates to cancelled or completed bookings
@@ -109,12 +109,7 @@ export async function PATCH(request: NextRequest) {
       existingBooking.status === "cancelled" ||
       existingBooking.status === "completed"
     ) {
-      return NextResponse.json(
-        {
-          message: `Cannot update ${existingBooking.status} bookings`,
-        },
-        { status: 400 }
-      );
+      throw new Error("Cannot update a cancelled or completed booking");
     }
 
     // Update booking information
@@ -141,11 +136,8 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (updateError) {
-      console.error("Error updating booking:", updateError);
-      return NextResponse.json(
-        { message: "Error updating booking" },
-        { status: 500 }
-      );
+      throw updateError;
+      // console.error("Error updating booking:", updateError);
     }
 
     return NextResponse.json(
@@ -156,9 +148,12 @@ export async function PATCH(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "bookings/public-view/PATCH", type: "server" },
+    });
     console.error("Internal server error:", error);
     return NextResponse.json(
-      { message: "Internal server error" },
+      { message: "issue updating booking" },
       { status: 500 }
     );
   }
@@ -175,10 +170,7 @@ export async function DELETE(request: NextRequest) {
     const token = searchParams.get("token");
 
     if (!token) {
-      return NextResponse.json(
-        { message: "Access token is required" },
-        { status: 400 }
-      );
+      throw new Error("Access token is required");
     }
 
     // Fetch the booking to verify it exists and get details
@@ -189,25 +181,16 @@ export async function DELETE(request: NextRequest) {
       .single();
 
     if (fetchError || !booking) {
-      return NextResponse.json(
-        { message: "Booking not found or invalid access token" },
-        { status: 404 }
-      );
+      throw fetchError || new Error("Booking not found or invalid access token");
     }
 
     // Don't allow cancellation of already cancelled or completed bookings
     if (booking.status === "cancelled") {
-      return NextResponse.json(
-        { message: "Booking is already cancelled" },
-        { status: 400 }
-      );
+      throw new Error("Booking is already cancelled");
     }
 
     if (booking.status === "completed") {
-      return NextResponse.json(
-        { message: "Cannot cancel completed bookings" },
-        { status: 400 }
-      );
+      throw new Error("Booking is already completed");
     }
 
     // Update booking status to cancelled
@@ -220,11 +203,7 @@ export async function DELETE(request: NextRequest) {
       .eq("access_token", token);
 
     if (updateError) {
-      console.error("Error cancelling booking:", updateError);
-      return NextResponse.json(
-        { message: "Error cancelling booking" },
-        { status: 500 }
-      );
+      throw updateError;
     }
 
     // Free up the time slot
@@ -240,8 +219,7 @@ export async function DELETE(request: NextRequest) {
       .eq("end_time", booking.end_time);
 
     if (slotUpdateError) {
-      console.error("Error updating time slot:", slotUpdateError);
-      // Don't fail the request, just log the error
+      throw slotUpdateError;
     }
 
     return NextResponse.json(
@@ -249,6 +227,9 @@ export async function DELETE(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "bookings/public-view/DELETE", type: "server" },
+    });
     console.error("Internal server error:", error);
     return NextResponse.json(
       { message: "Internal server error" },

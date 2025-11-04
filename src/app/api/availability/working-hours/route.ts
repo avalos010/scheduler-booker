@@ -4,6 +4,7 @@ import {
   formatTime,
   extractTimeFromTimestamp,
 } from "@/lib/utils/serverTimeFormat";
+import * as Sentry from "@sentry/nextjs";
 
 type DatabaseWorkingHour = {
   id: string;
@@ -40,7 +41,7 @@ export async function GET() {
       .order("day_of_week");
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      throw error;
     }
 
     // Fetch user's time format preference from database
@@ -66,7 +67,10 @@ export async function GET() {
     }
 
     return NextResponse.json({ workingHours: data });
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/working-hours/GET", type: "server" },
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -104,7 +108,7 @@ export async function POST(request: Request) {
       .eq("user_id", user.id);
 
     if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+      throw deleteError;
     }
 
     // Insert new working hours
@@ -129,15 +133,15 @@ export async function POST(request: Request) {
         .insert(hoursToInsert);
 
       if (insertError) {
-        return NextResponse.json(
-          { error: insertError.message },
-          { status: 500 }
-        );
+        throw insertError;
       }
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/working-hours/POST", type: "server" },
+    });
     console.error("Error saving working hours:", error);
     return NextResponse.json(
       { error: "Internal server error" },

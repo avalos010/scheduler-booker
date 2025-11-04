@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServiceClient } from "@/lib/supabase-server";
 import { convertTimeToTimestamp } from "@/lib/utils/serverTimeFormat";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,11 +58,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error("Error creating booking:", error);
-      return NextResponse.json(
-        { message: "Error creating booking", error: error.message },
-        { status: 500 }
-      );
+      throw error;
     }
 
     return NextResponse.json(
@@ -73,6 +70,9 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "bookings/public-create/POST", type: "server" },
+    });
     console.error("Internal server error:", error);
     return NextResponse.json(
       { message: "Internal server error" },

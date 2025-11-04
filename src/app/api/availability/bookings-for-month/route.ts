@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,11 +37,7 @@ export async function GET(request: NextRequest) {
       .order("start_time", { ascending: true });
 
     if (bookingsError) {
-      console.error("Error fetching bookings:", bookingsError);
-      return NextResponse.json(
-        { error: "Failed to fetch bookings" },
-        { status: 500 }
-      );
+      throw bookingsError;
     }
 
     // Group bookings by date
@@ -82,6 +79,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ bookings: bookingsByDate });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/bookings-for-month/GET", type: "server" },
+    });
     console.error("Unexpected error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

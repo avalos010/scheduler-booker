@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function GET() {
   try {
@@ -19,7 +20,10 @@ export async function GET() {
       email: user.email,
       id: user.id,
     });
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "auth/user/GET", type: "server" },
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

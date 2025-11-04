@@ -5,6 +5,7 @@ import {
   formatTime,
   extractTimeFromTimestamp,
 } from "@/lib/utils/serverTimeFormat";
+import * as Sentry from "@sentry/nextjs";
 
 type BookingDetails = {
   clientName: string;
@@ -443,6 +444,9 @@ export async function GET(request: NextRequest) {
       isWorkingDay: true,
     });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/day-details/GET", type: "server" },
+    });
     console.error("Error in day-details availability:", error);
     return NextResponse.json(
       { message: "Internal server error" },

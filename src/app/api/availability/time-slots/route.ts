@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 import { convertTimeToTimestamp } from "@/lib/utils/serverTimeFormat";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: Request) {
   try {
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
       .eq("date", date);
 
     if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+      throw deleteError;
     }
 
     // Insert new time slots
@@ -59,15 +60,15 @@ export async function POST(request: Request) {
         .insert(slotsToInsert);
 
       if (insertError) {
-        return NextResponse.json(
-          { error: insertError.message },
-          { status: 500 }
-        );
+        throw insertError;
       }
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/time-slots/POST", type: "server" },
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -155,11 +156,7 @@ export async function PUT(request: Request) {
         .eq("id", existingSlot.id);
 
       if (updateError) {
-        console.log("🔥 PUT request - update error:", updateError);
-        return NextResponse.json(
-          { error: updateError.message },
-          { status: 500 }
-        );
+        throw updateError;
       }
       console.log("🔥 PUT request - slot updated successfully");
     } else {
@@ -183,17 +180,16 @@ export async function PUT(request: Request) {
         });
 
       if (insertError) {
-        console.log("🔥 PUT request - insert error:", insertError);
-        return NextResponse.json(
-          { error: insertError.message },
-          { status: 500 }
-        );
+        throw insertError;
       }
       console.log("🔥 PUT request - slot created successfully");
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/time-slots/PUT", type: "server" },
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -234,7 +230,7 @@ export async function GET(request: Request) {
     const { data, error } = await query.order("date, start_time");
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      throw error;
     }
 
     return NextResponse.json({
@@ -244,7 +240,10 @@ export async function GET(request: Request) {
       user: user.id,
       query: { date, startDate, endDate },
     });
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/time-slots/GET", type: "server" },
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

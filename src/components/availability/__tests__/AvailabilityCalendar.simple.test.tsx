@@ -9,6 +9,11 @@ import type {
   WorkingHours,
 } from "@/lib/types/availability";
 
+// Mock Sentry
+jest.mock("@sentry/nextjs", () => ({
+  captureException: jest.fn(),
+}));
+
 // Mock the availability hook with a mutable state we can update between rerenders
 interface MockLoadingSteps {
   workingHours: boolean;
@@ -88,6 +93,16 @@ describe("AvailabilityCalendar UI", () => {
   // Use a fixed date (Monday) to ensure consistent working hours
   const today = new Date(2025, 9, 1); // This is October 1st, 2025 (month is 0-indexed)
   const dateKey = format(today, "yyyy-MM-dd");
+
+  // Use fake timers to control the date
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(today);
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
 
   beforeEach(() => {
     const initialSlots = buildSlots("09:00", "12:00", 60); // 3 slots

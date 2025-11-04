@@ -5,6 +5,7 @@ import {
   extractTimeFromTimestamp,
   convertTimeToTimestamp,
 } from "@/lib/utils/serverTimeFormat";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -102,7 +103,6 @@ export async function POST(request: NextRequest) {
       const endTime = timeSlotParts[timeSlotParts.length - 1];
       const startTime = timeSlotParts[timeSlotParts.length - 2];
       const dateFromId = timeSlotParts.slice(-5, -2).join("-"); // Get the 3 parts for date
-      const userIdFromId = timeSlotParts.slice(0, -5).join("-"); // Everything before date (for debugging)
 
       // Convert time strings to timestamps for database lookup
       const startTimestamp = convertTimeToTimestamp(dateFromId, startTime);
@@ -179,13 +179,11 @@ export async function POST(request: NextRequest) {
         const endTime = timeSlotParts[timeSlotParts.length - 1];
         const startTime = timeSlotParts[timeSlotParts.length - 2];
         const dateFromId = timeSlotParts.slice(-5, -2).join("-"); // Get the 3 parts for date
-        const userIdFromId = timeSlotParts.slice(0, -5).join("-"); // Everything before date (for debugging)
 
         console.log("🔥 Parsed userId-date format:", {
           date: dateFromId,
           startTime,
           endTime,
-          userId: userIdFromId,
           originalTimeSlotId: timeSlotId,
         });
 
@@ -291,10 +289,7 @@ export async function POST(request: NextRequest) {
         .from("user_time_slots")
         .update({ is_booked: false, updated_at: new Date().toISOString() })
         .eq("id", String(timeSlot!.id));
-      return NextResponse.json(
-        { message: "Error creating booking" },
-        { status: 500 }
-      );
+      throw bookingError;
     }
 
     return NextResponse.json({
@@ -302,6 +297,9 @@ export async function POST(request: NextRequest) {
       booking,
     });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "bookings/POST", type: "server" },
+    });
     console.error("Error in booking creation:", error);
     return NextResponse.json(
       { message: "Internal server error" },
@@ -342,11 +340,7 @@ export async function GET() {
       .order("start_time", { ascending: true });
 
     if (error) {
-      console.error("Error fetching bookings:", error);
-      return NextResponse.json(
-        { message: "Error fetching bookings" },
-        { status: 500 }
-      );
+      throw error;
     }
 
     // Format the booking times based on user preference
@@ -369,6 +363,9 @@ export async function GET() {
 
     return NextResponse.json({ bookings: formattedBookings });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "bookings/GET", type: "server" },
+    });
     console.error("Error in fetching bookings:", error);
     return NextResponse.json(
       { message: "Internal server error" },
@@ -495,11 +492,7 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (updateError) {
-      console.error("Error updating booking:", updateError);
-      return NextResponse.json(
-        { message: "Error updating booking" },
-        { status: 500 }
-      );
+      throw updateError;
     }
 
     // If status is confirmed, update the time slot to booked
@@ -545,6 +538,9 @@ export async function PATCH(request: NextRequest) {
       booking: updatedBooking,
     });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "bookings/PATCH", type: "server" },
+    });
     console.error("Error in updating booking:", error);
     return NextResponse.json(
       { message: "Internal server error" },
@@ -604,11 +600,7 @@ export async function DELETE(request: NextRequest) {
       .eq("id", bookingId);
 
     if (deleteError) {
-      console.error("Error deleting booking:", deleteError);
-      return NextResponse.json(
-        { message: "Error deleting booking" },
-        { status: 500 }
-      );
+      throw deleteError;
     }
 
     // Free the time slot
@@ -621,12 +613,14 @@ export async function DELETE(request: NextRequest) {
       .eq("end_time", booking.end_time);
 
     if (slotUpdateError) {
-      console.error("Error updating time slot after delete:", slotUpdateError);
-      // Do not fail the request; just log
+      throw slotUpdateError;
     }
 
     return NextResponse.json({ message: "Booking deleted" });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "bookings/DELETE", type: "server" },
+    });
     console.error("Error in deleting booking:", error);
     return NextResponse.json(
       { message: "Internal server error" },

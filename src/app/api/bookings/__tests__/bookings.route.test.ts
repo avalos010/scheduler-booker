@@ -5,6 +5,11 @@ import { NextRequest } from "next/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as route from "../route";
 
+// Mock Sentry
+jest.mock("@sentry/nextjs", () => ({
+  captureException: jest.fn(),
+}));
+
 // Type definitions
 interface BookingRow {
   id: string;

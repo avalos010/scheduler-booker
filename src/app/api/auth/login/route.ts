@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
@@ -59,7 +60,10 @@ export async function POST(request: Request) {
       user: data.user,
       session: data.session,
     });
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "auth/login/POST", type: "server" },
+    });
     return NextResponse.json(
       { error: "An unexpected error occurred. Please try again later." },
       { status: 500 }

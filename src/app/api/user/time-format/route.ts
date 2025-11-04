@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,26 +38,14 @@ export async function POST(request: NextRequest) {
     );
 
     if (error) {
-      console.error("Error updating time format preference:", {
-        error,
-        userId: user.id,
-        time_format_12h,
-        errorCode: error.code,
-        errorMessage: error.message,
-        errorDetails: error.details,
-      });
-      return NextResponse.json(
-        {
-          error: "Failed to update preference",
-          details: error.message,
-          code: error.code,
-        },
-        { status: 500 }
-      );
+      throw error;
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "user/time-format/POST", type: "server" },
+    });
     console.error("Error in time format API:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -100,6 +89,9 @@ export async function GET() {
 
     return NextResponse.json({ time_format_12h: timeFormat12h });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "user/time-format/GET", type: "server" },
+    });
     console.error("Error in time format API:", error);
     return NextResponse.json(
       { error: "Internal server error" },

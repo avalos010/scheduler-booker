@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function GET() {
   try {
@@ -26,6 +27,9 @@ export async function GET() {
     console.log("🔍 Auth check: User authenticated successfully");
     return NextResponse.json({ authenticated: true });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "auth/check/GET", type: "server" },
+    });
     console.error("🔍 Auth check: Exception occurred:", error);
     return NextResponse.json(
       { authenticated: false, error: "Internal server error" },

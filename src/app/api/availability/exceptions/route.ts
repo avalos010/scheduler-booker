@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: Request) {
   try {
@@ -35,11 +36,14 @@ export async function POST(request: Request) {
       );
 
     if (saveError) {
-      return NextResponse.json({ error: saveError.message }, { status: 500 });
+      throw saveError;
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/exceptions/POST", type: "server" },
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -80,7 +84,7 @@ export async function GET(request: Request) {
     const { data, error } = await query.order("date");
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      throw error;
     }
 
     return NextResponse.json({
@@ -90,7 +94,10 @@ export async function GET(request: Request) {
       user: user.id,
       query: { date, startDate, endDate },
     });
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/exceptions/GET", type: "server" },
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

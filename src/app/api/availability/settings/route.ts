@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function GET() {
   try {
@@ -21,11 +22,14 @@ export async function GET() {
       .eq("user_id", user.id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      throw error;
     }
 
     return NextResponse.json({ settings: data });
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/settings/GET", type: "server" },
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -75,10 +79,7 @@ export async function POST(request: Request) {
         .eq("user_id", user.id);
 
       if (updateError) {
-        return NextResponse.json(
-          { error: updateError.message },
-          { status: 500 }
-        );
+        throw updateError;
       }
     } else {
       // Insert new settings
@@ -92,15 +93,15 @@ export async function POST(request: Request) {
         });
 
       if (insertError) {
-        return NextResponse.json(
-          { error: insertError.message },
-          { status: 500 }
-        );
+        throw insertError;
       }
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/settings/POST", type: "server" },
+    });
     console.error("Error saving settings:", error);
     return NextResponse.json(
       { error: "Internal server error" },

@@ -3,9 +3,9 @@ import type {
   Booking,
   WorkingHours as WorkingHoursType,
   AvailabilitySettings as AvailabilitySettingsType,
-  DayAvailability,
   TimeSlot as TimeSlotType,
 } from "../types/availability";
+import * as Sentry from "@sentry/nextjs";
 
 // Additional types for mutations
 interface CreateBooking {
@@ -28,15 +28,6 @@ interface CreatePublicBooking {
   clientEmail: string;
   clientPhone?: string;
   notes?: string;
-}
-
-interface UpdateBookingStatus {
-  bookingId: string;
-  status: string;
-}
-
-interface DeleteBooking {
-  bookingId: string;
 }
 
 interface Login {
@@ -114,61 +105,103 @@ export const queryKeys = {
 const api = {
   // Bookings
   async fetchBookings(): Promise<{ bookings: Booking[] }> {
-    const response = await fetch("/api/bookings");
-    if (!response.ok) {
-      throw new Error("Failed to fetch bookings");
+    try {
+      const response = await fetch("/api/bookings");
+      if (!response.ok) {
+        throw new Error("Failed to fetch bookings");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "fetchBookings", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   async updateBookingStatus(bookingId: string, status: string): Promise<void> {
-    const response = await fetch(`/api/bookings`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bookingId, status }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to update booking status");
+    try {
+      const response = await fetch(`/api/bookings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId, status }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update booking status");
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "updateBookingStatus", type: "client" },
+      });
+      throw error;
     }
   },
 
   // Availability
   async fetchWorkingHours(): Promise<WorkingHoursType[]> {
-    const response = await fetch("/api/availability/working-hours");
-    if (!response.ok) {
-      throw new Error("Failed to fetch working hours");
+    try {
+      const response = await fetch("/api/availability/working-hours");
+      if (!response.ok) {
+        throw new Error("Failed to fetch working hours");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "fetchWorkingHours", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   async fetchAvailabilitySettings(): Promise<AvailabilitySettingsType> {
-    const response = await fetch("/api/availability/settings");
-    if (!response.ok) {
-      throw new Error("Failed to fetch availability settings");
+    try {
+      const response = await fetch("/api/availability/settings");
+      if (!response.ok) {
+        throw new Error("Failed to fetch availability settings");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "fetchAvailabilitySettings", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   async fetchDayDetails(date: string): Promise<{
     bookings: Booking[];
     timeSlots: TimeSlotType[];
   }> {
-    const response = await fetch(`/api/availability/day-details?date=${date}`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch day details");
+    try {
+      const response = await fetch(`/api/availability/day-details?date=${date}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch day details");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "fetchDayDetails", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   async fetchAvailabilityExceptions(): Promise<
     Record<string, { isWorkingDay: boolean; reason?: string }>
   > {
-    const response = await fetch("/api/availability/exceptions");
-    if (!response.ok) {
-      throw new Error("Failed to fetch availability exceptions");
+    try {
+      const response = await fetch("/api/availability/exceptions");
+      if (!response.ok) {
+        throw new Error("Failed to fetch availability exceptions");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "fetchAvailabilityExceptions", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   // Auth
@@ -194,15 +227,22 @@ const api = {
     timeSlots: TimeSlotType[];
     isWorkingDay: boolean;
   }> {
-    const response = await fetch(`/api/availability/day-details?date=${date}`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch day availability");
+    try {
+      const response = await fetch(`/api/availability/day-details?date=${date}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch day availability");
+      }
+      const data = await response.json();
+      return {
+        timeSlots: data.timeSlots || [],
+        isWorkingDay: data.isWorkingDay || false,
+      };
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "fetchDayAvailability", type: "client" },
+      });
+      throw error;
     }
-    const data = await response.json();
-    return {
-      timeSlots: data.timeSlots || [],
-      isWorkingDay: data.isWorkingDay || false,
-    };
   },
 
   async fetchPublicDayAvailability(
@@ -212,32 +252,53 @@ const api = {
     timeSlots: TimeSlotType[];
     isWorkingDay: boolean;
   }> {
-    const response = await fetch(
-      `/api/availability/public?date=${date}&userId=${userId}`
-    );
-    if (!response.ok) {
-      throw new Error("Failed to fetch public day availability");
+    try {
+      const response = await fetch(
+        `/api/availability/public?date=${date}&userId=${userId}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch public day availability");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "fetchPublicDayAvailability", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   // User preferences
   async fetchTimeFormat(): Promise<{ time_format_12h: boolean }> {
-    const response = await fetch("/api/user/time-format");
-    if (!response.ok) {
-      throw new Error("Failed to fetch time format preference");
+    try {
+      const response = await fetch("/api/user/time-format");
+      if (!response.ok) {
+        throw new Error("Failed to fetch time format preference");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "fetchTimeFormat", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   async updateTimeFormat(is12Hour: boolean): Promise<void> {
-    const response = await fetch("/api/user/time-format", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ time_format_12h: is12Hour }),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to update time format preference");
+    try {
+      const response = await fetch("/api/user/time-format", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ time_format_12h: is12Hour }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update time format preference");
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "updateTimeFormat", type: "client" },
+      });
+      throw error;
     }
   },
 
@@ -246,120 +307,183 @@ const api = {
   async createBooking(
     data: CreateBooking
   ): Promise<{ success: boolean; bookingId: string }> {
-    const response = await fetch("/api/bookings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to create booking");
+    try {
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create booking");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "createBooking", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   async createPublicBooking(
     data: CreatePublicBooking
   ): Promise<{ message: string; booking: Booking; accessToken: string }> {
-    const response = await fetch("/api/bookings/public-create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to create public booking");
+    try {
+      const response = await fetch("/api/bookings/public-create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create public booking");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "createPublicBooking", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   async deleteBooking(bookingId: string): Promise<void> {
-    const response = await fetch(`/api/bookings?bookingId=${bookingId}`, {
-      method: "DELETE",
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to delete booking");
+    try {
+      const response = await fetch(`/api/bookings?bookingId=${bookingId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete booking");
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "deleteBooking", type: "client" },
+      });
+      throw error;
     }
   },
 
   // Auth
   async login(data: Login): Promise<{ success: boolean; message: string }> {
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to login");
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to login");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "login", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   async signup(data: Signup): Promise<{ success: boolean; message: string }> {
-    const response = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to sign up");
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to sign up");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "signup", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   async logout(): Promise<void> {
-    const response = await fetch("/api/auth/logout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to logout");
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to logout");
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "logout", type: "client" },
+      });
+      throw error;
     }
   },
 
   // Onboarding
   async completeOnboarding(data: Onboarding): Promise<{ success: boolean }> {
-    const response = await fetch("/api/user/onboarding", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to complete onboarding");
+    try {
+      const response = await fetch("/api/user/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to complete onboarding");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "completeOnboarding", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   // Availability Settings
   async updateAvailabilitySettings(data: AvailabilitySettings): Promise<void> {
-    const response = await fetch("/api/availability/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        errorData.message || "Failed to update availability settings"
-      );
+    try {
+      const response = await fetch("/api/availability/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || "Failed to update availability settings"
+        );
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "updateAvailabilitySettings", type: "client" },
+      });
+      throw error;
     }
   },
 
   // Working Hours
   async updateWorkingHours(data: WorkingHours): Promise<void> {
-    const response = await fetch("/api/availability/working-hours", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to update working hours");
+    try {
+      const response = await fetch("/api/availability/working-hours", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update working hours");
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "updateWorkingHours", type: "client" },
+      });
+      throw error;
     }
   },
 
@@ -368,62 +492,97 @@ const api = {
     date: string;
     slots: TimeSlot[];
   }): Promise<void> {
-    const response = await fetch("/api/availability/time-slots", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to create time slots");
+    try {
+      const response = await fetch("/api/availability/time-slots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create time slots");
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "createTimeSlots", type: "client" },
+      });
+      throw error;
     }
   },
 
   async updateTimeSlot(data: TimeSlot): Promise<void> {
-    const response = await fetch("/api/availability/time-slots", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to update time slot");
+    try {
+      const response = await fetch("/api/availability/time-slots", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update time slot");
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "updateTimeSlot", type: "client" },
+      });
+      throw error;
     }
   },
 
   async deleteTimeSlotsForDate(date: string): Promise<void> {
-    const response = await fetch("/api/availability/time-slots", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, action: "delete" }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to delete time slots");
+    try {
+      const response = await fetch("/api/availability/time-slots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, action: "delete" }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete time slots");
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "deleteTimeSlotsForDate", type: "client" },
+      });
+      throw error;
     }
   },
 
   // Exceptions
   async saveException(data: Exception): Promise<void> {
-    const response = await fetch("/api/availability/exceptions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to save exception");
+    try {
+      const response = await fetch("/api/availability/exceptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to save exception");
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "saveException", type: "client" },
+      });
+      throw error;
     }
   },
 
   // Public Booking Access by Token
   async fetchBookingByToken(token: string): Promise<{ booking: Booking }> {
-    const response = await fetch(`/api/bookings/public-view?token=${token}`);
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to fetch booking");
+    try {
+      const response = await fetch(`/api/bookings/public-view?token=${token}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to fetch booking");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "fetchBookingByToken", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   async updateBookingByToken(data: {
@@ -433,27 +592,41 @@ const api = {
     clientPhone?: string;
     notes?: string;
   }): Promise<{ message: string; booking: Booking }> {
-    const response = await fetch("/api/bookings/public-view", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to update booking");
+    try {
+      const response = await fetch("/api/bookings/public-view", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update booking");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "updateBookingByToken", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 
   async cancelBookingByToken(token: string): Promise<{ message: string }> {
-    const response = await fetch(`/api/bookings/public-view?token=${token}`, {
-      method: "DELETE",
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to cancel booking");
+    try {
+      const response = await fetch(`/api/bookings/public-view?token=${token}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to cancel booking");
+      }
+      return response.json();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { function: "cancelBookingByToken", type: "client" },
+      });
+      throw error;
     }
-    return response.json();
   },
 };
 
@@ -859,6 +1032,9 @@ export function useUpdateBookingByToken() {
         queryKey: ["booking", "token", variables.token],
       });
     },
+    onError: (error) => {
+      Sentry.captureException(error);
+    },
   });
 }
 
@@ -871,6 +1047,11 @@ export function useCancelBookingByToken() {
       // Invalidate the specific booking query to show updated status
       queryClient.invalidateQueries({
         queryKey: ["booking", "token", token],
+      });
+    },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { type: "public-booking-cancel" },
       });
     },
   });

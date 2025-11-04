@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,11 +22,19 @@ export async function GET(request: NextRequest) {
       .select("*")
       .eq("user_id", userId);
 
+    if (settingsError) {
+      throw settingsError;
+    }
+
     // Check if user has working hours set up
     const { data: workingHours, error: workingHoursError } = await supabase
       .from("user_working_hours")
       .select("*")
       .eq("user_id", userId);
+
+    if (workingHoursError) {
+      throw workingHoursError;
+    }
 
     // Check if user has time slots set up
     const { data: timeSlots, error: timeSlotsError } = await supabase
@@ -33,6 +42,10 @@ export async function GET(request: NextRequest) {
       .select("user_id")
       .eq("user_id", userId)
       .limit(1);
+
+    if (timeSlotsError) {
+      throw timeSlotsError;
+    }
 
     // Check if user exists in auth (basic check)
     const { data: userExists } = await supabase
@@ -56,13 +69,11 @@ export async function GET(request: NextRequest) {
       workingHoursCount: workingHours?.length || 0,
       timeSlotsCount: timeSlots?.length || 0,
       userExists: !!userExists && userExists.length > 0,
-      errors: {
-        settings: settingsError?.message,
-        workingHours: workingHoursError?.message,
-        timeSlots: timeSlotsError?.message,
-      },
     });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "availability/public-user/GET", type: "server" },
+    });
     console.error("Error in public user availability:", error);
     return NextResponse.json(
       { message: "Internal server error" },

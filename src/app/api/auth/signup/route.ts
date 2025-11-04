@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
@@ -67,7 +68,10 @@ export async function POST(request: Request) {
       user: data.user,
       session: data.session,
     });
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: "auth/signup/POST", type: "server" },
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
