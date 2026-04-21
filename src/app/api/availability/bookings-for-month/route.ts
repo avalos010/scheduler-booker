@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import type { Tables } from "@/lib/database.types";
 import * as Sentry from "@sentry/nextjs";
+
+type BookingRow = Tables<"bookings">;
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,6 +43,8 @@ export async function GET(request: NextRequest) {
       throw bookingsError;
     }
 
+    const rows: BookingRow[] = bookings ?? [];
+
     // Group bookings by date
     const bookingsByDate: Record<
       string,
@@ -57,7 +62,7 @@ export async function GET(request: NextRequest) {
         updated_at: string;
       }[]
     > = {};
-    bookings?.forEach((booking) => {
+    rows.forEach((booking) => {
       const dateKey = booking.date;
       if (!bookingsByDate[dateKey]) {
         bookingsByDate[dateKey] = [];
