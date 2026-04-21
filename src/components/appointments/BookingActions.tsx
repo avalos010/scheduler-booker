@@ -68,13 +68,20 @@ export default function BookingActions({
         </div>
       );
     case "confirmed": {
-      // Create date more explicitly for Node 18 compatibility
-      const startDateTime = new Date(
-        `${booking.date}T${booking.start_time}:00`
-      );
+      // Build start Date in local time using numeric constructor to avoid
+      // cross-environment parsing differences with ISO strings (Node vs
+      // browser). Parse "YYYY-MM-DD" and "HH:mm" into numbers.
+      const [yearStr, monthStr, dayStr] = booking.date.split("-");
+      const [hourStr, minuteStr] = booking.start_time.split(":");
+      const year = Number(yearStr);
+      const month = Number(monthStr) - 1; // JS months are 0-indexed
+      const day = Number(dayStr);
+      const hour = Number(hourStr);
+      const minute = Number(minuteStr);
+      const startDateTime = new Date(year, month, day, hour, minute, 0);
       const fifteenMinutesMs = 15 * 60 * 1000;
       const startWithGrace = new Date(
-        startDateTime.getTime() + fifteenMinutesMs
+        startDateTime.getTime() + fifteenMinutesMs,
       );
       const now = new Date();
       const isBeforeGrace = now < startWithGrace;

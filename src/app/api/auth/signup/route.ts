@@ -8,17 +8,23 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { email, password } = body;
+    const url = new URL(request.url);
+    const origin = url.origin || process.env.NEXT_PUBLIC_APP_URL;
 
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      // Supabase client v2 accepts emailRedirectTo via the options property
+      // to override the site URL used in confirmation emails.
+      options: {
+        emailRedirectTo: origin,
+      },
     });
+    // Map Supabase error codes to user-friendly messages using error.code for reliability
+    let userFriendlyMessage = "Sign up failed. Please try again.";
+    let statusCode = 400;
 
     if (error) {
-      // Map Supabase error codes to user-friendly messages using error.code for reliability
-      let userFriendlyMessage = "Sign up failed. Please try again.";
-      let statusCode = 400;
-
       // Use error.code if available, fallback to error.message for exact matching
       const errorIdentifier = error.code || error.message;
 
@@ -59,7 +65,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         { error: userFriendlyMessage },
-        { status: statusCode }
+        { status: statusCode },
       );
     }
 
@@ -74,7 +80,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
