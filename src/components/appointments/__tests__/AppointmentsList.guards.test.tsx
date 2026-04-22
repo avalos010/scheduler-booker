@@ -40,10 +40,13 @@ describe("AppointmentsList guards and actions", () => {
 
   it("disables No Show before 15 minutes after start", async () => {
     const now = new Date();
-    const dateStr = format(now, "yyyy-MM-dd");
-    // Start 10 minutes from now
-    const start = format(new Date(now.getTime() + 10 * 60000), "HH:mm");
-    const end = format(new Date(now.getTime() + 70 * 60000), "HH:mm");
+    // Compute start/end based on a derived Date so the date and time stay in
+    // sync even when the test runs close to midnight in UTC.
+    const startDate = new Date(now.getTime() + 10 * 60000);
+    const endDate = new Date(now.getTime() + 70 * 60000);
+    const dateStr = format(startDate, "yyyy-MM-dd");
+    const start = format(startDate, "HH:mm");
+    const end = format(endDate, "HH:mm");
 
     (fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
@@ -64,7 +67,9 @@ describe("AppointmentsList guards and actions", () => {
 
     // Wait for booking to load
     await waitFor(() =>
-      expect(screen.getByText("Confirmed Appointments (1)")).toBeInTheDocument()
+      expect(
+        screen.getByText("Confirmed Appointments (1)"),
+      ).toBeInTheDocument(),
     );
 
     const noShowBtn = screen.getByRole("button", { name: /no show/i });
@@ -73,9 +78,11 @@ describe("AppointmentsList guards and actions", () => {
 
   it("disables Mark Complete before start", async () => {
     const now = new Date();
-    const dateStr = format(now, "yyyy-MM-dd");
-    const start = format(new Date(now.getTime() + 30 * 60000), "HH:mm");
-    const end = format(new Date(now.getTime() + 90 * 60000), "HH:mm");
+    const startDate = new Date(now.getTime() + 30 * 60000);
+    const endDate = new Date(now.getTime() + 90 * 60000);
+    const dateStr = format(startDate, "yyyy-MM-dd");
+    const start = format(startDate, "HH:mm");
+    const end = format(endDate, "HH:mm");
 
     (fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
@@ -95,7 +102,7 @@ describe("AppointmentsList guards and actions", () => {
     render(<AppointmentsList />);
 
     await waitFor(() =>
-      expect(screen.getByText(/Confirmed Appointments/)).toBeInTheDocument()
+      expect(screen.getByText(/Confirmed Appointments/)).toBeInTheDocument(),
     );
     const completeBtn = screen.getByRole("button", { name: /mark complete/i });
     expect(completeBtn).toBeDisabled();
@@ -121,12 +128,12 @@ describe("AppointmentsList guards and actions", () => {
 
     render(<AppointmentsList />);
     await waitFor(() =>
-      expect(screen.getByText(/Other Appointments/)).toBeInTheDocument()
+      expect(screen.getByText(/Other Appointments/)).toBeInTheDocument(),
     );
 
     // Ensure there's no rebook button rendered
     expect(
-      screen.queryByRole("button", { name: /rebook/i })
+      screen.queryByRole("button", { name: /rebook/i }),
     ).not.toBeInTheDocument();
   });
 });
