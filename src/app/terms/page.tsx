@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms of Service for Scheduler Booker - Intelligent appointment scheduling platform",
+    "Read the terms that apply when using Scheduler Booker for appointment scheduling and online bookings.",
+  alternates: {
+    canonical: "/terms",
+  },
 };
 
 export default function TermsPage() {

@@ -15,6 +15,10 @@ export const metadata: Metadata = {
     "service provider registration",
     "business scheduling tool",
   ],
+  robots: {
+    index: false,
+    follow: false,
+  },
   openGraph: {
     title: "Create Account - Scheduler Booker",
     description:

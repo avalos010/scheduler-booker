@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Privacy Policy for Scheduler Booker - How we collect, use, and protect your data",
+    "Learn how Scheduler Booker collects, uses, and protects account, scheduling, and booking data.",
+  alternates: {
+    canonical: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {

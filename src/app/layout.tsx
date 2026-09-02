@@ -20,12 +20,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default:
-      "Scheduler Booker - Intelligent Appointment Scheduling & Booking Platform",
+    default: "Scheduler Booker | Online Appointment Scheduling",
     template: "%s | Scheduler Booker",
   },
   description:
-    "Streamline your appointment booking with our intelligent scheduling platform. Manage availability, automate bookings, and focus on what matters most. Perfect for professionals, consultants, and service providers.",
+    "Create a booking page, set your weekly availability, and manage upcoming client appointments from one simple scheduling dashboard.",
+  applicationName: "Scheduler Booker",
   keywords: [
     "appointment scheduling",
     "online booking",
@@ -47,36 +47,20 @@ export const metadata: Metadata = {
     telephone: false,
   },
   metadataBase: new URL("https://scheduler-booker.vercel.app"),
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     locale: "en_US",
     url: "https://scheduler-booker.vercel.app",
     siteName: "Scheduler Booker",
-    title:
-      "Scheduler Booker - Intelligent Appointment Scheduling & Booking Platform",
+    title: "Scheduler Booker | Online Appointment Scheduling",
     description:
-      "Streamline your appointment booking with our intelligent scheduling platform. Manage availability, automate bookings, and focus on what matters most.",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Scheduler Booker - Professional Appointment Scheduling Platform",
-      },
-    ],
+      "Create a booking page, set your availability, and manage upcoming client appointments in one place.",
   },
   twitter: {
     card: "summary_large_image",
-    title:
-      "Scheduler Booker - Intelligent Appointment Scheduling & Booking Platform",
+    title: "Scheduler Booker | Online Appointment Scheduling",
     description:
-      "Streamline your appointment booking with our intelligent scheduling platform. Manage availability, automate bookings, and focus on what matters most.",
-    images: ["/og-image.png"],
-    creator: "@schedulerbooker",
-    site: "@schedulerbooker",
+      "Create a booking page, set your availability, and manage upcoming client appointments in one place.",
   },
   robots: {
     index: true,
@@ -99,22 +83,13 @@ export const dynamic = "force-dynamic";
 
 const structuredData = {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
+  "@type": "WebSite",
+  "@id": "https://scheduler-booker.vercel.app/#website",
   name: "Scheduler Booker",
   description:
-    "Intelligent appointment scheduling and booking platform for professionals",
+    "Online appointment scheduling and booking software for independent professionals.",
   url: "https://scheduler-booker.vercel.app",
-  applicationCategory: "BusinessApplication",
-  operatingSystem: "Web",
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
-  },
-  author: {
-    "@type": "Organization",
-    name: "Scheduler Booker Team",
-  },
+  inLanguage: "en-US",
 };
 
 export default async function RootLayout({
@@ -145,8 +120,6 @@ export default async function RootLayout({
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
 
-        {/* Additional SEO meta tags */}
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#2563eb" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -160,19 +133,6 @@ export default async function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/logo.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/logo-192.svg" />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="32x32"
-          href="/icon-32x32.png"
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="16x16"
-          href="/icon-16x16.png"
-        />
-
         {/* Preconnect to external domains for performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -181,7 +141,7 @@ export default async function RootLayout({
           crossOrigin="anonymous"
         />
 
-        {/* Structured data for rich snippets */}
+        {/* Site identity structured data */}
         <script type="application/ld+json">
           {JSON.stringify(structuredData).replace(/</g, "\\u003c")}
         </script>
