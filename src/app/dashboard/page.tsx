@@ -5,6 +5,8 @@ import {
   CalendarDaysIcon,
   ArrowRightIcon,
   UsersIcon,
+  ClockIcon,
+  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import ShareBookingButton from "@/components/dashboard/ShareBookingButton";
@@ -60,6 +62,59 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const today = new Date().toISOString().slice(0, 10);
+  const [pendingResult, confirmedResult, upcomingResult] =
+    await Promise.all([
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "pending")
+        .gte("date", today),
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "confirmed")
+        .gte("date", today),
+      supabase
+        .from("bookings")
+        .select("id, client_name, date, start_time, end_time, status", {
+          count: "exact",
+        })
+        .eq("user_id", user.id)
+        .gte("date", today)
+        .neq("status", "cancelled")
+        .order("date", { ascending: true })
+        .order("start_time", { ascending: true })
+        .limit(4),
+    ]);
+
+  const upcomingBookings = upcomingResult.data ?? [];
+  const stats = [
+    {
+      label: "Upcoming bookings",
+      value: upcomingResult.count ?? 0,
+      icon: CalendarDaysIcon,
+      iconClass:
+        "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+    },
+    {
+      label: "Upcoming pending",
+      value: pendingResult.count ?? 0,
+      icon: ClockIcon,
+      iconClass:
+        "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+    },
+    {
+      label: "Upcoming confirmed",
+      value: confirmedResult.count ?? 0,
+      icon: CheckCircleIcon,
+      iconClass:
+        "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
+    },
+  ];
+
   console.log("🔍 Dashboard: User authenticated, showing dashboard");
 
   return (
@@ -91,8 +146,63 @@ export default async function DashboardPage() {
           </div>
         </div>
 
+        {/* Overview */}
+        <section className="mb-8" aria-labelledby="overview-heading">
+          <div className="mb-4 flex items-end justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-300">
+                At a glance
+              </p>
+              <h2
+                id="overview-heading"
+                className="text-2xl font-bold text-gray-900"
+              >
+                Booking overview
+              </h2>
+            </div>
+            <Link
+              href="/dashboard/appointments"
+              className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
+            >
+              View all appointments
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {stats.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div
+                  key={stat.label}
+                  className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        {stat.label}
+                      </p>
+                      <p className="mt-1 text-3xl font-bold text-gray-900">
+                        {stat.value}
+                      </p>
+                    </div>
+                    <div className={`rounded-xl p-3 ${stat.iconClass}`}>
+                      <Icon className="h-6 w-6" />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         {/* Quick actions */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <section aria-labelledby="quick-actions-heading">
+          <h2
+            id="quick-actions-heading"
+            className="mb-4 text-2xl font-bold text-gray-900"
+          >
+            Quick actions
+          </h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           <Link
             href="/dashboard/availability"
             className="group relative overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-b from-blue-50 to-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-blue-800 dark:from-blue-950 dark:to-slate-900"
@@ -154,7 +264,81 @@ export default async function DashboardPage() {
           </Link>
 
           <ShareBookingButton userId={user.id} />
-        </div>
+          </div>
+        </section>
+
+        {/* Upcoming schedule */}
+        <section
+          className="mt-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
+          aria-labelledby="upcoming-heading"
+        >
+          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5 dark:border-slate-700">
+            <div>
+              <p className="text-sm font-medium text-green-600 dark:text-green-300">
+                Your schedule
+              </p>
+              <h2
+                id="upcoming-heading"
+                className="text-xl font-bold text-gray-900"
+              >
+                Upcoming appointments
+              </h2>
+            </div>
+            <Link
+              href="/dashboard/appointments"
+              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
+            >
+              Open schedule
+              <ArrowRightIcon className="h-4 w-4" />
+            </Link>
+          </div>
+
+          {upcomingBookings.length > 0 ? (
+            <div className="divide-y divide-gray-200 dark:divide-slate-700">
+              {upcomingBookings.map((booking) => (
+                <div
+                  key={booking.id}
+                  className="flex flex-col gap-3 px-6 py-4 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/70 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="min-w-16 rounded-xl bg-gray-100 px-3 py-2 text-center dark:bg-slate-800">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {new Intl.DateTimeFormat("en-US", {
+                          month: "short",
+                          timeZone: "UTC",
+                        }).format(new Date(`${booking.date}T00:00:00Z`))}
+                      </p>
+                      <p className="text-xl font-bold text-gray-900">
+                        {booking.date.slice(-2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {booking.client_name}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {booking.start_time.slice(0, 5)}–{booking.end_time.slice(0, 5)}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="w-fit rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold capitalize text-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                    {booking.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-6 py-12 text-center">
+              <CalendarDaysIcon className="mx-auto h-10 w-10 text-gray-400" />
+              <p className="mt-3 font-medium text-gray-900">
+                Your schedule is clear
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                Share your booking link to start receiving appointments.
+              </p>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

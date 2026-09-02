@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { format, addDays, startOfDay, isBefore } from "date-fns";
 import { CalendarDaysIcon, ClockIcon } from "@heroicons/react/24/outline";
 
@@ -51,10 +51,7 @@ export default function SharedAvailabilityCalendar({
   isLoading,
   showBookingDetails = false,
 }: SharedAvailabilityCalendarProps) {
-  const [availableDates, setAvailableDates] = useState<Date[]>([]);
-
-  // Generate available dates (next 30 days)
-  useEffect(() => {
+  const [availableDates] = useState<Date[]>(() => {
     const dates: Date[] = [];
     const today = startOfDay(new Date());
 
@@ -63,8 +60,8 @@ export default function SharedAvailabilityCalendar({
       dates.push(date);
     }
 
-    setAvailableDates(dates);
-  }, []);
+    return dates;
+  });
 
   const handleDateSelect = (date: Date) => {
     onDateSelect(date);
@@ -170,7 +167,13 @@ export default function SharedAvailabilityCalendar({
                   <div className="font-semibold">
                     {slot.startTimeDisplay || slot.startTime}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div
+                    className={`text-xs ${
+                      selectedTimeSlot?.id === slot.id
+                        ? "text-green-100"
+                        : "text-gray-500 dark:text-gray-300"
+                    }`}
+                  >
                     to {slot.endTimeDisplay || slot.endTime}
                     {slot.isBooked && showBookingDetails && (
                       <div className="mt-2 space-y-1.5">

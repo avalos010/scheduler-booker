@@ -1,4 +1,5 @@
 import PublicBookingForm from "@/components/bookings/PublicBookingForm";
+import { ClockIcon } from "@heroicons/react/24/outline";
 
 interface PublicBookingPageProps {
   params: Promise<{ userId: string }>;
@@ -36,16 +37,7 @@ export default async function PublicBookingPage({
             <PublicBookingForm userId={userId} />
           ) : (
             <div className="text-center py-8">
-              <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
+              <ClockIcon className="mx-auto mb-4 h-12 w-12 text-gray-400" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 Availability Not Set Up
               </h3>
