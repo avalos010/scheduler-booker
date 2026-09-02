@@ -98,6 +98,7 @@ export type Database = {
       user_availability_settings: {
         Row: {
           advance_booking_days: number
+          break_duration_minutes: number
           created_at: string | null
           id: string
           slot_duration_minutes: number
@@ -108,6 +109,7 @@ export type Database = {
         }
         Insert: {
           advance_booking_days?: number
+          break_duration_minutes?: number
           created_at?: string | null
           id?: string
           slot_duration_minutes?: number
@@ -118,6 +120,7 @@ export type Database = {
         }
         Update: {
           advance_booking_days?: number
+          break_duration_minutes?: number
           created_at?: string | null
           id?: string
           slot_duration_minutes?: number
