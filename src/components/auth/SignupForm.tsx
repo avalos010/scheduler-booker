@@ -64,7 +64,7 @@ export default function SignupForm() {
       if (!response.ok) {
         error(result.error || "Signup failed");
       } else {
-        success("Signup successful! Please check your email for verification.");
+        success("Account created successfully!");
         // Redirect to onboarding
         setTimeout(() => {
           window.location.href = "/onboarding";
