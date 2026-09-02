@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #ffffff;
@@ -12,11 +13,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #0f172a;
+  --foreground: #e5e7eb;
+  color-scheme: dark;
 }
 
 body {
@@ -47,22 +47,95 @@ body {
   }
 }
 
-/* Override light gray text to be darker and more readable */
+/* Readable light-theme text defaults. */
 .text-gray-600 {
-  color: #374151 !important;
+  color: #374151;
 }
 
 .text-gray-700 {
-  color: #1f2937 !important;
+  color: #1f2937;
 }
 
 .text-gray-800 {
-  color: #1f2937 !important;
+  color: #1f2937;
 }
 
 .text-gray-900 {
-  color: #111827 !important;
+  color: #111827;
 }
+
+/* Shared dark palette. The .dark ancestor provides enough specificity naturally. */
+.dark .bg-white { background-color: #111827; }
+.dark .bg-white\/50 { background-color: rgb(17 24 39 / 0.5); }
+.dark .bg-white\/70 { background-color: rgb(17 24 39 / 0.88); }
+.dark .bg-white\/80 { background-color: rgb(17 24 39 / 0.92); }
+.dark .bg-white\/95 { background-color: rgb(17 24 39 / 0.97); }
+.dark .bg-gray-50 { background-color: #0f172a; }
+.dark .bg-gray-100 { background-color: #1f2937; }
+.dark .bg-gray-200 { background-color: #374151; }
+.dark .bg-gray-300 { background-color: #4b5563; }
+.dark .text-gray-900,
+.dark .text-gray-800 { color: #f9fafb; }
+.dark .text-gray-700 { color: #e5e7eb; }
+.dark .text-gray-600 { color: #d1d5db; }
+.dark .text-gray-500 { color: #9ca3af; }
+.dark .text-gray-400 { color: #9ca3af; }
+.dark .border-gray-100,
+.dark .border-gray-200 { border-color: #374151; }
+.dark .border-gray-300,
+.dark .border-gray-400 { border-color: #4b5563; }
+.dark .ring-gray-200,
+.dark .ring-gray-200\/60 { --tw-ring-color: rgb(75 85 99 / 0.75); }
+.dark .bg-blue-50 { background-color: #172554; }
+.dark .bg-blue-100 { background-color: #1e3a8a; }
+.dark .text-blue-700,
+.dark .text-blue-800,
+.dark .text-blue-900 { color: #93c5fd; }
+.dark .border-blue-200 { border-color: #1d4ed8; }
+.dark .bg-green-50,
+.dark .bg-green-100 { background-color: #052e16; }
+.dark .text-green-700,
+.dark .text-green-800 { color: #86efac; }
+.dark .border-green-200 { border-color: #166534; }
+.dark .bg-red-50,
+.dark .bg-red-100 { background-color: #450a0a; }
+.dark .text-red-700,
+.dark .text-red-800,
+.dark .text-red-900 { color: #fca5a5; }
+.dark .border-red-200 { border-color: #991b1b; }
+.dark .bg-yellow-50,
+.dark .bg-yellow-100 { background-color: #422006; }
+.dark .text-yellow-800 { color: #fde68a; }
+.dark .border-yellow-200 { border-color: #a16207; }
+.dark .text-amber-700,
+.dark .text-amber-800,
+.dark .text-amber-900 { color: #fde68a; }
+.dark .border-amber-200 { border-color: #92400e; }
+.dark .bg-purple-100 { background-color: #3b0764; }
+.dark .text-purple-700 { color: #d8b4fe; }
+.dark .from-gray-50,
+.dark .from-slate-50 { --tw-gradient-from: #0f172a var(--tw-gradient-from-position); }
+.dark .to-gray-100 { --tw-gradient-to: #1f2937 var(--tw-gradient-to-position); }
+.dark .to-gray-200 { --tw-gradient-to: #111827 var(--tw-gradient-to-position); }
+.dark .from-blue-50 { --tw-gradient-from: #172554 var(--tw-gradient-from-position); }
+.dark .via-blue-50 { --tw-gradient-via: #172554 var(--tw-gradient-via-position); }
+.dark .to-indigo-50 { --tw-gradient-to: #1e1b4b var(--tw-gradient-to-position); }
+.dark .from-green-50 { --tw-gradient-from: #052e16 var(--tw-gradient-from-position); }
+.dark .from-purple-50 { --tw-gradient-from: #3b0764 var(--tw-gradient-from-position); }
+.dark .from-amber-50 { --tw-gradient-from: #451a03 var(--tw-gradient-from-position); }
+.dark .to-white { --tw-gradient-to: #111827 var(--tw-gradient-to-position); }
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover { background-color: #1f2937; }
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #111827;
+  border-color: #4b5563;
+  color: #f9fafb;
+  color-scheme: dark;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #9ca3af; }
 
 /* Subtle card entrance */
 .card-enter {

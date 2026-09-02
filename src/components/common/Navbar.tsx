@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "@/components/auth/LogoutButton";
+import ThemeToggle from "@/components/common/ThemeToggle";
 import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 
 interface NavbarProps {
@@ -60,6 +61,7 @@ export default function Navbar({ isAuthed }: NavbarProps) {
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
+            <ThemeToggle />
             {isAuthed ? (
               !isAuthRoute ? (
                 <>

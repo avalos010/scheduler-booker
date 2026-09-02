@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import Navbar from "@/components/common/Navbar";
 import { SnackbarProvider } from "@/components/snackbar";
@@ -96,6 +97,26 @@ export const metadata: Metadata = {
 // Force dynamic rendering to re-evaluate auth on each request
 export const dynamic = "force-dynamic";
 
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Scheduler Booker",
+  description:
+    "Intelligent appointment scheduling and booking platform for professionals",
+  url: "https://scheduler-booker.vercel.app",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  author: {
+    "@type": "Organization",
+    name: "Scheduler Booker Team",
+  },
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -114,8 +135,9 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <Script src="/theme-init.js" strategy="beforeInteractive" />
         <meta
           httpEquiv="Cache-Control"
           content="no-cache, no-store, must-revalidate"
@@ -125,7 +147,8 @@ export default async function RootLayout({
 
         {/* Additional SEO meta tags */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#2563eb" />
+        <meta name="theme-color" content="#2563eb" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Scheduler Booker" />
@@ -159,30 +182,9 @@ export default async function RootLayout({
         />
 
         {/* Structured data for rich snippets */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "SoftwareApplication",
-              name: "Scheduler Booker",
-              description:
-                "Intelligent appointment scheduling and booking platform for professionals",
-              url: "https://scheduler-booker.vercel.app",
-              applicationCategory: "BusinessApplication",
-              operatingSystem: "Web",
-              offers: {
-                "@type": "Offer",
-                price: "0",
-                priceCurrency: "USD",
-              },
-              author: {
-                "@type": "Organization",
-                name: "Scheduler Booker Team",
-              },
-            }),
-          }}
-        />
+        <script type="application/ld+json">
+          {JSON.stringify(structuredData).replace(/</g, "\\u003c")}
+        </script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
