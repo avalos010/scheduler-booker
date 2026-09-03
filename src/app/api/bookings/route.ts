@@ -6,6 +6,7 @@ import {
   convertTimeToTimestamp,
 } from "@/lib/utils/serverTimeFormat";
 import * as Sentry from "@sentry/nextjs";
+import { sendBookingApprovedNotification } from "@/lib/email/booking-notifications";
 
 export async function POST(request: NextRequest) {
   try {
@@ -400,7 +401,9 @@ export async function PATCH(request: NextRequest) {
     // Verify the user owns this booking
     const { data: existingBooking, error: fetchError } = await supabase
       .from("bookings")
-      .select("user_id, status, date, start_time, end_time")
+      .select(
+        "user_id, status, date, start_time, end_time, client_name, client_email, notes, access_token"
+      )
       .eq("id", bookingId)
       .single();
 
@@ -417,6 +420,9 @@ export async function PATCH(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    const shouldNotifyApproval =
+      status === "confirmed" && existingBooking.status !== "confirmed";
 
     // Prevent marking as no-show before the appointment start time + 15 minutes
     if (status === "no-show") {
@@ -511,6 +517,36 @@ export async function PATCH(request: NextRequest) {
       if (slotUpdateError) {
         console.error("Error updating time slot:", slotUpdateError);
         // Don't fail the request, just log the error
+      }
+
+      if (shouldNotifyApproval) {
+        try {
+          await sendBookingApprovedNotification({
+            bookingId: updatedBooking.id,
+            clientEmail: updatedBooking.client_email,
+            clientName: updatedBooking.client_name,
+            date: updatedBooking.date,
+            startTime: updatedBooking.start_time,
+            endTime: updatedBooking.end_time,
+            notes: updatedBooking.notes,
+            accessToken: updatedBooking.access_token,
+            schedulerEmail: user.email,
+            schedulerName:
+              user.user_metadata?.business_name ||
+              user.user_metadata?.display_name,
+          });
+        } catch (notificationError) {
+          Sentry.captureException(notificationError, {
+            tags: {
+              route: "bookings/PATCH",
+              type: "booking-notification",
+            },
+          });
+          console.error(
+            "Booking was confirmed, but the client notification failed:",
+            notificationError
+          );
+        }
       }
     }
 

@@ -98,6 +98,9 @@ A modern, full-stack scheduling application built with Next.js 15, Supabase, and
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   RESEND_API_KEY=re_your_api_key
+   RESEND_FROM_EMAIL=Scheduler Booker <bookings@your-verified-domain.com>
    ```
 
 4. **Database Setup**
@@ -237,9 +240,12 @@ npm run test:coverage   # Run tests with coverage
 
 | Variable                        | Description                    | Required |
 | ------------------------------- | ------------------------------ | -------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Your Supabase project URL      | Yes      |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous key    | Yes      |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Your Supabase service role key | Yes      |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Your Supabase project URL                    | Yes      |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous key                  | Yes      |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Your Supabase service role key               | Yes      |
+| `NEXT_PUBLIC_APP_URL`           | Public app URL used in notification links    | Yes      |
+| `RESEND_API_KEY`                | Resend API key for booking email delivery    | Yes      |
+| `RESEND_FROM_EMAIL`             | Sender using a domain verified with Resend   | Yes      |
 
 ## 🧪 Test Results
 

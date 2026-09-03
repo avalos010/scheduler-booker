@@ -4,11 +4,20 @@
 import { NextRequest } from "next/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as route from "../route";
+import { sendBookingApprovedNotification } from "@/lib/email/booking-notifications";
 
 // Mock Sentry
 jest.mock("@sentry/nextjs", () => ({
   captureException: jest.fn(),
 }));
+
+jest.mock("@/lib/email/booking-notifications", () => ({
+  sendBookingApprovedNotification: jest.fn(),
+}));
+
+const mockedApprovalNotification = jest.mocked(
+  sendBookingApprovedNotification
+);
 
 // Type definitions
 interface BookingRow {
@@ -101,8 +110,16 @@ jest.mock("@/lib/supabase-server", () => {
   const api = {
     auth: {
       getSession: async () => ({ data: { session: { user: { id: userId } } } }),
-      getUser: async () => ({ data: { user: { id: userId } } }),
-    } as SupabaseClient["auth"],
+      getUser: async () => ({
+        data: {
+          user: {
+            id: userId,
+            email: "owner@example.com",
+            user_metadata: { business_name: "Taylor Consulting" },
+          },
+        },
+      }),
+    } as unknown as SupabaseClient["auth"],
     from: ((tableName: keyof MockTables) => {
       const queryState: {
         selectCols?: string;
@@ -287,6 +304,8 @@ describe("/api/bookings route", () => {
   const end = "10:00";
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+    mockedApprovalNotification.mockResolvedValue({ sent: true });
     const { createSupabaseServerClient } = await import(
       "@/lib/supabase-server"
     );
@@ -354,6 +373,23 @@ describe("/api/bookings route", () => {
     );
     expect(res.status).toBe(200);
     expect(mockSupabase.__tables().user_time_slots[0].is_booked).toBe(true);
+    expect(mockedApprovalNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bookingId: booking.id,
+        clientEmail: "a@example.com",
+        schedulerEmail: "owner@example.com",
+        schedulerName: "Taylor Consulting",
+      })
+    );
+
+    const repeatedResponse = await route.PATCH(
+      makeRequest("PATCH", `${baseUrl}/api/bookings`, {
+        bookingId: booking.id,
+        status: "confirmed",
+      }) as unknown as NextRequest
+    );
+    expect(repeatedResponse.status).toBe(200);
+    expect(mockedApprovalNotification).toHaveBeenCalledTimes(1);
   });
 
   it("cancels booking and frees slot", async () => {

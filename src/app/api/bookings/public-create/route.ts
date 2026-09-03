@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServiceClient } from "@/lib/supabase-server";
 import { convertTimeToTimestamp } from "@/lib/utils/serverTimeFormat";
+import { sendNewBookingRequestNotification } from "@/lib/email/booking-notifications";
 import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createSupabaseServiceClient();
     const body = await request.json();
 
     const {
@@ -33,6 +33,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const supabase = createSupabaseServiceClient();
+
     // Convert time strings to full timestamps
     const startTimestamp = convertTimeToTimestamp(date, startTime);
     const endTimestamp = convertTimeToTimestamp(date, endTime);
@@ -59,6 +61,43 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       throw error;
+    }
+
+    try {
+      const { data: schedulerData, error: schedulerLookupError } =
+        await supabase.auth.admin.getUserById(userId);
+
+      if (schedulerLookupError) {
+        throw schedulerLookupError;
+      }
+
+      const scheduler = schedulerData.user;
+      if (scheduler?.email) {
+        await sendNewBookingRequestNotification({
+          bookingId: data.id,
+          schedulerEmail: scheduler.email,
+          schedulerName:
+            scheduler.user_metadata?.business_name ||
+            scheduler.user_metadata?.display_name,
+          clientName,
+          clientEmail,
+          date,
+          startTime: startTimestamp,
+          endTime: endTimestamp,
+          notes,
+        });
+      }
+    } catch (notificationError) {
+      Sentry.captureException(notificationError, {
+        tags: {
+          route: "bookings/public-create/POST",
+          type: "booking-notification",
+        },
+      });
+      console.error(
+        "Booking was created, but the owner notification failed:",
+        notificationError
+      );
     }
 
     return NextResponse.json(
