@@ -5,6 +5,7 @@ import "./globals.css";
 import Navbar from "@/components/common/Navbar";
 import { SnackbarProvider } from "@/components/snackbar";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import QueryProvider from "@/lib/providers/QueryProvider";
 
@@ -150,6 +151,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Analytics />
+        <SpeedInsights />
         <QueryProvider>
           <SnackbarProvider>
             <Navbar isAuthed={isAuthed} />
